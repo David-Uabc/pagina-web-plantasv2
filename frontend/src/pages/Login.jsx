@@ -2,9 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaUser, FaLock, FaEnvelope, FaEye, FaEyeSlash } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-
-const getUsers  = () => JSON.parse(localStorage.getItem("iot_users")  || "[]");
-const saveUsers = (u) => localStorage.setItem("iot_users", JSON.stringify(u));
+import api from "../api";
 
 // ─────────────────────────────────────────────────────
 // CRÍTICO: Field definido FUERA del componente Login
@@ -106,13 +104,17 @@ function Login({ onLogin }) {
     if (!lPass)        errs.pass = "Requerido";
     if (Object.keys(errs).length) { setLErr(errs); return; }
     setLErr({}); setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    const user = getUsers().find(u => u.username === lUser && u.password === lPass);
-    setLoading(false);
-    if (!user) { setAlert({ type: "error", msg: "Usuario o contraseña incorrectos." }); return; }
-    localStorage.setItem("iot_session", JSON.stringify({ name: user.name, username: user.username }));
-    if (onLogin) onLogin(user);
-    navigate("/");
+    try {
+      const res = await api.post("/api/auth/login", { username: lUser, password: lPass });
+      const { user, token } = res.data;
+      localStorage.setItem("iot_session", JSON.stringify({ ...user, token }));
+      if (onLogin) onLogin(user);
+      navigate("/");
+    } catch (err) {
+      setAlert({ type: "error", msg: err.response?.data?.error || "Usuario o contraseña incorrectos." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Registro ────────────────────────────────────────
@@ -126,16 +128,18 @@ function Login({ onLogin }) {
     if (rPass !== rConfirm)           errs.confirm = "No coinciden";
     if (Object.keys(errs).length) { setRErr(errs); return; }
     setRErr({}); setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    const users = getUsers();
-    if (users.find(u => u.username === rUser)) {
-      setLoading(false); setAlert({ type: "error", msg: "Ese usuario ya existe." }); return;
+    try {
+      await api.post("/api/auth/register", {
+        name: rName, username: rUser, email: rEmail, password: rPass,
+      });
+      setAlert({ type: "success", msg: "¡Cuenta creada! Inicia sesión." });
+      changeTab("login");
+      setRName(""); setRUser(""); setREmail(""); setRPass(""); setRConfirm("");
+    } catch (err) {
+      setAlert({ type: "error", msg: err.response?.data?.error || "Error al crear la cuenta." });
+    } finally {
+      setLoading(false);
     }
-    users.push({ name: rName, username: rUser, email: rEmail, password: rPass });
-    saveUsers(users); setLoading(false);
-    setAlert({ type: "success", msg: "¡Cuenta creada! Inicia sesión." });
-    changeTab("login");
-    setRName(""); setRUser(""); setREmail(""); setRPass(""); setRConfirm("");
   };
 
   // ── Forgot ──────────────────────────────────────────

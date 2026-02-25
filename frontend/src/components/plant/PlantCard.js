@@ -11,7 +11,6 @@ import ConfirmModal from "./ConfirmModal";
 
 ChartJS.register(LineElement, BarElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend);
 
-// ── Imágenes por nombre ───────────────────────────────
 const PLANT_IMAGES = {
   lavanda:  "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=600&q=80",
   menta:    "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=600&q=80",
@@ -34,7 +33,6 @@ function getImage(plant) {
   return FALLBACK;
 }
 
-// ── Estado de humedad ─────────────────────────────────
 function getHumState(h, min, max) {
   if (h < min)      return { color: "#f87171", label: "Crítica",  bar: "linear-gradient(90deg,#ef4444,#f87171)" };
   if (h < min + 10) return { color: "#fbbf24", label: "Baja",     bar: "linear-gradient(90deg,#f59e0b,#fbbf24)" };
@@ -42,14 +40,12 @@ function getHumState(h, min, max) {
   return              { color: "#22c55e", label: "Óptima",  bar: "linear-gradient(90deg,#16a34a,#22c55e)" };
 }
 
-// ── Generar historial simulado ────────────────────────
 function generateHistory(plant, days = 14) {
   const now = Date.now();
   const DAY = 86400000;
   const humidity = [];
   const irrigations = [];
   let current = plant.currentHumidity ?? 55;
-
   for (let i = days; i >= 0; i--) {
     const ts = now - i * DAY;
     current = Math.max(10, Math.min(95, current + (Math.random() * 8 - 4.5)));
@@ -70,11 +66,9 @@ function fmt(ts) {
 
 const HISTORY_TABS = ["Humedad", "Riegos"];
 
-// ── Panel de historial expandible ────────────────────
 function HistoryPanel({ plant, range, onRangeChange }) {
   const [tab, setTab] = useState("Humedad");
   const { humidity, irrigations } = generateHistory(plant, range);
-
   const humLabels = humidity.map(h => fmt(h.ts));
   const humValues = humidity.map(h => h.value);
   const avg = Math.round(humValues.reduce((a, b) => a + b, 0) / humValues.length);
@@ -82,8 +76,7 @@ function HistoryPanel({ plant, range, onRangeChange }) {
   const chartBase = {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: {
-      backgroundColor: "rgba(5,14,10,0.95)",
-      borderWidth: 1, titleColor: "#f0faf4", padding: 10,
+      backgroundColor: "rgba(5,14,10,0.95)", borderWidth: 1, titleColor: "#f0faf4", padding: 10,
     }},
     scales: {
       x: { ticks: { color: "#4d7a5e", font: { size: 9 }, maxTicksLimit: 7 }, grid: { color: "rgba(34,197,94,0.05)" } },
@@ -95,21 +88,9 @@ function HistoryPanel({ plant, range, onRangeChange }) {
   const humData = {
     labels: humLabels,
     datasets: [
-      {
-        data: humValues, fill: true, tension: 0.45,
-        borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.07)",
-        pointRadius: 0, pointHoverRadius: 5, borderWidth: 1.8,
-      },
-      {
-        data: Array(humValues.length).fill(plant.minHumidity),
-        borderColor: "rgba(248,113,113,0.45)", borderDash: [5,4],
-        borderWidth: 1.2, pointRadius: 0, fill: false,
-      },
-      {
-        data: Array(humValues.length).fill(plant.maxHumidity),
-        borderColor: "rgba(56,189,248,0.45)", borderDash: [5,4],
-        borderWidth: 1.2, pointRadius: 0, fill: false,
-      },
+      { data: humValues, fill: true, tension: 0.45, borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.07)", pointRadius: 0, pointHoverRadius: 5, borderWidth: 1.8 },
+      { data: Array(humValues.length).fill(plant.minHumidity), borderColor: "rgba(248,113,113,0.45)", borderDash: [5,4], borderWidth: 1.2, pointRadius: 0, fill: false },
+      { data: Array(humValues.length).fill(plant.maxHumidity), borderColor: "rgba(56,189,248,0.45)", borderDash: [5,4], borderWidth: 1.2, pointRadius: 0, fill: false },
     ],
   };
   const humOptions = {
@@ -117,20 +98,11 @@ function HistoryPanel({ plant, range, onRangeChange }) {
     plugins: { ...chartBase.plugins, tooltip: { ...chartBase.plugins.tooltip, borderColor: "rgba(34,197,94,0.3)", bodyColor: "#22c55e" } },
     scales: { ...chartBase.scales, y: { ...chartBase.scales.y, min: 0, max: 100, ticks: { ...chartBase.scales.y.ticks, callback: v => `${v}%` } } },
   };
-
   const irrData = {
     labels: irrigations.map(r => fmt(r.ts)),
     datasets: [
-      {
-        label: "Duración (min)", data: irrigations.map(r => r.duration),
-        backgroundColor: "rgba(56,189,248,0.6)", borderColor: "#38bdf8",
-        borderWidth: 1.5, borderRadius: 5,
-      },
-      {
-        label: "Humedad +%", data: irrigations.map(r => r.raised),
-        backgroundColor: "rgba(34,197,94,0.55)", borderColor: "#22c55e",
-        borderWidth: 1.5, borderRadius: 5,
-      },
+      { label: "Duración (min)", data: irrigations.map(r => r.duration), backgroundColor: "rgba(56,189,248,0.6)", borderColor: "#38bdf8", borderWidth: 1.5, borderRadius: 5 },
+      { label: "Humedad +%", data: irrigations.map(r => r.raised), backgroundColor: "rgba(34,197,94,0.55)", borderColor: "#22c55e", borderWidth: 1.5, borderRadius: 5 },
     ],
   };
   const irrOptions = {
@@ -143,73 +115,39 @@ function HistoryPanel({ plant, range, onRangeChange }) {
   };
 
   return (
-    <motion.div
-      className="pc-history-panel"
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+    <motion.div className="pc-history-panel"
+      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="pc-hist-inner">
-        {/* Header panel */}
         <div className="pc-hist-header">
-          {/* Tabs */}
           <div className="pc-hist-tabs">
             {HISTORY_TABS.map(t => (
-              <button key={t}
-                className={`pc-hist-tab ${tab === t ? "active" : ""}`}
-                onClick={() => setTab(t)}
-              >
+              <button key={t} className={`pc-hist-tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
                 {t === "Humedad" ? "📈" : "💧"} {t}
               </button>
             ))}
           </div>
-
-          {/* Range */}
           <div className="pc-hist-range">
             {[7, 14, 30].map(d => (
-              <button key={d}
-                className={`pc-hist-range-btn ${range === d ? "active" : ""}`}
-                onClick={() => onRangeChange(d)}
-              >{d}d</button>
+              <button key={d} className={`pc-hist-range-btn ${range === d ? "active" : ""}`} onClick={() => onRangeChange(d)}>{d}d</button>
             ))}
           </div>
         </div>
-
-        {/* Mini stats */}
         <div className="pc-hist-stats">
-          <div className="pc-hs-item">
-            <span className="pc-hs-val" style={{ color: "#22c55e" }}>{avg}%</span>
-            <span className="pc-hs-lbl">Promedio</span>
-          </div>
-          <div className="pc-hs-item">
-            <span className="pc-hs-val" style={{ color: "#f87171" }}>{Math.min(...humValues)}%</span>
-            <span className="pc-hs-lbl">Mínimo</span>
-          </div>
-          <div className="pc-hs-item">
-            <span className="pc-hs-val" style={{ color: "#38bdf8" }}>{Math.max(...humValues)}%</span>
-            <span className="pc-hs-lbl">Máximo</span>
-          </div>
-          <div className="pc-hs-item">
-            <span className="pc-hs-val" style={{ color: "#10b981" }}>{irrigations.length}</span>
-            <span className="pc-hs-lbl">Riegos</span>
-          </div>
+          <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#22c55e" }}>{avg}%</span><span className="pc-hs-lbl">Promedio</span></div>
+          <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#f87171" }}>{Math.min(...humValues)}%</span><span className="pc-hs-lbl">Mínimo</span></div>
+          <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#38bdf8" }}>{Math.max(...humValues)}%</span><span className="pc-hs-lbl">Máximo</span></div>
+          <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#10b981" }}>{irrigations.length}</span><span className="pc-hs-lbl">Riegos</span></div>
         </div>
-
-        {/* Gráfica */}
         <AnimatePresence mode="wait">
-          <motion.div key={tab}
-            className="pc-hist-chart"
+          <motion.div key={tab} className="pc-hist-chart"
             initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18 }}
           >
-            {tab === "Humedad" ? (
-              <Line data={humData} options={humOptions} />
-            ) : irrigations.length === 0 ? (
-              <div className="pc-hist-empty">Sin riegos en este período 🌵</div>
-            ) : (
-              <Bar data={irrData} options={irrOptions} />
-            )}
+            {tab === "Humedad" ? <Line data={humData} options={humOptions} /> :
+             irrigations.length === 0 ? <div className="pc-hist-empty">Sin riegos en este período 🌵</div> :
+             <Bar data={irrData} options={irrOptions} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -217,56 +155,50 @@ function HistoryPanel({ plant, range, onRangeChange }) {
   );
 }
 
-// ── Variantes de entrada escalonada ──────────────────
 export const cardVariants = {
   hidden:  { opacity: 0, y: 32, scale: 0.94 },
   visible: { opacity: 1, y: 0,  scale: 1    },
 };
 
-// ── PlantCard principal ───────────────────────────────
-function PlantCard({ plant, onEdit, onDelete, index = 0 }) {
-  const toast = useToast();
+// ── PlantCard — recibe onToggleValve del padre ────────
+function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
+  const toast    = useToast();
   const humidity = plant.currentHumidity ?? 0;
   const hs       = getHumState(humidity, plant.minHumidity, plant.maxHumidity);
   const isAlert  = humidity < plant.minHumidity;
+  const isOn     = plant.valveStatus === "OPEN";
 
-  const [isOn,         setIsOn]         = useState(plant.valveStatus === "OPEN" || plant.valveStatus === true);
   const [confirmOpen,  setConfirmOpen]  = useState(false);
   const [historyOpen,  setHistoryOpen]  = useState(false);
   const [historyRange, setHistoryRange] = useState(14);
   const [imgLoaded,    setImgLoaded]    = useState(false);
+  const [toggling,     setToggling]     = useState(false);
 
-  const handleToggle = useCallback(() => {
-    const next = !isOn;
-    setIsOn(next);
-    toast(
-      next ? `💧 Riego iniciado — ${plant.name}` : `⏹ Riego detenido — ${plant.name}`,
-      next ? "info" : "warning"
-    );
-  }, [isOn, plant.name, toast]);
+  const handleToggle = useCallback(async () => {
+    if (toggling) return;
+    setToggling(true);
+    if (onToggleValve) {
+      await onToggleValve(plant);
+    }
+    setToggling(false);
+  }, [toggling, plant, onToggleValve]);
 
   return (
     <>
       <motion.div
         className={`pc2 ${isOn ? "pc2-active" : ""} ${isAlert ? "pc2-alert" : ""} ${historyOpen ? "pc2-expanded" : ""}`}
-        variants={cardVariants}
-        initial="hidden"
-        animate="visible"
+        variants={cardVariants} initial="hidden" animate="visible"
         transition={{ duration: 0.38, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
         whileHover={!historyOpen ? { y: -4, transition: { duration: 0.2 } } : {}}
         layout
       >
-        {/* ── Imagen con glassmorphism ── */}
         <div className="pc2-img-wrap">
-          <img
-            src={getImage(plant)} alt={plant.name}
+          <img src={getImage(plant)} alt={plant.name}
             className={`pc2-img ${imgLoaded ? "loaded" : ""}`}
             onLoad={() => setImgLoaded(true)}
             onError={e => { e.target.src = FALLBACK; setImgLoaded(true); }}
           />
           <div className="pc2-img-gradient" />
-
-          {/* Badges */}
           <div className="pc2-top-badges">
             <span className="pc2-sector">{plant.sector}</span>
             {isOn && (
@@ -277,32 +209,19 @@ function PlantCard({ plant, onEdit, onDelete, index = 0 }) {
               </motion.span>
             )}
           </div>
-
-          {/* Gauge circular de humedad */}
           <div className="pc2-hum-overlay" style={{ background: "rgba(6,10,16,0.55)", backdropFilter: "blur(8px)", padding: "8px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <HumidityGauge
-              value={humidity}
-              min={plant.minHumidity}
-              max={plant.maxHumidity}
-              size={100}
-            />
+            <HumidityGauge value={humidity} min={plant.minHumidity} max={plant.maxHumidity} size={100} />
           </div>
         </div>
 
-        {/* ── Body ── */}
         <div className="pc2-body">
           <div className="pc2-name-row">
             <h3 className="pc2-name">{plant.name}</h3>
             <span className="pc2-irr-type">{plant.irrigationType}</span>
           </div>
-
-          {/* Barra progreso con zona óptima */}
           <div className="pc2-progress">
             <div className="pc2-track">
-              <div className="pc2-zone-ok" style={{
-                left:  `${plant.minHumidity}%`,
-                width: `${plant.maxHumidity - plant.minHumidity}%`,
-              }}/>
+              <div className="pc2-zone-ok" style={{ left: `${plant.minHumidity}%`, width: `${plant.maxHumidity - plant.minHumidity}%` }} />
               <motion.div className="pc2-fill"
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(humidity, 100)}%` }}
@@ -322,63 +241,38 @@ function PlantCard({ plant, onEdit, onDelete, index = 0 }) {
               <span>{plant.maxHumidity}%</span>
             </div>
           </div>
-
-          {/* Alerta */}
           {isAlert && (
             <motion.div className="pc2-alert-strip"
               initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
               ⚠ Humedad bajo mínimo — riego recomendado
             </motion.div>
           )}
-
-          {/* Botón riego */}
           <motion.button
             className={`pc2-water-btn ${isOn ? "stop" : "go"}`}
             onClick={handleToggle}
-            whileTap={{ scale: 0.96 }}
-            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }} whileHover={{ scale: 1.02 }}
+            disabled={toggling}
           >
-            {isOn ? "🛑 Detener Riego" : "💧 Regar Ahora"}
+            {toggling ? "⏳ Procesando..." : isOn ? "🛑 Detener Riego" : "💧 Regar Ahora"}
           </motion.button>
-
-          {/* Acciones */}
           <div className="pc2-actions">
-            {/* Historial — toggle expandible */}
-            <button
-              className={`pc2-act history ${historyOpen ? "active" : ""}`}
-              onClick={() => setHistoryOpen(v => !v)}
-            >
+            <button className={`pc2-act history ${historyOpen ? "active" : ""}`} onClick={() => setHistoryOpen(v => !v)}>
               {historyOpen ? "▲ Ocultar" : "📈 Historial"}
             </button>
-            <button className="pc2-act edit" onClick={() => onEdit(plant)}>
-              ✏ Editar
-            </button>
-            <button className="pc2-act delete" onClick={() => setConfirmOpen(true)}>
-              🗑
-            </button>
+            <button className="pc2-act edit" onClick={() => onEdit(plant)}>✏ Editar</button>
+            <button className="pc2-act delete" onClick={() => setConfirmOpen(true)}>🗑</button>
           </div>
         </div>
 
-        {/* ── Panel expandible de historial ── */}
         <AnimatePresence>
-          {historyOpen && (
-            <HistoryPanel
-              plant={plant}
-              range={historyRange}
-              onRangeChange={setHistoryRange}
-            />
-          )}
+          {historyOpen && <HistoryPanel plant={plant} range={historyRange} onRangeChange={setHistoryRange} />}
         </AnimatePresence>
       </motion.div>
 
       <ConfirmModal
         isOpen={confirmOpen}
         plantName={plant.name}
-        onConfirm={() => {
-          setConfirmOpen(false);
-          onDelete(plant._id);
-          toast(`${plant.name} eliminada`, "error");
-        }}
+        onConfirm={() => { setConfirmOpen(false); onDelete(plant._id); toast(`${plant.name} eliminada`, "error"); }}
         onCancel={() => setConfirmOpen(false)}
       />
     </>
