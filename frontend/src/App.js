@@ -5,10 +5,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { ToastProvider } from "./context/ToastProvider";
 import ParticleBackground from "./components/ParticleBackground";
-import Dashboard  from "./pages/Dashboard";
-import SectorPage from "./pages/SectorPage";
-import Login      from "./pages/Login";
-import NotFound   from "./pages/NotFound";
+import Dashboard     from "./pages/Dashboard";
+import SectorPage    from "./pages/SectorPage";
+import Login         from "./pages/Login";
+import NotFound      from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
+
 
 function PrivateRoute({ children }) {
   return localStorage.getItem("iot_session") ? children : <Navigate to="/login" replace />;
@@ -34,6 +36,12 @@ function AnimatedRoutes({ user, setUser }) {
         <Route path="/login" element={
           <motion.div {...fade} transition={T}>
             <Login onLogin={u => setUser(u)} />
+          </motion.div>
+        }/>
+
+        <Route path="/reset-password/:token" element={
+          <motion.div {...fade} transition={T}>
+            <ResetPassword />
           </motion.div>
         }/>
 

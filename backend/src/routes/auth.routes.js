@@ -1,8 +1,10 @@
 const express  = require("express");
 const router   = express.Router();
 const jwt      = require("jsonwebtoken");
+const crypto   = require("crypto");
 const User     = require("../models/User");
 const { protect } = require("../middleware/auth");
+const { sendResetEmail } = require("../config/mailer");
 
 // ── Generar JWT ───────────────────────────────────────
 const generateToken = (id) =>
@@ -18,7 +20,6 @@ router.post("/register", async (req, res) => {
   try {
     const { name, username, email, password } = req.body;
 
-    // Validaciones básicas
     if (!name || !username || !email || !password) {
       return res.status(400).json({ error: "Todos los campos son requeridos" });
     }
@@ -26,7 +27,6 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "La contraseña debe tener mínimo 6 caracteres" });
     }
 
-    // Verificar duplicados
     const existingUser = await User.findOne({
       $or: [{ username: username.toLowerCase() }, { email: email.toLowerCase() }],
     });
@@ -65,7 +65,6 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Usuario y contraseña son requeridos" });
     }
 
-    // Buscar por username o email
     const user = await User.findOne({
       $or: [
         { username: username.toLowerCase() },
@@ -126,12 +125,11 @@ router.put("/me", protect, async (req, res) => {
     if (email)  user.email  = email;
     if (avatar) user.avatar = avatar;
 
-    // Cambiar contraseña solo si se envía
     if (password) {
       if (password.length < 6) {
         return res.status(400).json({ error: "La contraseña debe tener mínimo 6 caracteres" });
       }
-      user.password = password; // el pre-save hook la hashea
+      user.password = password;
     }
 
     await user.save();
@@ -139,6 +137,64 @@ router.put("/me", protect, async (req, res) => {
       message: "Perfil actualizado",
       user: { _id: user._id, name: user.name, username: user.username, email: user.email },
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// 🔹 OLVIDÉ CONTRASEÑA
+// POST /api/auth/forgot-password
+// ============================================
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email requerido" });
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    // Siempre responder igual para no revelar si el email existe
+    if (!user) {
+      return res.json({ message: "Si ese email existe, recibirás instrucciones." });
+    }
+
+    const token  = user.getResetToken();
+    await user.save({ validateBeforeSave: false });
+
+    const resetUrl = `${process.env.FRONTEND_URL || "https://riego-iot-frontend.onrender.com"}/reset-password/${token}`;
+    await sendResetEmail(user.email, resetUrl);
+
+    res.json({ message: "Si ese email existe, recibirás instrucciones." });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// 🔹 RESET CONTRASEÑA
+// POST /api/auth/reset-password/:token
+// ============================================
+router.post("/reset-password/:token", async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6)
+      return res.status(400).json({ error: "La contraseña debe tener mínimo 6 caracteres" });
+
+    const hashed = crypto.createHash("sha256").update(req.params.token).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken:   hashed,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) return res.status(400).json({ error: "Token inválido o expirado" });
+
+    user.password             = password;
+    user.resetPasswordToken   = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: "Contraseña actualizada correctamente" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
