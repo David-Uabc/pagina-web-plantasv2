@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS, LineElement, BarElement, PointElement,
@@ -8,7 +8,6 @@ import {
 
 ChartJS.register(LineElement, BarElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend);
 
-// ── Generar historial simulado realista ───────────────
 function generateHistory(plant, days = 30) {
   const now = Date.now();
   const DAY = 86400000;
@@ -18,10 +17,8 @@ function generateHistory(plant, days = 30) {
 
   for (let i = days; i >= 0; i--) {
     const ts = now - i * DAY;
-    // Simula bajada natural + subida por riego
     current = Math.max(10, Math.min(95, current + (Math.random() * 8 - 5)));
     humidity.push({ ts, value: Math.round(current) });
-    // Riego cuando baja mucho
     if (current < plant.minHumidity + 5 && Math.random() > 0.3) {
       const duration = Math.floor(Math.random() * 20 + 5);
       irrigations.push({ ts, duration, raised: Math.floor(Math.random() * 20 + 10) });
@@ -55,8 +52,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
   if (!isOpen || !plant || !history) return null;
 
   const { humidity, irrigations } = history;
-
-  // ── Chart: Humedad ─────────────────────────────────
   const humLabels = humidity.map(h => formatDate(h.ts));
   const humValues = humidity.map(h => h.value);
 
@@ -70,6 +65,9 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
         backgroundColor: "rgba(34,197,94,0.08)",
         fill: true, tension: 0.45,
         pointRadius: 0, pointHoverRadius: 6,
+        pointHoverBackgroundColor: "#22c55e",
+        pointHoverBorderColor: "#fff",
+        pointHoverBorderWidth: 2,
         borderWidth: 2,
       },
       {
@@ -97,9 +95,13 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
         labels: { color: "#a3c4b0", font: { size: 11 }, boxWidth: 20, padding: 16 }
       },
       tooltip: {
-        backgroundColor: "rgba(5,14,10,0.92)",
+        backgroundColor: "rgba(5,14,10,0.95)",
         borderColor: "rgba(34,197,94,0.3)", borderWidth: 1,
-        titleColor: "#f0faf4", bodyColor: "#22c55e", padding: 12,
+        titleColor: "#f0f6fc",   // ✅ siempre blanco
+        bodyColor:  "#f0f6fc",   // ✅ FIX: antes era "#22c55e" → invisible sobre fondo oscuro
+        padding: 12, cornerRadius: 10, displayColors: false,
+        titleFont: { size: 11, weight: "600" },
+        bodyFont: { family: "'Syne', sans-serif", size: 15, weight: "800" },
         callbacks: { label: ctx => ` ${ctx.parsed.y}%` }
       }
     },
@@ -117,7 +119,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
     interaction: { mode: "nearest", intersect: false },
   };
 
-  // ── Chart: Riegos ──────────────────────────────────
   const irrLabels   = irrigations.map(r => formatDate(r.ts));
   const irrDuration = irrigations.map(r => r.duration);
   const irrRaised   = irrigations.map(r => r.raised);
@@ -129,17 +130,13 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
         label: "Duración (min)",
         data: irrDuration,
         backgroundColor: "rgba(56,189,248,0.65)",
-        borderColor: "#38bdf8",
-        borderWidth: 1.5,
-        borderRadius: 6,
+        borderColor: "#38bdf8", borderWidth: 1.5, borderRadius: 6,
       },
       {
         label: "Humedad ganada (%)",
         data: irrRaised,
         backgroundColor: "rgba(34,197,94,0.55)",
-        borderColor: "#22c55e",
-        borderWidth: 1.5,
-        borderRadius: 6,
+        borderColor: "#22c55e", borderWidth: 1.5, borderRadius: 6,
       },
     ],
   };
@@ -152,9 +149,13 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
         labels: { color: "#a3c4b0", font: { size: 11 }, boxWidth: 20, padding: 16 }
       },
       tooltip: {
-        backgroundColor: "rgba(5,14,10,0.92)",
+        backgroundColor: "rgba(5,14,10,0.95)",
         borderColor: "rgba(56,189,248,0.3)", borderWidth: 1,
-        titleColor: "#f0faf4", bodyColor: "#38bdf8", padding: 12,
+        titleColor: "#f0f6fc",   // ✅ siempre blanco
+        bodyColor:  "#f0f6fc",   // ✅ FIX: antes era "#38bdf8" → invisible
+        padding: 12, cornerRadius: 10, displayColors: false,
+        titleFont: { size: 11, weight: "600" },
+        bodyFont: { family: "'Syne', sans-serif", size: 15, weight: "800" },
       }
     },
     scales: {
@@ -163,7 +164,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
     }
   };
 
-  // ── Resumen stats ──────────────────────────────────
   const avgHum   = Math.round(humValues.reduce((a, b) => a + b, 0) / humValues.length);
   const minHum   = Math.min(...humValues);
   const maxHum   = Math.max(...humValues);
@@ -171,12 +171,12 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
   const totalMin = irrigations.reduce((s, r) => s + r.duration, 0);
 
   const summaryStats = [
-    { icon: "📊", label: "Humedad promedio",  value: `${avgHum}%`,            color: "#22c55e" },
-    { icon: "⬇",  label: "Mínimo registrado", value: `${minHum}%`,            color: minHum < plant.minHumidity ? "#f87171" : "#a3c4b0" },
-    { icon: "⬆",  label: "Máximo registrado", value: `${maxHum}%`,            color: "#38bdf8" },
-    { icon: "⚠",  label: "Días con alerta",   value: alerts,                  color: alerts > 3 ? "#f87171" : "#fbbf24" },
-    { icon: "💧", label: "Riegos realizados",  value: irrigations.length,      color: "#38bdf8" },
-    { icon: "⏱",  label: "Minutos regando",    value: `${totalMin} min`,       color: "#10b981" },
+    { icon: "📊", label: "Humedad promedio",  value: `${avgHum}%`,       color: "#22c55e" },
+    { icon: "⬇",  label: "Mínimo registrado", value: `${minHum}%`,       color: minHum < plant.minHumidity ? "#f87171" : "#a3c4b0" },
+    { icon: "⬆",  label: "Máximo registrado", value: `${maxHum}%`,       color: "#38bdf8" },
+    { icon: "⚠",  label: "Días con alerta",   value: alerts,              color: alerts > 3 ? "#f87171" : "#fbbf24" },
+    { icon: "💧", label: "Riegos realizados",  value: irrigations.length, color: "#38bdf8" },
+    { icon: "⏱",  label: "Minutos regando",    value: `${totalMin} min`,  color: "#10b981" },
   ];
 
   return (
@@ -191,7 +191,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
           exit={{    opacity: 0, y: 30, scale: 0.96  }}
           transition={{ duration: 0.3, ease: "easeOut" }}
         >
-          {/* Barra top */}
           <div className="history-bar" />
 
           {/* Header */}
@@ -204,7 +203,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
               </div>
             </div>
             <div className="history-header-right">
-              {/* Range selector */}
               <div className="history-range-group">
                 {[7, 14, 30].map(d => (
                   <button key={d}
@@ -227,11 +225,10 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
             ))}
           </div>
 
-          {/* Content */}
+          {/* Body */}
           <div className="history-body">
             <AnimatePresence mode="wait">
 
-              {/* ── TAB: HUMEDAD ── */}
               {tab === "Humedad" && (
                 <motion.div key="humidity"
                   initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
@@ -240,8 +237,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                   <div className="history-chart-wrap">
                     <Line data={humidityChartData} options={humidityOptions} />
                   </div>
-
-                  {/* Mini stats rápidas */}
                   <div className="history-mini-stats">
                     <div className="hms-item">
                       <span className="hms-val" style={{ color: "#22c55e" }}>{avgHum}%</span>
@@ -263,7 +258,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                 </motion.div>
               )}
 
-              {/* ── TAB: RIEGOS ── */}
               {tab === "Riegos" && (
                 <motion.div key="irrigations"
                   initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
@@ -278,8 +272,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                       <div className="history-chart-wrap" style={{ height: 200, marginBottom: 20 }}>
                         <Bar data={irrigationChartData} options={irrigationOptions} />
                       </div>
-
-                      {/* Lista de eventos */}
                       <div className="irrigation-list">
                         <div className="irr-list-header">
                           <span>Fecha</span><span>Hora</span><span>Duración</span><span>Humedad +</span>
@@ -302,7 +294,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                 </motion.div>
               )}
 
-              {/* ── TAB: RESUMEN ── */}
               {tab === "Resumen" && (
                 <motion.div key="summary"
                   initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
@@ -322,7 +313,6 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                     ))}
                   </div>
 
-                  {/* Estado de salud */}
                   <div className="health-bar-section">
                     <div className="health-bar-header">
                       <span className="health-label">Salud general</span>

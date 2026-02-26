@@ -2,7 +2,7 @@ import { I18nProvider } from "./i18n";
 import "./styles.css";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ToastProvider } from "./context/ToastProvider";
 import ParticleBackground from "./components/ParticleBackground";
 import Dashboard     from "./pages/Dashboard";
@@ -11,6 +11,35 @@ import Login         from "./pages/Login";
 import NotFound      from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 
+// ── Títulos dinámicos por ruta ──────────────────────
+const PAGE_TITLES = {
+  "/":                    "Dashboard",
+  "/superior":            "Sector Superior",
+  "/inferior":            "Sector Inferior",
+  "/login":               "Iniciar sesión",
+  "/reset-password":      "Recuperar contraseña",
+};
+
+function useDynamicTitle() {
+  const location = useLocation();
+  useEffect(() => {
+    const path  = location.pathname.startsWith("/reset-password")
+      ? "/reset-password"
+      : location.pathname;
+    const title = PAGE_TITLES[path] ?? "Página no encontrada";
+    document.title = `${title} — Riego IoT 🌱`;
+  }, [location.pathname]);
+}
+
+// ── Saludo dinámico por hora ─────────────────────────
+export function getGreeting(name = "") {
+  const h = new Date().getHours();
+  const base =
+    h < 12 ? "Buenos días" :
+    h < 18 ? "Buenas tardes" :
+             "Buenas noches";
+  return name ? `${base}, ${name} 🌱` : `${base} 🌱`;
+}
 
 function PrivateRoute({ children }) {
   return localStorage.getItem("iot_session") ? children : <Navigate to="/login" replace />;
@@ -23,6 +52,9 @@ const T = { duration: 0.28 };
 
 function AnimatedRoutes({ user, setUser }) {
   const location = useLocation();
+
+  // Título dinámico — se activa en cada cambio de ruta
+  useDynamicTitle();
 
   const handleLogout = () => {
     localStorage.removeItem("iot_session");
@@ -69,7 +101,6 @@ function AnimatedRoutes({ user, setUser }) {
           </PrivateRoute>
         }/>
 
-        {/* 404 */}
         <Route path="*" element={<NotFound />} />
 
       </Routes>
@@ -87,7 +118,6 @@ function App() {
     <I18nProvider>
       <Router>
         <ToastProvider>
-          {/* Partículas en el fondo — persisten en todas las rutas */}
           <ParticleBackground />
           <AnimatedRoutes user={user} setUser={setUser} />
         </ToastProvider>

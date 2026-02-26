@@ -1,16 +1,41 @@
-// QuickStats — stat cards con gradiente dinámico según valor
-import { motion } from "framer-motion";
+// QuickStats — stat cards con gradiente dinámico + contador animado
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { useEffect, useRef } from "react";
 import { Leaf, Droplets, AlertTriangle, BarChart2 } from "lucide-react";
 
-// Gradiente dinámico según valor y contexto
 function getHumGradient(pct) {
-  if (pct < 20)  return "linear-gradient(135deg, #ef4444, #f87171)"; // crítico
-  if (pct < 40)  return "linear-gradient(135deg, #f59e0b, #fbbf24)"; // bajo
-  if (pct < 70)  return "linear-gradient(135deg, #34d399, #6ee7b7)"; // óptimo
-  return               "linear-gradient(135deg, #38bdf8, #60a5fa)";  // alto
+  if (pct < 20)  return "linear-gradient(135deg, #ef4444, #f87171)";
+  if (pct < 40)  return "linear-gradient(135deg, #f59e0b, #fbbf24)";
+  if (pct < 70)  return "linear-gradient(135deg, #34d399, #6ee7b7)";
+  return               "linear-gradient(135deg, #38bdf8, #60a5fa)";
 }
 
-function GradientValue({ value, unit, gradient, delay = 0 }) {
+// ── Contador animado que sube desde 0 hasta `to` ──
+function AnimatedCounter({ to, unit, gradient, delay = 0 }) {
+  const count     = useMotionValue(0);
+  const rounded   = useTransform(count, v => Math.round(v));
+  const displayRef = useRef(null);
+
+  useEffect(() => {
+    // Pequeño delay para que la card aparezca primero
+    const timeout = setTimeout(() => {
+      const controls = animate(count, to, {
+        duration: 1.2,
+        ease: [0.16, 1, 0.3, 1],
+      });
+      return () => controls.stop();
+    }, delay * 1000 + 200);
+
+    return () => clearTimeout(timeout);
+  }, [to, delay]);
+
+  // Suscribirse al motionValue para actualizar el DOM directamente (más eficiente)
+  useEffect(() => {
+    return rounded.on("change", v => {
+      if (displayRef.current) displayRef.current.textContent = v + unit;
+    });
+  }, [rounded, unit]);
+
   return (
     <motion.span
       className="stat-value"
@@ -25,7 +50,7 @@ function GradientValue({ value, unit, gradient, delay = 0 }) {
         display: "inline-block",
       }}
     >
-      {value}<span className="stat-unit" style={{ WebkitTextFillColor: "transparent" }}>{unit}</span>
+      <span ref={displayRef}>0{unit}</span>
     </motion.span>
   );
 }
@@ -111,19 +136,20 @@ function QuickStats({ plants }) {
           </div>
 
           <div className="stat-info">
-            <GradientValue
-              value={s.value}
+            {/* ✅ Contador animado en vez de valor estático */}
+            <AnimatedCounter
+              to={s.value}
               unit={s.unit}
               gradient={s.gradient}
-              delay={i * 0.09 + 0.15}
+              delay={i * 0.09}
             />
             <span className="stat-label">{s.label}</span>
           </div>
 
-          {/* Barra accent inferior con gradiente */}
+          {/* Barra accent inferior */}
           <div className="stat-accent" style={{ background: s.gradient }} />
 
-          {/* Glow de fondo sutil */}
+          {/* Glow de fondo */}
           <div style={{
             position: "absolute", inset: 0,
             borderRadius: "inherit",
