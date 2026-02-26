@@ -3,6 +3,10 @@ const router  = express.Router();
 const Plant   = require("../models/Plant");
 const Log     = require("../models/Log");
 const Device  = require("../models/Device");
+const { protect } = require("../middleware/auth");
+
+// Todas las rutas requieren autenticación
+router.use(protect);
 
 // ============================================
 // 🔹 ESTADÍSTICAS GENERALES DEL DASHBOARD
@@ -10,17 +14,17 @@ const Device  = require("../models/Device");
 // ============================================
 router.get("/", async (req, res) => {
   try {
-    const plants  = await Plant.find();
-    const devices = await Device.find();
+    const userId  = req.user._id;
+    const plants  = await Plant.find({ owner: userId });
+    const devices = await Device.find({ owner: userId });
 
-    const total     = plants.length;
-    const watering  = plants.filter(p => p.valveStatus === "OPEN").length;
-    const alerts    = plants.filter(p => p.currentHumidity < p.minHumidity).length;
-    const avgHum    = total > 0
+    const total    = plants.length;
+    const watering = plants.filter(p => p.valveStatus === "OPEN").length;
+    const alerts   = plants.filter(p => p.currentHumidity < p.minHumidity).length;
+    const avgHum   = total > 0
       ? Math.round(plants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / total)
       : 0;
 
-    // Por sector
     const superior = plants.filter(p => p.sector === "Superior");
     const inferior = plants.filter(p => p.sector === "Inferior");
 
@@ -43,23 +47,21 @@ router.get("/", async (req, res) => {
       },
     };
 
-    // Dispositivos
     const devicesOnline  = devices.filter(d => d.status === "Online").length;
     const devicesOffline = devices.filter(d => d.status === "Offline").length;
 
-    // Último riego global
     const lastIrrigated = plants
       .filter(p => p.lastIrrigation)
       .sort((a, b) => new Date(b.lastIrrigation) - new Date(a.lastIrrigation))[0];
 
     res.json({
-      plants: { total, watering, alerts, avgHumidity: avgHum },
-      sectors: sectorStats,
-      devices: { total: devices.length, online: devicesOnline, offline: devicesOffline },
+      plants:    { total, watering, alerts, avgHumidity: avgHum },
+      sectors:   sectorStats,
+      devices:   { total: devices.length, online: devicesOnline, offline: devicesOffline },
       lastIrrigation: lastIrrigated?.lastIrrigation || null,
       systemStatus: {
-        mqtt:     devicesOnline > 0 ? "Online" : "Offline",
-        database: "Online",
+        mqtt:      devicesOnline > 0 ? "Online" : "Offline",
+        database:  "Online",
         reporting: "Online",
       },
     });
@@ -69,34 +71,36 @@ router.get("/", async (req, res) => {
 });
 
 // ============================================
-// 🔹 HISTORIAL DE HUMEDAD GLOBAL (últimas 24h)
+// 🔹 HISTORIAL DE HUMEDAD
 // GET /api/stats/humidity?range=24h|week|month
 // ============================================
 router.get("/humidity", async (req, res) => {
   try {
-    const range = req.query.range || "24h";
+    const userId = req.user._id;
+    const range  = req.query.range || "24h";
 
-    const now  = new Date();
+    const now = new Date();
     let since;
-    if (range === "24h")   since = new Date(now - 24 * 60 * 60 * 1000);
+    if      (range === "24h")   since = new Date(now - 24 * 60 * 60 * 1000);
     else if (range === "week")  since = new Date(now - 7  * 24 * 60 * 60 * 1000);
     else if (range === "month") since = new Date(now - 30 * 24 * 60 * 60 * 1000);
     else since = new Date(now - 24 * 60 * 60 * 1000);
 
-    const logs = await Log.find({ createdAt: { $gte: since } })
-      .sort({ createdAt: 1 })
-      .populate("plantId", "name sector");
+    // Solo logs de plantas del usuario
+    const userPlants = await Plant.find({ owner: userId }).select("_id");
+    const plantIds   = userPlants.map(p => p._id);
 
-    // Agrupar promedio por hora (24h) o por día (semana/mes)
+    const logs = await Log.find({
+      plantId:   { $in: plantIds },
+      createdAt: { $gte: since },
+    }).sort({ createdAt: 1 }).populate("plantId", "name sector");
+
     const grouped = {};
     logs.forEach(log => {
-      let key;
       const d = new Date(log.createdAt);
-      if (range === "24h") {
-        key = `${d.getHours()}:00`;
-      } else {
-        key = d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
-      }
+      const key = range === "24h"
+        ? `${d.getHours()}:00`
+        : d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
       if (!grouped[key]) grouped[key] = { sum: 0, count: 0 };
       grouped[key].sum   += log.humidity;
       grouped[key].count += 1;
@@ -114,13 +118,17 @@ router.get("/humidity", async (req, res) => {
 });
 
 // ============================================
-// 🔹 LOGS RECIENTES (últimos 20)
+// 🔹 LOGS RECIENTES
 // GET /api/stats/logs
 // ============================================
 router.get("/logs", async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 20;
-    const logs  = await Log.find()
+    const userId     = req.user._id;
+    const limit      = parseInt(req.query.limit) || 20;
+    const userPlants = await Plant.find({ owner: userId }).select("_id");
+    const plantIds   = userPlants.map(p => p._id);
+
+    const logs = await Log.find({ plantId: { $in: plantIds } })
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate("plantId", "name sector");
@@ -137,14 +145,13 @@ router.get("/logs", async (req, res) => {
 // ============================================
 router.get("/alerts", async (req, res) => {
   try {
+    const userId = req.user._id;
     const alertPlants = await Plant.find({
+      owner: userId,
       $expr: { $lt: ["$currentHumidity", "$minHumidity"] },
     }).select("name sector currentHumidity minHumidity lastIrrigation");
 
-    res.json({
-      count:  alertPlants.length,
-      plants: alertPlants,
-    });
+    res.json({ count: alertPlants.length, plants: alertPlants });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
