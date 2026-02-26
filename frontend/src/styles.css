@@ -4020,3 +4020,49 @@ body.light-mode .theme-toggle {
   .sp-chips { justify-content: flex-start; }
   .sp-fab { bottom: 20px; right: 20px; width: 48px; height: 48px; }
 }
+
+/* =====================================================
+   🔧 FIX — INPUT FOCUS VISIBILITY
+   El texto debe verse siempre al escribir
+===================================================== */
+
+/* Fix global para todos los inputs en focus */
+input:focus,
+select:focus,
+textarea:focus,
+.lp-input:focus,
+.pm-input:focus,
+.sp-search:focus,
+.filter-search-wrapper input:focus,
+.modal-card input:focus,
+.modal-card select:focus {
+  background: rgba(13, 17, 23, 0.90) !important;
+  color: #f0f6fc !important;
+  border-color: rgba(52, 211, 153, 0.50) !important;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.10) !important;
+  caret-color: #34d399 !important;
+}
+
+/* Placeholder siempre visible */
+input::placeholder,
+.lp-input::placeholder,
+.pm-input::placeholder,
+.sp-search::placeholder {
+  color: rgba(120, 144, 156, 0.70) !important;
+  opacity: 1 !important;
+}
+
+/* Select options legibles */
+select option {
+  background: #0d1117 !important;
+  color: #f0f6fc !important;
+}
+
+/* Light mode — fondo oscuro en focus también */
+body.light-mode input:focus,
+body.light-mode .lp-input:focus,
+body.light-mode .pm-input:focus {
+  background: rgba(20, 28, 36, 0.95) !important;
+  color: #f0f6fc !important;
+  border-color: rgba(52, 211, 153, 0.50) !important;
+}
