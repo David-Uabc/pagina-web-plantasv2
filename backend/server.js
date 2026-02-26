@@ -20,6 +20,8 @@ app.use(cors({
   ],
   credentials: true,
 }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ── Rutas ────────────────────────────────────────────
 app.use("/api/plants",  require("./src/routes/plants.routes"));
@@ -54,7 +56,6 @@ app.listen(PORT, () => {
   console.log(`\n🔥 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📡 API disponible en http://localhost:${PORT}/api`);
 
-  // Iniciar simulador MQTT automáticamente
   if (process.env.MQTT_SIMULATOR === "true") {
     simulator.startSimulator();
   } else {
