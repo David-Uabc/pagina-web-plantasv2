@@ -1,28 +1,30 @@
-const express = require("express");
-const router = express.Router();
-const Plant = require("../models/Plant");
-const Log = require("../models/Log");
+const express  = require("express");
+const router   = express.Router();
+const Plant    = require("../models/Plant");
+const Log      = require("../models/Log");
+const { protect } = require("../middleware/auth");
 
+// Todas las rutas requieren autenticación
+router.use(protect);
 
 // =============================
-// 🔹 OBTENER TODAS LAS PLANTAS
+// 🔹 OBTENER PLANTAS DEL USUARIO
 // =============================
 router.get("/", async (req, res) => {
   try {
-    const plants = await Plant.find().sort({ createdAt: -1 });
+    const plants = await Plant.find({ owner: req.user._id }).sort({ createdAt: -1 });
     res.json(plants);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-
 // =============================
 // 🔹 CREAR PLANTA
 // =============================
 router.post("/", async (req, res) => {
   try {
-    const newPlant = new Plant(req.body);
+    const newPlant = new Plant({ ...req.body, owner: req.user._id });
     const savedPlant = await newPlant.save();
     res.status(201).json(savedPlant);
   } catch (error) {
@@ -30,41 +32,30 @@ router.post("/", async (req, res) => {
   }
 });
 
-
 // =============================
 // 🔹 EDITAR PLANTA
 // =============================
 router.put("/:id", async (req, res) => {
   try {
-    const updatedPlant = await Plant.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
+    if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
 
-    if (!updatedPlant) {
-      return res.status(404).json({ message: "Planta no encontrada" });
-    }
-
-    res.json(updatedPlant);
+    const updated = await Plant.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
-
 
 // =============================
 // 🔹 ELIMINAR PLANTA
 // =============================
 router.delete("/:id", async (req, res) => {
   try {
-    const deletedPlant = await Plant.findByIdAndDelete(req.params.id);
+    const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
+    if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
 
-    if (!deletedPlant) {
-      return res.status(404).json({ message: "Planta no encontrada" });
-    }
-
-    // También eliminamos logs relacionados
+    await Plant.findByIdAndDelete(req.params.id);
     await Log.deleteMany({ plantId: req.params.id });
 
     res.json({ message: "Planta y logs eliminados correctamente" });
@@ -73,92 +64,69 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-
 // ============================================
 // 🔹 RECIBIR HUMEDAD (SIMULA ESP32)
 // ============================================
 router.post("/:id/humidity", async (req, res) => {
   try {
     const { humidity, deviceId, sector } = req.body;
-
-    const plant = await Plant.findById(req.params.id);
-
-    if (!plant) {
-      return res.status(404).json({ message: "Planta no encontrada" });
-    }
+    const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
+    if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
 
     plant.currentHumidity = humidity;
-
-    // 🔥 Guardamos en historial interno
-    plant.humidityHistory.push({
-      humidity,
-      date: new Date()
-    });
+    plant.humidityHistory.push({ humidity, date: new Date() });
 
     let irrigationExecuted = false;
     let valveStatus = "CLOSED";
 
-    // 🔥 LÓGICA INTELIGENTE CON MIN Y MAX
     if (humidity < plant.minHumidity) {
       plant.valveStatus = "OPEN";
       plant.lastIrrigation = new Date();
       irrigationExecuted = true;
       valveStatus = "OPEN";
-    } 
-    else if (humidity >= plant.maxHumidity) {
+    } else if (humidity >= plant.maxHumidity) {
       plant.valveStatus = "CLOSED";
-      valveStatus = "CLOSED";
     }
 
     await plant.save();
 
-    // 🔥 Guardamos log externo
     const newLog = await Log.create({
       plantId: plant._id,
       deviceId: deviceId || "ESP32-SIM",
       sector: sector || plant.sector,
       humidity,
       irrigationExecuted,
-      valveStatus
+      valveStatus,
     });
 
-    res.status(201).json({
-      message: "Humedad actualizada correctamente",
-      plant,
-      log: newLog
-    });
-
+    res.status(201).json({ message: "Humedad actualizada", plant, log: newLog });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-
 // ============================================
-// 🔹 OBTENER HISTORIAL DE LOGS
+// 🔹 HISTORIAL DE LOGS
 // ============================================
 router.get("/:id/logs", async (req, res) => {
   try {
-    const logs = await Log.find({ plantId: req.params.id })
-      .sort({ createdAt: 1 });
+    const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
+    if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
 
+    const logs = await Log.find({ plantId: req.params.id }).sort({ createdAt: 1 });
     res.json(logs);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-
 // ============================================
-// 🔹 OBTENER HISTORIAL INTERNO (del Plant)
+// 🔹 HISTORIAL INTERNO
 // ============================================
 router.get("/:id/history", async (req, res) => {
   try {
-    const plant = await Plant.findById(req.params.id);
-
-    if (!plant) {
-      return res.status(404).json({ message: "Planta no encontrada" });
-    }
+    const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
+    if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
 
     res.json(plant.humidityHistory);
   } catch (error) {

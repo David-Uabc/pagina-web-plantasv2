@@ -2,6 +2,13 @@ const mongoose = require("mongoose");
 
 const PlantSchema = new mongoose.Schema(
   {
+    // ── Dueño de la planta ────────────────────────────
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
     name: {
       type: String,
       required: true,
@@ -48,7 +55,6 @@ const PlantSchema = new mongoose.Schema(
       type: String,
     },
 
-    // 🔥 HISTORIAL DE HUMEDAD
     humidityHistory: [
       {
         humidity: Number,
