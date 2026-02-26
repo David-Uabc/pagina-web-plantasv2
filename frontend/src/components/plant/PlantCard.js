@@ -73,11 +73,20 @@ function HistoryPanel({ plant, range, onRangeChange }) {
   const humValues = humidity.map(h => h.value);
   const avg = Math.round(humValues.reduce((a, b) => a + b, 0) / humValues.length);
 
+  // ✅ tooltipBase con bodyColor SIEMPRE blanco
+  const tooltipBase = {
+    backgroundColor: "rgba(5,14,10,0.95)",
+    borderWidth: 1,
+    titleColor: "#f0f6fc",
+    bodyColor:  "#f0f6fc",   // FIX: antes era el color de la linea → invisible
+    padding: 10,
+    cornerRadius: 8,
+    displayColors: false,
+  };
+
   const chartBase = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: {
-      backgroundColor: "rgba(5,14,10,0.95)", borderWidth: 1, titleColor: "#f0faf4", padding: 10,
-    }},
+    plugins: { legend: { display: false }, tooltip: tooltipBase },
     scales: {
       x: { ticks: { color: "#4d7a5e", font: { size: 9 }, maxTicksLimit: 7 }, grid: { color: "rgba(34,197,94,0.05)" } },
       y: { ticks: { color: "#4d7a5e", font: { size: 9 } }, grid: { color: "rgba(34,197,94,0.05)" } },
@@ -88,16 +97,17 @@ function HistoryPanel({ plant, range, onRangeChange }) {
   const humData = {
     labels: humLabels,
     datasets: [
-      { data: humValues, fill: true, tension: 0.45, borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.07)", pointRadius: 0, pointHoverRadius: 5, borderWidth: 1.8 },
+      { data: humValues, fill: true, tension: 0.45, borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.07)", pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: "#22c55e", pointHoverBorderColor: "#fff", pointHoverBorderWidth: 2, borderWidth: 1.8 },
       { data: Array(humValues.length).fill(plant.minHumidity), borderColor: "rgba(248,113,113,0.45)", borderDash: [5,4], borderWidth: 1.2, pointRadius: 0, fill: false },
       { data: Array(humValues.length).fill(plant.maxHumidity), borderColor: "rgba(56,189,248,0.45)", borderDash: [5,4], borderWidth: 1.2, pointRadius: 0, fill: false },
     ],
   };
   const humOptions = {
     ...chartBase,
-    plugins: { ...chartBase.plugins, tooltip: { ...chartBase.plugins.tooltip, borderColor: "rgba(34,197,94,0.3)", bodyColor: "#22c55e" } },
+    plugins: { ...chartBase.plugins, tooltip: { ...tooltipBase, borderColor: "rgba(34,197,94,0.3)" } },
     scales: { ...chartBase.scales, y: { ...chartBase.scales.y, min: 0, max: 100, ticks: { ...chartBase.scales.y.ticks, callback: v => `${v}%` } } },
   };
+
   const irrData = {
     labels: irrigations.map(r => fmt(r.ts)),
     datasets: [
@@ -110,7 +120,7 @@ function HistoryPanel({ plant, range, onRangeChange }) {
     plugins: {
       ...chartBase.plugins,
       legend: { display: true, labels: { color: "#a3c4b0", font: { size: 10 }, boxWidth: 14, padding: 10 } },
-      tooltip: { ...chartBase.plugins.tooltip, borderColor: "rgba(56,189,248,0.3)", bodyColor: "#38bdf8" },
+      tooltip: { ...tooltipBase, borderColor: "rgba(56,189,248,0.3)" },
     },
   };
 
@@ -160,7 +170,6 @@ export const cardVariants = {
   visible: { opacity: 1, y: 0,  scale: 1    },
 };
 
-// ── PlantCard — recibe onToggleValve del padre ────────
 function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
   const toast    = useToast();
   const humidity = plant.currentHumidity ?? 0;
@@ -177,9 +186,7 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
   const handleToggle = useCallback(async () => {
     if (toggling) return;
     setToggling(true);
-    if (onToggleValve) {
-      await onToggleValve(plant);
-    }
+    if (onToggleValve) await onToggleValve(plant);
     setToggling(false);
   }, [toggling, plant, onToggleValve]);
 

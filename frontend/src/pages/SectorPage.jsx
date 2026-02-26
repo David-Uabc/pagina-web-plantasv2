@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, Droplets, AlertTriangle, Leaf, ArrowLeft, Plus } from "lucide-react";
+import { Search, SlidersHorizontal, ArrowLeft, Plus } from "lucide-react";
 import api from "../api";
-import Navbar from "../components/layout/Navbar";
+import Navbar    from "../components/layout/Navbar";
 import PlantCard from "../components/plant/PlantCard";
 import PlantModal from "../components/plant/PlantModal";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
+import EmptyPlants from "../components/plant/EmptyPlants";   // ✅ importado
 import { useToast } from "../context/ToastProvider";
 
 const SORT_OPTIONS = [
@@ -17,10 +18,10 @@ const SORT_OPTIONS = [
 ];
 
 const STATUS_CHIPS = [
-  { value: "all",      label: "Todas",    icon: null },
-  { value: "active",   label: "Regando",  icon: "💧" },
-  { value: "inactive", label: "Inactivas",icon: "⏸" },
-  { value: "alert",    label: "Alerta",   icon: "⚠"  },
+  { value: "all",      label: "Todas",     icon: null },
+  { value: "active",   label: "Regando",   icon: "💧" },
+  { value: "inactive", label: "Inactivas", icon: "⏸" },
+  { value: "alert",    label: "Alerta",    icon: "⚠"  },
 ];
 
 const SECTOR_THEME = {
@@ -143,6 +144,9 @@ function SectorPage({ sector, onLogout }) {
       return 0;
     });
 
+  // ── ¿Hay filtros activos? ──
+  const hasFilters = search !== "" || status !== "all";
+
   return (
     <div className="sp-page">
       <Navbar onLogout={onLogout} />
@@ -232,21 +236,37 @@ function SectorPage({ sector, onLogout }) {
 
       <div className="sp-grid-wrap">
         <AnimatePresence mode="popLayout">
-          <div className="plant-grid">
-            {loading ? <PlantGridSkeleton count={4} /> :
-             filtered.length === 0 ? (
-              <motion.div className="sp-empty" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-                <span className="sp-empty-icon">🌵</span>
-                <p>No hay plantas con esos filtros</p>
-                <button className="sp-empty-reset" onClick={() => { setSearch(""); setStatus("all"); }}>Limpiar filtros</button>
-              </motion.div>
-            ) : filtered.map((plant, i) => (
-              <PlantCard key={plant._id} plant={plant} index={i}
-                onEdit={p => { setEditingPlant(p); setShowModal(true); }}
-                onDelete={handleDelete}
-                onToggleValve={handleToggleValve}
+          <div className="plant-grid" style={{ position: "relative" }}>
+            {loading ? (
+              <PlantGridSkeleton count={4} />
+            ) : sectorPlants.length === 0 ? (
+              // ✅ EmptyPlants cuando el sector no tiene ninguna planta
+              <EmptyPlants
+                sector={sector}
+                onAdd={() => { setEditingPlant(null); setShowModal(true); }}
               />
-            ))}
+            ) : filtered.length === 0 ? (
+              // Estado vacío por filtros activos
+              <motion.div className="sp-empty"
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              >
+                <span className="sp-empty-icon">🔍</span>
+                <p>No hay plantas con esos filtros</p>
+                {hasFilters && (
+                  <button className="sp-empty-reset" onClick={() => { setSearch(""); setStatus("all"); }}>
+                    Limpiar filtros
+                  </button>
+                )}
+              </motion.div>
+            ) : (
+              filtered.map((plant, i) => (
+                <PlantCard key={plant._id} plant={plant} index={i}
+                  onEdit={p => { setEditingPlant(p); setShowModal(true); }}
+                  onDelete={handleDelete}
+                  onToggleValve={handleToggleValve}
+                />
+              ))
+            )}
           </div>
         </AnimatePresence>
       </div>

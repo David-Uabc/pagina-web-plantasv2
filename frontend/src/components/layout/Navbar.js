@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "../../i18n";
 import ProfileModal  from "./ProfileModal";
 import SettingsModal from "./SettingsModal";
+import { getGreeting } from "../../App";
 
 function Navbar({ onLogout, plants = [] }) {
   const navigate = useNavigate();
@@ -25,7 +26,9 @@ function Navbar({ onLogout, plants = [] }) {
   const userHandle  = session.username || userName;
   const userInitial = userName.charAt(0).toUpperCase();
 
-  // Alertas reales basadas en las plantas
+  // ── Saludo dinámico por hora ──
+  const greeting = getGreeting(userName);
+
   const alerts = plants.filter(p => (p.currentHumidity ?? 0) < p.minHumidity);
 
   useEffect(() => {
@@ -62,7 +65,7 @@ function Navbar({ onLogout, plants = [] }) {
   };
 
   const navLinks = [
-    { to: "/",         label: t("nav.home")          },
+    { to: "/",         label: t("nav.home")      },
     { to: "/superior", label: t("nav.sectorSup") },
     { to: "/inferior", label: t("nav.sectorInf") },
   ];
@@ -147,7 +150,7 @@ function Navbar({ onLogout, plants = [] }) {
             </AnimatePresence>
           </div>
 
-          {/* Toggle tema — pill animado */}
+          {/* Toggle tema */}
           <div
             className={`theme-toggle ${lightMode ? "light" : ""}`}
             onClick={toggleTheme}
@@ -175,10 +178,12 @@ function Navbar({ onLogout, plants = [] }) {
                   initial="hidden" animate="visible" exit="exit"
                   transition={{ duration: 0.18 }}>
 
-                  {/* Header con avatar */}
+                  {/* Header con saludo personalizado */}
                   <div className="ud-header">
                     <div className="ud-avatar-lg">{userInitial}</div>
                     <div>
+                      {/* ✅ Saludo dinámico por hora */}
+                      <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>{greeting}</div>
                       <div className="ud-name">{userName}</div>
                       <div className="ud-handle">@{userHandle}</div>
                     </div>
@@ -212,7 +217,7 @@ function Navbar({ onLogout, plants = [] }) {
         </div>
       </div>
 
-      {/* Mobile menu — dentro del wrapper para position:absolute top:100% */}
+      {/* Mobile menu */}
       <div className={`nav-mobile-menu ${mobileOpen ? "open" : ""}`}>
         {navLinks.map(l => (
           <NavLink key={l.to} to={l.to} end={l.to === "/"}
@@ -224,7 +229,6 @@ function Navbar({ onLogout, plants = [] }) {
       </div>
     </div>
 
-    {/* Modals — portal a document.body para escapar stacking context del navbar */}
     {createPortal(
       <AnimatePresence>
         {showProfile  && <ProfileModal  onClose={() => setShowProfile(false)}  onUpdate={() => {}} />}
