@@ -1,21 +1,10 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendResetEmail = async (to, resetUrl) => {
-  await transporter.sendMail({
-    from: `"Sistema de Riego IoT" <${process.env.MAIL_USER}>`,
+  await resend.emails.send({
+    from: "Riego IoT <onboarding@resend.dev>",
     to,
     subject: "Recuperar contraseña — Riego IoT",
     html: `
