@@ -63,6 +63,9 @@ export default function AverageHumidity({ plants = [] }) {
       tension: 0.45,
       pointRadius: 0,
       pointHoverRadius: 5,
+      pointHoverBackgroundColor: line,
+      pointHoverBorderColor: "#fff",
+      pointHoverBorderWidth: 2,
       borderWidth: 2,
     }]
   };
@@ -72,10 +75,23 @@ export default function AverageHumidity({ plants = [] }) {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: "rgba(5,14,10,0.92)",
-        borderColor: line, borderWidth: 1,
-        titleColor: "#f0faf4", bodyColor: line, padding: 10,
-        callbacks: { label: ctx => ` ${ctx.parsed.y}%` }
+        backgroundColor: "rgba(8, 14, 10, 0.97)",
+        borderColor: line,
+        borderWidth: 1,
+        titleColor: "#f0f6fc",       // ✅ título siempre blanco
+        bodyColor:  "#f0f6fc",       // ✅ valor siempre blanco — antes era `line` (invisible)
+        padding: 12,
+        cornerRadius: 10,
+        displayColors: false,
+        titleFont: { size: 11, weight: "600" },
+        bodyFont:  { family: "'Syne', sans-serif", size: 15, weight: "800" },
+        callbacks: {
+          title: (ctx) => ctx[0].label,
+          label: (ctx) => ` ${ctx.parsed.y}%`,
+        },
+        // Punto de color a la izquierda del valor
+        boxWidth: 8,
+        boxHeight: 8,
       }
     },
     scales: {
