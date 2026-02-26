@@ -2,13 +2,11 @@ import { useState, useEffect } from "react";
 import { useI18n } from "../../i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, User, Mail, Lock, Eye, EyeOff, Check, Camera } from "lucide-react";
+import api from "../../api";
 
-const getUsers   = () => JSON.parse(localStorage.getItem("iot_users")   || "[]");
-const saveUsers  = (u) => localStorage.setItem("iot_users", JSON.stringify(u));
-const getSession = () => JSON.parse(localStorage.getItem("iot_session") || "{}");
-const saveSession= (s) => localStorage.setItem("iot_session", JSON.stringify(s));
+const getSession  = () => JSON.parse(localStorage.getItem("iot_session") || "{}");
+const saveSession = (s) => localStorage.setItem("iot_session", JSON.stringify(s));
 
-// Input field reutilizable
 function Field({ label, icon: Icon, type = "text", value, onChange, error, placeholder, rightEl, autoComplete }) {
   return (
     <div className="pm-field">
@@ -28,22 +26,34 @@ function Field({ label, icon: Icon, type = "text", value, onChange, error, place
 }
 
 export default function ProfileModal({ onClose, onUpdate }) {
-  const { t } = useI18n();
-  const session  = getSession();
-  const users    = getUsers();
-  const current  = users.find(u => u.username === session.username) || {};
+  const { t }   = useI18n();
+  const session = getSession();
 
-  const [tab,      setTab]      = useState("info");
-  const [name,     setName]     = useState(session.name || "");
-  const [email,    setEmail]    = useState(current.email || "");
-  const [oldPass,  setOldPass]  = useState("");
-  const [newPass,  setNewPass]  = useState("");
-  const [confirm,  setConfirm]  = useState("");
-  const [showOld,  setShowOld]  = useState(false);
-  const [showNew,  setShowNew]  = useState(false);
-  const [errors,   setErrors]   = useState({});
-  const [saved,    setSaved]    = useState(false);
-  const [loading,  setLoading]  = useState(false);
+  const [tab,     setTab]     = useState("info");
+  const [name,    setName]    = useState(session.name     || "");
+  const [email,   setEmail]   = useState(session.email    || "");
+  const [oldPass, setOldPass] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [errors,  setErrors]  = useState({});
+  const [saved,   setSaved]   = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Cargar perfil actualizado desde API al abrir
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await api.get("/api/auth/me");
+        setName(res.data.name   || "");
+        setEmail(res.data.email || "");
+        // Actualizar sesión local con email
+        saveSession({ ...session, ...res.data });
+      } catch {}
+    };
+    loadProfile();
+  }, []);
 
   // Cerrar con Escape
   useEffect(() => {
@@ -59,38 +69,37 @@ export default function ProfileModal({ onClose, onUpdate }) {
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setErrors({}); setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-
-    // Actualizar en users array
-    const updated = users.map(u =>
-      u.username === session.username ? { ...u, name, email } : u
-    );
-    saveUsers(updated);
-    saveSession({ ...session, name });
-    if (onUpdate) onUpdate({ name });
-
-    setLoading(false); setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      const res = await api.put("/api/auth/me", { name, email });
+      saveSession({ ...session, name, email });
+      if (onUpdate) onUpdate({ name, email });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setErrors({ name: err.response?.data?.error || "Error al guardar" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const savePassword = async () => {
     const errs = {};
-    if (!oldPass)            errs.oldPass = t("profile.errOldPass");
-    if (current.password !== oldPass) errs.oldPass = t("profile.errWrongPass");
-    if (newPass.length < 6)  errs.newPass = t("profile.errMinPass");
-    if (newPass !== confirm)  errs.confirm = t("profile.errMatch");
+    if (!oldPass)           errs.oldPass = t("profile.errOldPass");
+    if (newPass.length < 6) errs.newPass = t("profile.errMinPass");
+    if (newPass !== confirm) errs.confirm = t("profile.errMatch");
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setErrors({}); setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-
-    const updated = users.map(u =>
-      u.username === session.username ? { ...u, password: newPass } : u
-    );
-    saveUsers(updated);
-    setOldPass(""); setNewPass(""); setConfirm("");
-    setLoading(false); setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await api.put("/api/auth/me", { password: newPass });
+      setOldPass(""); setNewPass(""); setConfirm("");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setErrors({ oldPass: err.response?.data?.error || "Error al actualizar contraseña" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const initial = (session.name || session.username || "U").charAt(0).toUpperCase();
@@ -110,7 +119,6 @@ export default function ProfileModal({ onClose, onUpdate }) {
           {/* Header */}
           <div className="pm-header">
             <div className="pm-header-left">
-              {/* Avatar grande */}
               <div className="pm-avatar-wrap">
                 <div className="pm-avatar-lg">{initial}</div>
                 <div className="pm-avatar-edit"><Camera size={12} /></div>
@@ -125,10 +133,12 @@ export default function ProfileModal({ onClose, onUpdate }) {
 
           {/* Tabs */}
           <div className="pm-tabs">
-            <button className={`pm-tab ${tab === "info"     ? "active" : ""}`} onClick={() => { setTab("info");     setErrors({}); setSaved(false); }}>
+            <button className={`pm-tab ${tab === "info" ? "active" : ""}`}
+              onClick={() => { setTab("info"); setErrors({}); setSaved(false); }}>
               <User size={14} /> Información
             </button>
-            <button className={`pm-tab ${tab === "password" ? "active" : ""}`} onClick={() => { setTab("password"); setErrors({}); setSaved(false); }}>
+            <button className={`pm-tab ${tab === "password" ? "active" : ""}`}
+              onClick={() => { setTab("password"); setErrors({}); setSaved(false); }}>
               <Lock size={14} /> Contraseña
             </button>
           </div>
@@ -150,7 +160,6 @@ export default function ProfileModal({ onClose, onUpdate }) {
                     value={email} onChange={e => setEmail(e.target.value)}
                     placeholder="user@email.com" error={errors.email} autoComplete="email" />
 
-                  {/* Usuario (no editable) */}
                   <div className="pm-field">
                     <label className="pm-label">Usuario</label>
                     <div className="pm-input-wrap">
@@ -202,7 +211,6 @@ export default function ProfileModal({ onClose, onUpdate }) {
                     placeholder={t("profile.confirmPass")} error={errors.confirm}
                     autoComplete="new-password" />
 
-                  {/* Indicador de seguridad */}
                   {newPass && (
                     <div className="pm-strength">
                       <div className="pm-strength-bars">
