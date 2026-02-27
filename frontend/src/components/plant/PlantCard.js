@@ -297,7 +297,7 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, index
               animate={{ opacity: 1, height: "auto" }}
               transition={{ duration: 0.3 }}
             >
-              📝 {plant.notes}
+              {plant.notes}
             </motion.div>
           )}
 
