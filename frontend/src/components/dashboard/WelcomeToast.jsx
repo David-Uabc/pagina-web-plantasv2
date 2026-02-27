@@ -13,9 +13,14 @@ function WelcomeToast() {
   const userName = session.name || session.username || "";
   const greeting = getGreeting(userName);
 
-  // Solo mostrar una vez por sesión de navegación
+  // Mostrar una vez por período del día (mañana / tarde / noche)
   useEffect(() => {
-    const shown = sessionStorage.getItem("welcome_shown");
+    const h = new Date().getHours();
+    const period = h < 12 ? "morning" : h < 18 ? "afternoon" : "night";
+    const today  = new Date().toISOString().slice(0, 10); // "2026-02-26"
+    const key    = `welcome_${today}_${period}`;
+
+    const shown = localStorage.getItem(key);
     if (!shown) {
       const t = setTimeout(() => setVisible(true), 600);
       return () => clearTimeout(t);
@@ -24,7 +29,11 @@ function WelcomeToast() {
 
   useEffect(() => {
     if (visible) {
-      sessionStorage.setItem("welcome_shown", "1");
+      const h      = new Date().getHours();
+      const period = h < 12 ? "morning" : h < 18 ? "afternoon" : "night";
+      const today  = new Date().toISOString().slice(0, 10);
+      const key    = `welcome_${today}_${period}`;
+      localStorage.setItem(key, "1");
       const t = setTimeout(() => setVisible(false), 4000);
       return () => clearTimeout(t);
     }
