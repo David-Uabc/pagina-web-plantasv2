@@ -72,9 +72,10 @@ function PlantSelector({ plants, selected, onSelect, color, label }) {
         onChange={e => onSelect(plants.find(p => p._id === e.target.value) || null)}
         style={{
           width: "100%", padding: "10px 12px", borderRadius: 11,
-          background: "rgba(255,255,255,0.04)", border: `1px solid ${color}30`,
+          background: "#0d1117", border: `1px solid ${color}35`,
           color: "#f0f6fc", fontSize: 13, outline: "none", cursor: "pointer",
           fontFamily: "'Plus Jakarta Sans',sans-serif",
+          WebkitAppearance: "none", appearance: "none",
         }}
       >
         <option value="">— Seleccionar planta —</option>

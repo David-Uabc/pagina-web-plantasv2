@@ -148,7 +148,7 @@ function QuickStats({ plants }) {
     : "linear-gradient(90deg,#dc2626,#f87171)";
 
   return (
-    <div style={{ maxWidth: 1400, margin: "0 auto", width: "100%", padding: "20px 24px 0" }}>
+    <div style={{ padding: "20px clamp(12px,3vw,40px) 0" }}>
       {/* ── 4 stat cards ── */}
       <div className="quick-stats">
         {stats.map((s, i) => (
@@ -207,64 +207,44 @@ function QuickStats({ plants }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.45 }}
         style={{
-          marginTop: 12,
-          padding: "14px 20px",
-          borderRadius: 14,
+          marginTop: 8,
+          padding: "9px 16px",
+          borderRadius: 12,
           background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(52,211,153,0.12)",
-          display: "flex", alignItems: "center", gap: 16,
+          border: "1px solid rgba(52,211,153,0.10)",
+          display: "flex", alignItems: "center", gap: 14,
           position: "relative", overflow: "hidden",
         }}
       >
-        {/* Glow de fondo */}
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none",
-          background: `radial-gradient(ellipse 40% 80% at 0% 50%, ${healthColor}0d 0%, transparent 70%)`,
+          background: `radial-gradient(ellipse 30% 100% at 0% 50%, ${healthColor}09 0%, transparent 70%)`,
         }} />
 
-        {/* Fecha + período */}
-        <div style={{ flexShrink: 0, minWidth: 140 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#f0f6fc", fontFamily: "'Syne',sans-serif" }}>
-            Salud del sistema
-          </div>
-          <div style={{ fontSize: 11, color: "#4d7a5e", marginTop: 2 }}>
-            {dateCapitalized}
-          </div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#78909c", whiteSpace: "nowrap", flexShrink: 0 }}>
+          Salud del sistema
         </div>
 
-        {/* Barra */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ height: 7, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" }}>
+          <div style={{ height: 5, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" }}>
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${healthyPct}%` }}
               transition={{ duration: 1.1, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              style={{
-                height: "100%", borderRadius: 99, background: healthGradient,
-                boxShadow: `0 0 8px ${healthColor}55`,
-              }}
+              style={{ height: "100%", borderRadius: 99, background: healthGradient, boxShadow: `0 0 6px ${healthColor}44` }}
             />
           </div>
         </div>
 
-        {/* Porcentaje + período */}
-        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{
-            fontSize: 16, fontWeight: 800, color: healthColor,
-            fontFamily: "'Syne',sans-serif",
-            textShadow: `0 0 12px ${healthColor}66`,
-          }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: healthColor, fontFamily: "'Syne',sans-serif" }}>
             {healthyPct}%
           </span>
+          <span style={{ fontSize: 10, color: "#4d7a5e" }}>{dateCapitalized}</span>
           <span style={{
-            fontSize: 11, fontWeight: 700,
-            padding: "4px 10px", borderRadius: 99,
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.09)",
-            color: "#78909c",
-          }}>
-            {period}
-          </span>
+            fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#78909c",
+          }}>{period}</span>
         </div>
       </motion.div>
     </div>
