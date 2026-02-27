@@ -4106,3 +4106,113 @@ body.light-mode .stat-card:hover .stat-card-inner {
 body.light-mode .stat-label {
   color: rgba(40, 60, 50, 0.75) !important;
 }
+
+/* =====================================================
+   🆕 SESSION 21 — NUEVAS FEATURES
+===================================================== */
+
+/* ── Drag and Drop Reorder ── */
+.plant-grid [data-projection-id] {
+  list-style: none;
+}
+.plant-grid [data-projection-id]:active {
+  z-index: 50;
+}
+
+/* ── GlobalSearch trigger en Navbar ── */
+.nav-right .search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* ── DaySummaryWidget responsive ── */
+@media (max-width: 600px) {
+  .day-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── RainEffect canvas ── */
+.pc2 {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Notas en PlantCard ── */
+.plant-notes {
+  font-size: 12px;
+  color: rgba(176,190,197,0.75);
+  padding: 8px 12px;
+  margin: 0 16px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-left: 2px solid rgba(52,211,153,0.30);
+  font-style: italic;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+body.light-mode .plant-notes {
+  color: rgba(55,65,81,0.70);
+  background: rgba(52,211,153,0.04);
+  border-color: rgba(52,211,153,0.15);
+  border-left-color: rgba(52,211,153,0.40);
+}
+
+/* ── Schedule badge en PlantCard ── */
+.schedule-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(251,191,36,0.12);
+  border: 1px solid rgba(251,191,36,0.22);
+  color: #fbbf24;
+  letter-spacing: 0.3px;
+}
+
+/* ── AlertHistory button en PlantCard ── */
+.alert-history-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(248,113,113,0.10);
+  border: 1px solid rgba(248,113,113,0.22);
+  color: #f87171;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.3px;
+}
+.alert-history-btn:hover {
+  background: rgba(248,113,113,0.18);
+}
+
+/* ── Sector Inferior — acento azul/índigo ── */
+.sp-page[data-sector="Inferior"] .sp-chip.active {
+  border-color: rgba(129,140,248,0.40) !important;
+  background: rgba(129,140,248,0.12) !important;
+  color: #818cf8 !important;
+}
+
+/* ── Profile Modal stats ── */
+.profile-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* ── Compare button glow hover ── */
+.compare-btn:hover {
+  background: rgba(96,165,250,0.18) !important;
+  box-shadow: 0 0 12px rgba(96,165,250,0.20);
+}

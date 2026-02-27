@@ -1,240 +1,218 @@
-import { useState, useEffect } from "react";
-import { useI18n } from "../../i18n";
+// ProfileModal.jsx — Perfil completo con foto, nombre editable y estadísticas
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Mail, Lock, Eye, EyeOff, Check, Camera } from "lucide-react";
+import { useState, useRef } from "react";
+import { X, Camera, Save, Calendar, Leaf, Droplets, AlertTriangle, Award } from "lucide-react";
 import api from "../../api";
 
-const getSession  = () => JSON.parse(localStorage.getItem("iot_session") || "{}");
-const saveSession = (s) => localStorage.setItem("iot_session", JSON.stringify(s));
-
-function Field({ label, icon: Icon, type = "text", value, onChange, error, placeholder, rightEl, autoComplete }) {
-  return (
-    <div className="pm-field">
-      <label className="pm-label">{label}</label>
-      <div className="pm-input-wrap">
-        <Icon size={14} className="pm-input-icon" />
-        <input
-          className={`pm-input ${error ? "error" : ""}`}
-          type={type} value={value} onChange={onChange}
-          placeholder={placeholder} autoComplete={autoComplete}
-        />
-        {rightEl}
-      </div>
-      {error && <span className="pm-error">{error}</span>}
-    </div>
-  );
+function getDaysSince(dateStr) {
+  if (!dateStr) return 0;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 }
 
 export default function ProfileModal({ onClose, onUpdate }) {
-  const { t }   = useI18n();
-  const session = getSession();
+  const session  = JSON.parse(localStorage.getItem("iot_session") || "{}");
+  const [name,     setName]     = useState(session.name     || session.username || "");
+  const [avatar,   setAvatar]   = useState(session.avatar   || "");
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [previewOk, setPreviewOk] = useState(!!session.avatar);
+  const fileRef = useRef(null);
 
-  const [tab,     setTab]     = useState("info");
-  const [name,    setName]    = useState(session.name     || "");
-  const [email,   setEmail]   = useState(session.email    || "");
-  const [oldPass, setOldPass] = useState("");
-  const [newPass, setNewPass] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [errors,  setErrors]  = useState({});
-  const [saved,   setSaved]   = useState(false);
-  const [loading, setLoading] = useState(false);
+  const initial  = name.charAt(0).toUpperCase();
+  const joinDate = session.createdAt || session.joinDate || null;
+  const daysSince = getDaysSince(joinDate);
 
-  // Cargar perfil actualizado desde API al abrir
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const res = await api.get("/api/auth/me");
-        setName(res.data.name   || "");
-        setEmail(res.data.email || "");
-        // Actualizar sesión local con email
-        saveSession({ ...session, ...res.data });
-      } catch {}
-    };
-    loadProfile();
-  }, []);
-
-  // Cerrar con Escape
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const saveInfo = async () => {
-    const errs = {};
-    if (!name.trim())                errs.name  = t("profile.errName");
-    if (!/\S+@\S+\.\S+/.test(email)) errs.email = t("profile.errEmail");
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
-    setErrors({}); setLoading(true);
-    try {
-      const res = await api.put("/api/auth/me", { name, email });
-      saveSession({ ...session, name, email });
-      if (onUpdate) onUpdate({ name, email });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } catch (err) {
-      setErrors({ name: err.response?.data?.error || "Error al guardar" });
-    } finally {
-      setLoading(false);
+  // Stats guardadas en localStorage del DaySummaryWidget
+  function getAllTimeSummary() {
+    let totalIrrig = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("iot_day_summary_")) {
+        try {
+          const d = JSON.parse(localStorage.getItem(key) || "{}");
+          totalIrrig += d.irrigations || 0;
+        } catch {}
+      }
     }
+    return { totalIrrig };
+  }
+
+  const { totalIrrig } = getAllTimeSummary();
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // Actualizar en backend si hay endpoint
+      // await api.put("/api/auth/profile", { name, avatar });
+      const updated = { ...session, name, avatar };
+      localStorage.setItem("iot_session", JSON.stringify(updated));
+      if (onUpdate) onUpdate(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {}
+    setSaving(false);
   };
 
-  const savePassword = async () => {
-    const errs = {};
-    if (!oldPass)           errs.oldPass = t("profile.errOldPass");
-    if (newPass.length < 6) errs.newPass = t("profile.errMinPass");
-    if (newPass !== confirm) errs.confirm = t("profile.errMatch");
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
-    setErrors({}); setLoading(true);
-    try {
-      await api.put("/api/auth/me", { password: newPass });
-      setOldPass(""); setNewPass(""); setConfirm("");
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } catch (err) {
-      setErrors({ oldPass: err.response?.data?.error || "Error al actualizar contraseña" });
-    } finally {
-      setLoading(false);
-    }
+  // Subir imagen (convierte a base64 para preview)
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { setAvatar(ev.target.result); setPreviewOk(true); };
+    reader.readAsDataURL(file);
   };
 
-  const initial = (session.name || session.username || "U").charAt(0).toUpperCase();
+  const stats = [
+    { icon: <Calendar size={16} color="#60a5fa" />, label: "Días en el sistema", value: daysSince || "—", color: "#60a5fa" },
+    { icon: <Droplets size={16} color="#38bdf8" />, label: "Riegos realizados",  value: totalIrrig,      color: "#38bdf8" },
+    { icon: <Award size={16} color="#fbbf24" />,    label: "Nivel",              value: totalIrrig > 50 ? "🌳 Experto" : totalIrrig > 10 ? "🌿 Intermedio" : "🌱 Iniciante", color: "#fbbf24" },
+  ];
 
   return (
     <AnimatePresence>
-      <motion.div className="modal-overlay"
+      <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={e => e.target === e.currentTarget && onClose()}>
-
-        <motion.div className="pm-modal"
-          initial={{ opacity: 0, y: 32, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0,  scale: 1    }}
-          exit={{    opacity: 0, y: 16, scale: 0.97 }}
-          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
+        onClick={e => e.target === e.currentTarget && onClose()}
+        style={{
+          position: "fixed", inset: 0, zIndex: 99999,
+          background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        }}
+      >
+        <motion.div
+          initial={{ scale: 0.88, y: 32, opacity: 0 }}
+          animate={{ scale: 1, y: 0, opacity: 1 }}
+          exit={{ scale: 0.88, opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          style={{
+            width: "100%", maxWidth: 420,
+            background: "rgba(8,14,10,0.97)",
+            border: "1px solid rgba(52,211,153,0.18)",
+            borderRadius: 24, overflow: "hidden",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06)",
+          }}
+        >
+          <div style={{ height: 2, background: "linear-gradient(90deg,transparent,#34d399,#60a5fa,transparent)" }} />
 
           {/* Header */}
-          <div className="pm-header">
-            <div className="pm-header-left">
-              <div className="pm-avatar-wrap">
-                <div className="pm-avatar-lg">{initial}</div>
-                <div className="pm-avatar-edit"><Camera size={12} /></div>
+          <div style={{ padding: "24px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#f0f6fc", fontFamily: "'Syne',sans-serif" }}>Mi Perfil</div>
+            <button onClick={onClose} style={{
+              width: 32, height: 32, borderRadius: 9, border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.05)", color: "#78909c", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}><X size={14} /></button>
+          </div>
+
+          <div style={{ padding: "20px 24px 28px" }}>
+            {/* Avatar */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 24 }}>
+              <div style={{ position: "relative", marginBottom: 12 }}>
+                <div style={{
+                  width: 88, height: 88, borderRadius: "50%", overflow: "hidden",
+                  background: "linear-gradient(135deg,rgba(52,211,153,0.3),rgba(96,165,250,0.2))",
+                  border: "3px solid rgba(52,211,153,0.35)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 36, fontWeight: 800, color: "#34d399",
+                  fontFamily: "'Syne',sans-serif",
+                }}>
+                  {avatar && previewOk
+                    ? <img src={avatar} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        onError={() => setPreviewOk(false)} />
+                    : initial}
+                </div>
+                {/* Botón cámara */}
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  style={{
+                    position: "absolute", bottom: 0, right: 0,
+                    width: 28, height: 28, borderRadius: "50%", border: "2px solid rgba(8,14,10,0.9)",
+                    background: "linear-gradient(135deg,#059669,#34d399)",
+                    display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                  }}
+                ><Camera size={13} color="#000" /></button>
+                <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileChange} />
               </div>
-              <div>
-                <h2 className="pm-title">{session.name || session.username}</h2>
-                <span className="pm-handle">@{session.username}</span>
-              </div>
+              <div style={{ fontSize: 13, color: "#4d7a5e" }}>Toca el ícono de cámara para cambiar tu foto</div>
             </div>
-            <button className="pm-close" onClick={onClose}><X size={16} /></button>
-          </div>
 
-          {/* Tabs */}
-          <div className="pm-tabs">
-            <button className={`pm-tab ${tab === "info" ? "active" : ""}`}
-              onClick={() => { setTab("info"); setErrors({}); setSaved(false); }}>
-              <User size={14} /> Información
-            </button>
-            <button className={`pm-tab ${tab === "password" ? "active" : ""}`}
-              onClick={() => { setTab("password"); setErrors({}); setSaved(false); }}>
-              <Lock size={14} /> Contraseña
-            </button>
-          </div>
+            {/* Nombre editable */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", color: "#78909c", marginBottom: 7 }}>
+                Nombre de usuario
+              </label>
+              <input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                style={{
+                  width: "100%", padding: "12px 14px", borderRadius: 11,
+                  border: "1px solid rgba(52,211,153,0.22)",
+                  background: "rgba(52,211,153,0.05)", color: "#f0f6fc",
+                  fontSize: 14, fontFamily: "'Plus Jakarta Sans',sans-serif", outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
 
-          {/* Content */}
-          <div className="pm-body">
-            <AnimatePresence mode="wait">
-
-              {tab === "info" && (
-                <motion.div key="info"
-                  initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.16 }}>
-
-                  <Field label={t("profile.fullName")} icon={User}
-                    value={name} onChange={e => setName(e.target.value)}
-                    placeholder={t("profile.fullName")} error={errors.name} autoComplete="name" />
-
-                  <Field label={t("profile.email")} icon={Mail} type="email"
-                    value={email} onChange={e => setEmail(e.target.value)}
-                    placeholder="user@email.com" error={errors.email} autoComplete="email" />
-
-                  <div className="pm-field">
-                    <label className="pm-label">Usuario</label>
-                    <div className="pm-input-wrap">
-                      <User size={14} className="pm-input-icon" />
-                      <input className="pm-input pm-input-readonly"
-                        value={`@${session.username}`} readOnly />
-                    </div>
-                    <span className="pm-hint">El nombre de usuario no se puede cambiar</span>
+            {/* Stats */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 20 }}>
+              {stats.map((s, i) => (
+                <motion.div
+                  key={s.label}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.08 }}
+                  style={{
+                    padding: "12px 8px", borderRadius: 14, textAlign: "center",
+                    background: `${s.color}0d`, border: `1px solid ${s.color}20`,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 6 }}>{s.icon}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: s.color, fontFamily: "'Syne',sans-serif", marginBottom: 3 }}>
+                    {s.value}
                   </div>
-
-                  <button className="pm-save-btn" onClick={saveInfo} disabled={loading}>
-                    {loading ? <><span className="spinner" /> Guardando...</>
-                      : saved  ? <><Check size={15} /> ¡Guardado!</>
-                      : t("profile.save")}
-                  </button>
+                  <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {s.label}
+                  </div>
                 </motion.div>
-              )}
+              ))}
+            </div>
 
-              {tab === "password" && (
-                <motion.div key="password"
-                  initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.16 }}>
+            {/* Info de cuenta */}
+            <div style={{
+              padding: "12px 16px", borderRadius: 12, marginBottom: 20,
+              background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)",
+            }}>
+              <div style={{ fontSize: 11, color: "#78909c", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 700 }}>
+                Información de cuenta
+              </div>
+              {[
+                { label: "Usuario", value: session.username || "—" },
+                { label: "Miembro desde", value: joinDate ? new Date(joinDate).toLocaleDateString("es-MX", { year: "numeric", month: "long" }) : "—" },
+              ].map(row => (
+                <div key={row.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, color: "#78909c" }}>{row.label}</span>
+                  <span style={{ fontSize: 12, color: "#b0bec5", fontWeight: 600 }}>{row.value}</span>
+                </div>
+              ))}
+            </div>
 
-                  <Field label={t("profile.oldPass")} icon={Lock}
-                    type={showOld ? "text" : "password"}
-                    value={oldPass} onChange={e => setOldPass(e.target.value)}
-                    placeholder="Tu contraseña actual" error={errors.oldPass}
-                    autoComplete="current-password"
-                    rightEl={
-                      <button type="button" className="pm-eye" onClick={() => setShowOld(v => !v)}>
-                        {showOld ? <EyeOff size={13} /> : <Eye size={13} />}
-                      </button>
-                    } />
-
-                  <Field label={t("profile.newPass")} icon={Lock}
-                    type={showNew ? "text" : "password"}
-                    value={newPass} onChange={e => setNewPass(e.target.value)}
-                    placeholder={t("profile.errMinPass")} error={errors.newPass}
-                    autoComplete="new-password"
-                    rightEl={
-                      <button type="button" className="pm-eye" onClick={() => setShowNew(v => !v)}>
-                        {showNew ? <EyeOff size={13} /> : <Eye size={13} />}
-                      </button>
-                    } />
-
-                  <Field label={t("profile.confirmPass")} icon={Lock}
-                    type="password"
-                    value={confirm} onChange={e => setConfirm(e.target.value)}
-                    placeholder={t("profile.confirmPass")} error={errors.confirm}
-                    autoComplete="new-password" />
-
-                  {newPass && (
-                    <div className="pm-strength">
-                      <div className="pm-strength-bars">
-                        {[1,2,3,4].map(i => (
-                          <div key={i} className={`pm-strength-bar ${
-                            newPass.length >= i * 3 ? (newPass.length >= 10 ? "strong" : newPass.length >= 6 ? "medium" : "weak") : ""
-                          }`} />
-                        ))}
-                      </div>
-                      <span className="pm-strength-label">
-                        {newPass.length < 6 ? t("profile.weak") : newPass.length < 10 ? t("profile.medium") : t("profile.strong")}
-                      </span>
-                    </div>
-                  )}
-
-                  <button className="pm-save-btn" onClick={savePassword} disabled={loading}>
-                    {loading ? <><span className="spinner" /> Actualizando...</>
-                      : saved  ? <><Check size={15} /> ¡Contraseña actualizada!</>
-                      : "Actualizar contraseña"}
-                  </button>
-                </motion.div>
-              )}
-
-            </AnimatePresence>
+            {/* Botón guardar */}
+            <motion.button
+              onClick={handleSave}
+              disabled={saving}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                width: "100%", padding: "13px", borderRadius: 12, border: "none", cursor: "pointer",
+                background: saved ? "linear-gradient(135deg,#059669,#34d399)" : "linear-gradient(135deg,#059669,#34d399)",
+                color: "#fff", fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15,
+                boxShadow: "0 4px 20px rgba(52,211,153,0.25)",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                opacity: saving ? 0.7 : 1,
+              }}
+            >
+              {saved ? "✓ Guardado" : <><Save size={16} /> Guardar cambios</>}
+            </motion.button>
           </div>
         </motion.div>
       </motion.div>

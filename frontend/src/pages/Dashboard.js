@@ -3,16 +3,18 @@ import { useI18n } from "../i18n";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../api";
-import Navbar         from "../components/layout/Navbar";
-import SystemStatus   from "../components/dashboard/SystemStatus";
+import Navbar          from "../components/layout/Navbar";
+import SystemStatus    from "../components/dashboard/SystemStatus";
 import AverageHumidity from "../components/dashboard/AverageHumidity";
-import PlantCard      from "../components/plant/PlantCard";
+import PlantCard       from "../components/plant/PlantCard";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
-import QuickStats     from "../components/dashboard/QuickStats";
-import { getGreeting } from "../App";
-import WelcomeToast from "../components/dashboard/WelcomeToast";
+import QuickStats      from "../components/dashboard/QuickStats";
+import WelcomeToast    from "../components/dashboard/WelcomeToast";
+import DaySummaryWidget from "../components/dashboard/DaySummaryWidget";
+import ComparePlantsModal from "../components/plant/ComparePlantsModal";
+import { getGreeting }  from "../App";
+import { useNotifications } from "../hooks/useNotifications";
 
-// Skeletons para las stat cards del dashboard
 function DashboardSkeleton() {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
@@ -29,7 +31,6 @@ function DashboardSkeleton() {
 }
 
 function SectorEmpty({ sector, onGo }) {
-  const { t } = useI18n();
   return (
     <motion.div className="dashboard-sector-empty"
       initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
@@ -43,8 +44,7 @@ function SectorEmpty({ sector, onGo }) {
       <p style={{ color: "#78909c", fontSize: 14, marginBottom: 14 }}>
         No hay plantas en este sector todavía
       </p>
-      <button className="btn-see-all" onClick={onGo}
-        style={{ fontSize: 13 }}>
+      <button className="btn-see-all" onClick={onGo} style={{ fontSize: 13 }}>
         Ir a Sector {sector} para agregar →
       </button>
     </motion.div>
@@ -54,20 +54,18 @@ function SectorEmpty({ sector, onGo }) {
 function Dashboard({ user, onLogout }) {
   const navigate = useNavigate();
   const { t }    = useI18n();
+  const { checkPlants } = useNotifications();
 
-  const [plants,  setPlants]  = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Saludo personalizado
-  const session  = JSON.parse(localStorage.getItem("iot_session") || "{}");
-  const userName = session.name || session.username || "";
-  const greeting = getGreeting(userName);
+  const [plants,        setPlants]        = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [showCompare,   setShowCompare]   = useState(false);
 
   useEffect(() => {
     const fetchPlants = async () => {
       try {
         const res = await api.get("/api/plants");
         setPlants(res.data);
+        checkPlants(res.data); // ✅ verificar alertas y notificar
       } catch {
         // sin backend
       } finally {
@@ -99,12 +97,17 @@ function Dashboard({ user, onLogout }) {
 
   return (
     <div className="dashboard-full">
-      <Navbar onLogout={onLogout} plants={plants} />
+      {/* ✅ onCompare prop para activar modal de comparación */}
+      <Navbar
+        onLogout={onLogout}
+        plants={plants}
+        onCompare={plants.length >= 2 ? () => setShowCompare(true) : undefined}
+      />
 
-      {/* ✅ Toast de bienvenida — aparece solo una vez por sesión */}
+      {/* ✅ Toast de bienvenida */}
       <WelcomeToast />
 
-      {/* Stats — con skeleton mientras carga */}
+      {/* Stats */}
       {loading ? (
         <div style={{ padding: "20px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
           <DashboardSkeleton />
@@ -112,6 +115,9 @@ function Dashboard({ user, onLogout }) {
       ) : (
         <QuickStats plants={plants} />
       )}
+
+      {/* ✅ Resumen del día */}
+      {!loading && <DaySummaryWidget plants={plants} />}
 
       <div className="top-section">
         <SystemStatus />
@@ -166,8 +172,12 @@ function Dashboard({ user, onLogout }) {
              ))}
           </div>
         </div>
-
       </div>
+
+      {/* ✅ Modal comparar plantas */}
+      {showCompare && (
+        <ComparePlantsModal plants={plants} onClose={() => setShowCompare(false)} />
+      )}
     </div>
   );
 }

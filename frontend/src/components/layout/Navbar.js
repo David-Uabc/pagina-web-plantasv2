@@ -1,4 +1,4 @@
-import { Bell, Sun, ChevronDown, LogOut, User, Settings } from "lucide-react";
+import { Bell, Sun, ChevronDown, LogOut, User, Settings, GitCompare } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -6,9 +6,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "../../i18n";
 import ProfileModal  from "./ProfileModal";
 import SettingsModal from "./SettingsModal";
+import GlobalSearch  from "./GlobalSearch";
 import { getGreeting } from "../../App";
 
-function Navbar({ onLogout, plants = [] }) {
+function Navbar({ onLogout, plants = [], onCompare }) {
   const navigate = useNavigate();
   const { t } = useI18n();
   const [lightMode,  setLightMode]  = useState(false);
@@ -25,11 +26,8 @@ function Navbar({ onLogout, plants = [] }) {
   const userName    = session.name || session.username || "Usuario";
   const userHandle  = session.username || userName;
   const userInitial = userName.charAt(0).toUpperCase();
-
-  // ── Saludo dinámico por hora ──
-  const greeting = getGreeting(userName);
-
-  const alerts = plants.filter(p => (p.currentHumidity ?? 0) < p.minHumidity);
+  const greeting    = getGreeting(userName);
+  const alerts      = plants.filter(p => (p.currentHumidity ?? 0) < p.minHumidity);
 
   useEffect(() => {
     const saved = localStorage.getItem("theme");
@@ -108,6 +106,28 @@ function Navbar({ onLogout, plants = [] }) {
         {/* RIGHT */}
         <div className="nav-right">
 
+          {/* ✅ Búsqueda global */}
+          <GlobalSearch plants={plants} />
+
+          {/* ✅ Botón comparar — solo en dashboard */}
+          {onCompare && plants.length >= 2 && (
+            <button
+              onClick={onCompare}
+              title="Comparar plantas"
+              style={{
+                display:"flex", alignItems:"center", gap:6,
+                padding:"6px 12px", borderRadius:99,
+                background:"rgba(96,165,250,0.10)",
+                border:"1px solid rgba(96,165,250,0.22)",
+                color:"#60a5fa", cursor:"pointer", fontSize:12, fontWeight:600,
+                transition:"all 0.2s",
+              }}
+            >
+              <GitCompare size={14} />
+              <span style={{ display:"none" }}>Comparar</span>
+            </button>
+          )}
+
           {/* Notificaciones */}
           <div className="nav-icon-btn" ref={notifRef} onClick={() => setNotifOpen(o => !o)}>
             <Bell size={17} />
@@ -177,29 +197,22 @@ function Navbar({ onLogout, plants = [] }) {
                   variants={dropdownVariants}
                   initial="hidden" animate="visible" exit="exit"
                   transition={{ duration: 0.18 }}>
-
-                  {/* Header con saludo personalizado */}
                   <div className="ud-header">
                     <div className="ud-avatar-lg">{userInitial}</div>
                     <div>
-                      {/* ✅ Saludo dinámico por hora */}
                       <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>{greeting}</div>
                       <div className="ud-name">{userName}</div>
                       <div className="ud-handle">@{userHandle}</div>
                     </div>
                   </div>
-
                   <div className="nav-dd-divider" />
-
                   <button className="ud-item" onClick={() => { setShowProfile(true); setUserOpen(false); }}>
                     <User size={14} /> {t("nav.profile")}
                   </button>
                   <button className="ud-item" onClick={() => { setShowSettings(true); setUserOpen(false); }}>
                     <Settings size={14} /> {t("nav.settings")}
                   </button>
-
                   <div className="nav-dd-divider" />
-
                   <button className="ud-item logout" onClick={handleLogout}>
                     <LogOut size={14} /> {t("nav.logout")}
                   </button>
