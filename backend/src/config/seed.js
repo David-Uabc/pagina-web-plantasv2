@@ -6,7 +6,7 @@ const Plant  = require("../models/Plant");
 const Device = require("../models/Device");
 const User   = require("../models/User");
 
-const PLANTS = [
+const DEMO_PLANTS = [
   { name: "Lavanda",  sector: "Superior", minHumidity: 30, maxHumidity: 70, currentHumidity: 45, irrigationType: "Diario",      imageUrl: "https://images.unsplash.com/photo-1499638673689-79a0b5115d87?w=400&q=80" },
   { name: "Menta",    sector: "Superior", minHumidity: 40, maxHumidity: 80, currentHumidity: 35, irrigationType: "Semanal",     imageUrl: "https://images.unsplash.com/photo-1628556270448-4d4e4148e1b1?w=400&q=80" },
   { name: "Albahaca", sector: "Superior", minHumidity: 35, maxHumidity: 75, currentHumidity: 62, irrigationType: "Por humedad", imageUrl: "https://images.unsplash.com/photo-1600231915210-7e8b1e9e39c0?w=400&q=80" },
@@ -17,52 +17,96 @@ const PLANTS = [
   { name: "Gardenia", sector: "Inferior", minHumidity: 45, maxHumidity: 75, currentHumidity: 12, irrigationType: "Por humedad", imageUrl: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&q=80" },
 ];
 
-const DEVICES = [
+const DEMO_DEVICES = [
   { deviceId: "ESP32-SUP-01", sector: "Superior", status: "Offline" },
   { deviceId: "ESP32-INF-01", sector: "Inferior", status: "Offline" },
 ];
 
+function generateHistory(baseHumidity, days = 30) {
+  const history = [];
+  let current = baseHumidity;
+  const now = Date.now();
+  const DAY = 86400000;
+  for (let i = days; i >= 0; i--) {
+    current = Math.max(5, Math.min(95, current + (Math.random() * 10 - 5)));
+    history.push({ humidity: Math.round(current), date: new Date(now - i * DAY) });
+  }
+  return history;
+}
+
 async function seed() {
   try {
-    await mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/riego_iot");
-    console.log("✅ Conectado a MongoDB");
+    const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/riego_iot";
+    await mongoose.connect(uri);
+    console.log("✅ Conectado a MongoDB\n");
 
-    // Limpiar colecciones
-    await Plant.deleteMany({});
-    await Device.deleteMany({});
-    await User.deleteMany({});
-    console.log("🗑️  Colecciones limpiadas");
+    // ── Buscar o crear usuario demo — NUNCA toca usuarios existentes ──
+    let demoUser = await User.findOne({ username: "david" });
 
-    // Crear plantas con historial inicial
-    const plantsWithHistory = PLANTS.map(p => ({
-      ...p,
-      valveStatus: p.currentHumidity < p.minHumidity ? "OPEN" : "CLOSED",
-      humidityHistory: Array.from({ length: 12 }, (_, i) => ({
-        humidity: Math.max(5, Math.min(95, p.currentHumidity + (Math.random() - 0.5) * 20)),
-        date: new Date(Date.now() - (12 - i) * 60 * 60 * 1000),
-      })),
-    }));
+    if (!demoUser) {
+      demoUser = await User.create({
+        name:     "David",
+        username: "david",
+        email:    "david@riego.iot",
+        password: "david123",
+        role:     "admin",
+      });
+      console.log("👤 Usuario demo creado  — david / david123");
+    } else {
+      console.log("👤 Usuario demo ya existe — omitiendo creación");
+    }
 
-    await Plant.insertMany(plantsWithHistory);
-    console.log(`🌿 ${PLANTS.length} plantas creadas`);
+    // ── Verificar si el usuario demo ya tiene plantas ──
+    const existingPlants = await Plant.countDocuments({ owner: demoUser._id });
 
-    await Device.insertMany(DEVICES);
-    console.log(`📡 ${DEVICES.length} dispositivos creados`);
+    if (existingPlants > 0) {
+      console.log(`🌿 El usuario demo ya tiene ${existingPlants} plantas — omitiendo seed de plantas`);
+    } else {
+      const plantsToInsert = DEMO_PLANTS.map(p => ({
+        ...p,
+        owner:            demoUser._id,
+        valveStatus:      p.currentHumidity < p.minHumidity ? "OPEN" : "CLOSED",
+        humidityHistory:  generateHistory(p.currentHumidity),
+        lastWatered:      new Date(Date.now() - Math.random() * 48 * 3600000),
+      }));
+      await Plant.insertMany(plantsToInsert);
+      console.log(`🌿 ${DEMO_PLANTS.length} plantas demo creadas con 30 días de historial`);
+    }
 
-    // Usuario admin por defecto
-    await User.create({
-      name:     "Administrador",
-      username: "admin",
-      email:    "admin@riego.iot",
-      password: "admin123",
-      role:     "admin",
-    });
-    console.log("👤 Usuario admin creado — usuario: admin / contraseña: admin123");
+    // ── Verificar si el usuario demo ya tiene dispositivos ──
+    const existingDevices = await Device.countDocuments({ owner: demoUser._id });
 
-    console.log("\n✅ Seed completado exitosamente");
+    if (existingDevices > 0) {
+      console.log(`📡 El usuario demo ya tiene ${existingDevices} dispositivos — omitiendo seed de dispositivos`);
+    } else {
+      const devicesToInsert = DEMO_DEVICES.map(d => ({
+        ...d,
+        owner:    demoUser._id,
+        lastSeen: new Date(),
+      }));
+      await Device.insertMany(devicesToInsert);
+      console.log(`📡 ${DEMO_DEVICES.length} dispositivos ESP32 creados`);
+    }
+
+    // ── Mostrar resumen de TODOS los usuarios (sin tocarlos) ──
+    const totalUsers   = await User.countDocuments();
+    const totalPlants  = await Plant.countDocuments();
+    const totalDevices = await Device.countDocuments();
+
+    console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("✅ Seed completado — usuarios existentes intactos");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log(`📊 Estado actual de la BD:`);
+    console.log(`   • ${totalUsers}  usuarios totales (ninguno eliminado)`);
+    console.log(`   • ${totalPlants}  plantas totales`);
+    console.log(`   • ${totalDevices}  dispositivos totales`);
+    console.log("\n🔑 Cuenta demo:");
+    console.log("   Usuario: david | Contraseña: david123");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
     process.exit(0);
   } catch (error) {
-    console.error("❌ Error en seed:", error);
+    console.error("❌ Error en seed:", error.message);
     process.exit(1);
   }
 }

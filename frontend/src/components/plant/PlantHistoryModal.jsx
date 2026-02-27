@@ -1,4 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { exportCSV, exportPDF } from "../../utils/exportHistory";
+import { Download, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import {

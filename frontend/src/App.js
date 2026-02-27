@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { ToastProvider } from "./context/ToastProvider";
 import ParticleBackground from "./components/ParticleBackground";
+import SplashScreen  from "./components/SplashScreen";
+import OfflineBanner from "./components/OfflineBanner";
 import Dashboard     from "./pages/Dashboard";
 import SectorPage    from "./pages/SectorPage";
 import Login         from "./pages/Login";
@@ -13,11 +15,11 @@ import ResetPassword from "./pages/ResetPassword";
 
 // ── Títulos dinámicos por ruta ──────────────────────
 const PAGE_TITLES = {
-  "/":                    "Dashboard",
-  "/superior":            "Sector Superior",
-  "/inferior":            "Sector Inferior",
-  "/login":               "Iniciar sesión",
-  "/reset-password":      "Recuperar contraseña",
+  "/":               "Dashboard",
+  "/superior":       "Sector Superior",
+  "/inferior":       "Sector Inferior",
+  "/login":          "Iniciar sesión",
+  "/reset-password": "Recuperar contraseña",
 };
 
 function useDynamicTitle() {
@@ -31,13 +33,10 @@ function useDynamicTitle() {
   }, [location.pathname]);
 }
 
-// ── Saludo dinámico por hora ─────────────────────────
+// ── Saludo dinámico exportado para Navbar y WelcomeToast ──
 export function getGreeting(name = "") {
   const h = new Date().getHours();
-  const base =
-    h < 12 ? "Buenos días" :
-    h < 18 ? "Buenas tardes" :
-             "Buenas noches";
+  const base = h < 12 ? "Buenos días" : h < 18 ? "Buenas tardes" : "Buenas noches";
   return name ? `${base}, ${name} 🌱` : `${base} 🌱`;
 }
 
@@ -52,8 +51,6 @@ const T = { duration: 0.28 };
 
 function AnimatedRoutes({ user, setUser }) {
   const location = useLocation();
-
-  // Título dinámico — se activa en cada cambio de ruta
   useDynamicTitle();
 
   const handleLogout = () => {
@@ -109,15 +106,22 @@ function AnimatedRoutes({ user, setUser }) {
 }
 
 function App() {
-  const [user, setUser] = useState(() => {
+  const [user,    setUser]    = useState(() => {
     const saved = localStorage.getItem("iot_session");
     return saved ? JSON.parse(saved) : null;
   });
+  const [splashDone, setSplashDone] = useState(false);
 
   return (
     <I18nProvider>
+      {/* ✅ Splash screen — desaparece solo después de 1.8s */}
+      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+
+      {/* App principal — renderiza debajo del splash */}
       <Router>
         <ToastProvider>
+          {/* ✅ Banner offline — visible en todas las páginas */}
+          <OfflineBanner />
           <ParticleBackground />
           <AnimatedRoutes user={user} setUser={setUser} />
         </ToastProvider>
