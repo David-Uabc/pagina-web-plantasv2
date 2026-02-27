@@ -1,6 +1,7 @@
 // ComparePlantsModal.jsx — Compara 2 plantas con gráficas de humedad lado a lado
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useMemo } from "react";
+import { X, GitCompare } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
