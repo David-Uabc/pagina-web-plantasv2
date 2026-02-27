@@ -55,10 +55,6 @@ function QuickStats({ plants }) {
     ? Math.round(plants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / total)
     : 0;
 
-  const healthyPct = total > 0
-    ? Math.round((plants.filter(p => (p.currentHumidity ?? 0) >= p.minHumidity).length / total) * 100)
-    : 100;
-
   const isDark = !document.body.classList.contains("light-mode");
 
   const stats = [
@@ -134,19 +130,6 @@ function QuickStats({ plants }) {
     },
   ];
 
-  const now   = new Date();
-  const hours = now.getHours();
-  const period = hours < 12 ? "🌅 Mañana" : hours < 18 ? "☀️ Tarde" : "🌙 Noche";
-  const dateLabel = now.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
-  const dateCapitalized = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
-
-  const healthColor = healthyPct >= 80 ? "#34d399" : healthyPct >= 50 ? "#fbbf24" : "#f87171";
-  const healthGradient = healthyPct >= 80
-    ? "linear-gradient(90deg,#059669,#34d399)"
-    : healthyPct >= 50
-    ? "linear-gradient(90deg,#d97706,#fbbf24)"
-    : "linear-gradient(90deg,#dc2626,#f87171)";
-
   return (
     <div style={{ padding: "20px 0 0", width: "100%" }}>
       {/* ── 4 stat cards ── */}
@@ -201,52 +184,7 @@ function QuickStats({ plants }) {
         ))}
       </div>
 
-      {/* ── Barra de salud del sistema (fusionada) ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.45 }}
-        style={{
-          marginTop: 8,
-          padding: "9px 16px",
-          borderRadius: 12,
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(52,211,153,0.10)",
-          display: "flex", alignItems: "center", gap: 14,
-          position: "relative", overflow: "hidden",
-        }}
-      >
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          background: `radial-gradient(ellipse 30% 100% at 0% 50%, ${healthColor}09 0%, transparent 70%)`,
-        }} />
 
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#78909c", whiteSpace: "nowrap", flexShrink: 0 }}>
-          Salud del sistema
-        </div>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ height: 5, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" }}>
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${healthyPct}%` }}
-              transition={{ duration: 1.1, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              style={{ height: "100%", borderRadius: 99, background: healthGradient, boxShadow: `0 0 6px ${healthColor}44` }}
-            />
-          </div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 800, color: healthColor, fontFamily: "'Syne',sans-serif" }}>
-            {healthyPct}%
-          </span>
-          <span style={{ fontSize: 10, color: "#4d7a5e" }}>{dateCapitalized}</span>
-          <span style={{
-            fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
-            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#78909c",
-          }}>{period}</span>
-        </div>
-      </motion.div>
     </div>
   );
 }
