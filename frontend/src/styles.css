@@ -4022,47 +4022,53 @@ body.light-mode .theme-toggle {
 }
 
 /* =====================================================
-   🔧 FIX — INPUT FOCUS VISIBILITY
-   El texto debe verse siempre al escribir
+   🌿 SECTOR PAGE — GRID FIX
+   Las cards deben ocupar todo el ancho disponible
 ===================================================== */
 
-/* Fix global para todos los inputs en focus */
-input:focus,
-select:focus,
-textarea:focus,
-.lp-input:focus,
-.pm-input:focus,
-.sp-search:focus,
-.filter-search-wrapper input:focus,
-.modal-card input:focus,
-.modal-card select:focus {
-  background: rgba(13, 17, 23, 0.90) !important;
-  color: #f0f6fc !important;
-  border-color: rgba(52, 211, 153, 0.50) !important;
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.10) !important;
-  caret-color: #34d399 !important;
+/* Grid en SectorPage — ocupa todo el ancho */
+.sp-grid-wrap .plant-grid,
+.sp-grid-wrap > .plant-grid {
+  grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 28vw, 340px), 1fr)) !important;
+  width: 100%;
 }
 
-/* Placeholder siempre visible */
-input::placeholder,
-.lp-input::placeholder,
-.pm-input::placeholder,
-.sp-search::placeholder {
-  color: rgba(120, 144, 156, 0.70) !important;
-  opacity: 1 !important;
+/* PlantCard v2 dentro de SectorPage — ocupa todo su slot */
+.sp-grid-wrap .pc2 {
+  width: 100%;
+  min-width: 0;
 }
 
-/* Select options legibles */
-select option {
-  background: #0d1117 !important;
-  color: #f0f6fc !important;
+/* Si el grid es de Framer Motion (motion.div) */
+.sp-grid-wrap > div {
+  width: 100%;
 }
 
-/* Light mode — fondo oscuro en focus también */
-body.light-mode input:focus,
-body.light-mode .lp-input:focus,
-body.light-mode .pm-input:focus {
-  background: rgba(20, 28, 36, 0.95) !important;
-  color: #f0f6fc !important;
-  border-color: rgba(52, 211, 153, 0.50) !important;
+/* Con pocas plantas (1-2) — no dejar cards pequeñas */
+.sp-grid-wrap .plant-grid:has(.pc2:only-child),
+.sp-grid-wrap .plant-grid:has(.pc2:nth-child(1):nth-last-child(1)) {
+  grid-template-columns: repeat(1, minmax(0, 500px)) !important;
+  justify-content: start;
+}
+
+/* 3 o más plantas — columnas fluidas */
+@media (min-width: 1200px) {
+  .sp-grid-wrap .plant-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+  }
+}
+@media (max-width: 900px) {
+  .sp-grid-wrap .plant-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+  }
+}
+@media (max-width: 600px) {
+  .sp-grid-wrap .plant-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 420px) {
+  .sp-grid-wrap .plant-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
