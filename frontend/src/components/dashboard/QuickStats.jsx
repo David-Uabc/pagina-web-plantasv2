@@ -55,18 +55,22 @@ function QuickStats({ plants }) {
     ? Math.round(plants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / total)
     : 0;
 
+  const isDark = !document.body.classList.contains("light-mode");
+
   const stats = [
     {
       Icon: Leaf,
       label: "Total Plantas",
       value: total, unit: "",
-      gradient: "linear-gradient(135deg, #34d399, #6ee7b7)",
-      color: "#34d399",
-      lightBg:    "rgba(52,211,153,0.08)",
-      lightBorder:"rgba(52,211,153,0.20)",
-      lightLine:  "linear-gradient(135deg, #34d399, #6ee7b7)",
-      darkBg:     "rgba(52,211,153,0.07)",
-      darkBorder: "rgba(52,211,153,0.16)",
+      gradient: "linear-gradient(135deg, #059669, #34d399)",
+      color: isDark ? "#34d399" : "#059669",
+      // Dark
+      darkBg:     "rgba(5,150,105,0.09)",
+      darkBorder: "rgba(52,211,153,0.18)",
+      // Light — tinte verde suave
+      lightBg:     "linear-gradient(145deg, rgba(236,253,245,1) 0%, rgba(209,250,229,0.80) 100%)",
+      lightBorder: "rgba(16,185,129,0.25)",
+      lightIcon:   "rgba(16,185,129,0.15)",
       glow: "rgba(52,211,153,0.10)",
     },
     {
@@ -74,14 +78,19 @@ function QuickStats({ plants }) {
       label: "Regando Ahora",
       value: watering, unit: "",
       gradient: watering > 0
-        ? "linear-gradient(135deg, #38bdf8, #60a5fa)"
-        : "linear-gradient(135deg, #94a3b8, #cbd5e1)",
-      color: watering > 0 ? "#60a5fa" : "#94a3b8",
-      lightBg:    watering > 0 ? "rgba(96,165,250,0.08)"  : "rgba(148,163,184,0.06)",
-      lightBorder:watering > 0 ? "rgba(96,165,250,0.22)"  : "rgba(148,163,184,0.18)",
-      lightLine:  watering > 0 ? "linear-gradient(135deg, #38bdf8, #60a5fa)" : "linear-gradient(135deg, #94a3b8, #cbd5e1)",
-      darkBg:     watering > 0 ? "rgba(96,165,250,0.07)"  : "rgba(255,255,255,0.03)",
-      darkBorder: watering > 0 ? "rgba(96,165,250,0.16)"  : "rgba(255,255,255,0.07)",
+        ? "linear-gradient(135deg, #0284c7, #38bdf8)"
+        : "linear-gradient(135deg, #64748b, #94a3b8)",
+      color: isDark
+        ? (watering > 0 ? "#60a5fa" : "#6b7280")
+        : (watering > 0 ? "#0284c7" : "#64748b"),
+      darkBg:     watering > 0 ? "rgba(56,189,248,0.09)" : "rgba(255,255,255,0.03)",
+      darkBorder: watering > 0 ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.07)",
+      // Light — tinte azul suave
+      lightBg:     watering > 0
+        ? "linear-gradient(145deg, rgba(239,246,255,1) 0%, rgba(219,234,254,0.80) 100%)"
+        : "linear-gradient(145deg, rgba(248,250,252,1) 0%, rgba(241,245,249,0.80) 100%)",
+      lightBorder: watering > 0 ? "rgba(59,130,246,0.22)" : "rgba(148,163,184,0.20)",
+      lightIcon:   watering > 0 ? "rgba(59,130,246,0.12)" : "rgba(148,163,184,0.12)",
       glow: "rgba(96,165,250,0.09)",
     },
     {
@@ -89,14 +98,19 @@ function QuickStats({ plants }) {
       label: "Alertas Activas",
       value: alerts, unit: "",
       gradient: alerts > 0
-        ? "linear-gradient(135deg, #ef4444, #f87171)"
-        : "linear-gradient(135deg, #34d399, #6ee7b7)",
-      color: alerts > 0 ? "#ef4444" : "#34d399",
-      lightBg:    alerts > 0 ? "rgba(239,68,68,0.07)"   : "rgba(52,211,153,0.06)",
-      lightBorder:alerts > 0 ? "rgba(239,68,68,0.22)"   : "rgba(52,211,153,0.18)",
-      lightLine:  alerts > 0 ? "linear-gradient(135deg,#ef4444,#f87171)" : "linear-gradient(135deg,#34d399,#6ee7b7)",
-      darkBg:     alerts > 0 ? "rgba(248,113,113,0.07)" : "rgba(52,211,153,0.05)",
-      darkBorder: alerts > 0 ? "rgba(248,113,113,0.18)" : "rgba(52,211,153,0.12)",
+        ? "linear-gradient(135deg, #dc2626, #ef4444)"
+        : "linear-gradient(135deg, #059669, #34d399)",
+      color: isDark
+        ? (alerts > 0 ? "#f87171" : "#34d399")
+        : (alerts > 0 ? "#dc2626" : "#059669"),
+      darkBg:     alerts > 0 ? "rgba(248,113,113,0.09)" : "rgba(52,211,153,0.06)",
+      darkBorder: alerts > 0 ? "rgba(248,113,113,0.20)" : "rgba(52,211,153,0.14)",
+      // Light — tinte rojo o verde suave
+      lightBg:     alerts > 0
+        ? "linear-gradient(145deg, rgba(254,242,242,1) 0%, rgba(254,226,226,0.80) 100%)"
+        : "linear-gradient(145deg, rgba(236,253,245,1) 0%, rgba(209,250,229,0.80) 100%)",
+      lightBorder: alerts > 0 ? "rgba(220,38,38,0.22)" : "rgba(16,185,129,0.22)",
+      lightIcon:   alerts > 0 ? "rgba(220,38,38,0.12)" : "rgba(16,185,129,0.12)",
       glow: alerts > 0 ? "rgba(239,68,68,0.09)" : "rgba(52,211,153,0.08)",
     },
     {
@@ -104,17 +118,21 @@ function QuickStats({ plants }) {
       label: "Humedad Promedio",
       value: avgHum, unit: "%",
       gradient: getHumGradient(avgHum),
-      color: avgHum < 30 ? "#ef4444" : avgHum < 50 ? "#f59e0b" : "#34d399",
-      lightBg:    "rgba(52,211,153,0.07)",
-      lightBorder:"rgba(52,211,153,0.20)",
-      lightLine:  getHumGradient(avgHum),
-      darkBg:     "rgba(52,211,153,0.06)",
-      darkBorder: "rgba(52,211,153,0.14)",
+      color: isDark
+        ? (avgHum < 30 ? "#f87171" : avgHum < 50 ? "#fbbf24" : "#34d399")
+        : (avgHum < 30 ? "#dc2626" : avgHum < 50 ? "#d97706" : "#059669"),
+      darkBg:     "rgba(52,211,153,0.07)",
+      darkBorder: "rgba(52,211,153,0.16)",
+      lightBg:    avgHum < 30
+        ? "linear-gradient(145deg, rgba(254,242,242,1) 0%, rgba(254,226,226,0.80) 100%)"
+        : avgHum < 50
+        ? "linear-gradient(145deg, rgba(255,251,235,1) 0%, rgba(254,243,199,0.80) 100%)"
+        : "linear-gradient(145deg, rgba(236,253,245,1) 0%, rgba(209,250,229,0.80) 100%)",
+      lightBorder: avgHum < 30 ? "rgba(220,38,38,0.20)" : avgHum < 50 ? "rgba(217,119,6,0.22)" : "rgba(16,185,129,0.22)",
+      lightIcon:   avgHum < 30 ? "rgba(220,38,38,0.12)" : avgHum < 50 ? "rgba(217,119,6,0.12)" : "rgba(16,185,129,0.12)",
       glow: "rgba(52,211,153,0.09)",
     },
   ];
-
-  const isDark = !document.body.classList.contains("light-mode");
 
   return (
     <div className="quick-stats">
@@ -127,44 +145,39 @@ function QuickStats({ plants }) {
           transition={{ duration: 0.42, delay: i * 0.09, ease: [0.22, 1, 0.36, 1] }}
           whileHover={{ y: -4, transition: { duration: 0.18 } }}
         >
-          <div className="stat-card-inner" style={{
-            /* ✅ Fondo adaptivo según modo */
-            background: isDark
-              ? `${s.darkBg}`
-              : `${s.lightBg}`,
-            border: `1px solid ${isDark ? s.darkBorder : s.lightBorder}`,
-            backdropFilter: isDark ? "blur(20px)" : "blur(12px)",
-            WebkitBackdropFilter: isDark ? "blur(20px)" : "blur(12px)",
-            boxShadow: isDark
-              ? `0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)`
-              : `0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.80)`,
-          }}>
+          <div
+            className="stat-card-inner"
+            style={{
+              background: isDark ? s.darkBg : s.lightBg,
+              border: `1px solid ${isDark ? s.darkBorder : s.lightBorder}`,
+            }}
+          >
+            {/* Línea top con color */}
+            <div className="stat-card-line" style={{ background: s.gradient }} />
 
-            {/* Línea top color */}
-            <div className="stat-card-line" style={{ background: s.lightLine }} />
-
-            {/* Icono + label */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            {/* Icono + label en fila */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <div style={{
-                width: 34, height: 34, borderRadius: 10,
+                width: 34, height: 34, borderRadius: 10, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                background: isDark ? `rgba(255,255,255,0.06)` : `rgba(255,255,255,0.70)`,
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.90)"}`,
-                boxShadow: isDark ? "none" : `0 2px 8px rgba(0,0,0,0.08)`,
-                flexShrink: 0,
+                background: isDark
+                  ? "rgba(255,255,255,0.07)"
+                  : s.lightIcon,
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.60)"}`,
+                boxShadow: isDark ? "none" : "0 1px 4px rgba(0,0,0,0.06)",
               }}>
-                <s.Icon size={16} color={s.color} strokeWidth={2} />
+                <s.Icon size={16} color={s.color} strokeWidth={2.2} />
               </div>
-              <span className="stat-label" style={{
-                color: isDark ? "rgba(176,190,197,0.85)" : "rgba(60,80,70,0.75)",
-                fontSize: 11, fontWeight: 700,
-                textTransform: "uppercase", letterSpacing: "0.8px",
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                textTransform: "uppercase", letterSpacing: "0.9px",
+                color: isDark ? "rgba(176,190,197,0.80)" : "rgba(40,60,50,0.65)",
               }}>
                 {s.label}
               </span>
             </div>
 
-            {/* Número */}
+            {/* Número animado */}
             <AnimatedCounter
               to={s.value}
               unit={s.unit}
@@ -173,9 +186,12 @@ function QuickStats({ plants }) {
             />
 
             {/* Accent bottom */}
-            <div className="stat-accent" style={{ background: s.lightLine, opacity: isDark ? 0.4 : 0.6 }} />
+            <div className="stat-accent" style={{
+              background: s.gradient,
+              opacity: isDark ? 0.35 : 0.50,
+            }} />
 
-            {/* Glow radial de fondo */}
+            {/* Glow radial */}
             <div style={{
               position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none",
               background: `radial-gradient(ellipse 90% 70% at 10% 90%, ${s.glow} 0%, transparent 65%)`,
