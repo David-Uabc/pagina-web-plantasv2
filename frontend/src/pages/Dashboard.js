@@ -3,43 +3,72 @@ import { useI18n } from "../i18n";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../api";
-import Navbar from "../components/layout/Navbar";
-import SystemStatus from "../components/dashboard/SystemStatus";
+import Navbar         from "../components/layout/Navbar";
+import SystemStatus   from "../components/dashboard/SystemStatus";
 import AverageHumidity from "../components/dashboard/AverageHumidity";
-import PlantCard from "../components/plant/PlantCard";
+import PlantCard      from "../components/plant/PlantCard";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
-import QuickStats from "../components/dashboard/QuickStats";
+import QuickStats     from "../components/dashboard/QuickStats";
+import { getGreeting } from "../App";
 
-// ── Vacío con link al sector ──────────────────────────
-function SectorEmpty({ sector, onGo }) {
-  const { t } = useI18n();
+// Skeletons para las stat cards del dashboard
+function DashboardSkeleton() {
   return (
-    <div className="dashboard-sector-empty">
-      <span className="dse-icon">🌱</span>
-      <p>{t("dash.noPlants")}</p>
-      <button className="btn-see-all" onClick={onGo}>
-        Ir a Sector {sector} para agregar →
-      </button>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+      {[1,2,3,4].map(i => (
+        <div key={i} style={{
+          height: 80, borderRadius: 14,
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          animation: "pulse 1.5s ease-in-out infinite",
+        }} />
+      ))}
     </div>
   );
 }
 
-// ── Dashboard principal ───────────────────────────────
-function Dashboard({ onLogout }) {
+function SectorEmpty({ sector, onGo }) {
+  const { t } = useI18n();
+  return (
+    <motion.div className="dashboard-sector-empty"
+      initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+      style={{
+        gridColumn: "1 / -1", textAlign: "center", padding: "32px 20px",
+        background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(52,211,153,0.15)",
+        borderRadius: 16,
+      }}
+    >
+      <div style={{ fontSize: 40, marginBottom: 10 }}>🌱</div>
+      <p style={{ color: "#78909c", fontSize: 14, marginBottom: 14 }}>
+        No hay plantas en este sector todavía
+      </p>
+      <button className="btn-see-all" onClick={onGo}
+        style={{ fontSize: 13 }}>
+        Ir a Sector {sector} para agregar →
+      </button>
+    </motion.div>
+  );
+}
+
+function Dashboard({ user, onLogout }) {
   const navigate = useNavigate();
   const { t }    = useI18n();
 
   const [plants,  setPlants]  = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch cada 5s
+  // Saludo personalizado
+  const session  = JSON.parse(localStorage.getItem("iot_session") || "{}");
+  const userName = session.name || session.username || "";
+  const greeting = getGreeting(userName);
+
   useEffect(() => {
     const fetchPlants = async () => {
       try {
         const res = await api.get("/api/plants");
         setPlants(res.data);
       } catch {
-        // sin backend — vacío
+        // sin backend
       } finally {
         setLoading(false);
       }
@@ -54,7 +83,14 @@ function Dashboard({ onLogout }) {
     setPlants(prev => prev.filter(p => p._id !== id));
   };
 
-  // Solo las 2 primeras de cada sector
+  const handleToggleValve = async (plant) => {
+    const newStatus = plant.valveStatus === "OPEN" ? "CLOSED" : "OPEN";
+    try {
+      const res = await api.put(`/api/plants/${plant._id}`, { valveStatus: newStatus });
+      setPlants(prev => prev.map(p => p._id === plant._id ? res.data : p));
+    } catch {}
+  };
+
   const allSup  = plants.filter(p => p.sector === "Superior");
   const allInf  = plants.filter(p => p.sector === "Inferior");
   const prevSup = allSup.slice(0, 2);
@@ -64,14 +100,43 @@ function Dashboard({ onLogout }) {
     <div className="dashboard-full">
       <Navbar onLogout={onLogout} plants={plants} />
 
-      <QuickStats plants={plants} />
+      {/* ✅ Saludo personalizado al inicio del dashboard */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        style={{
+          padding: "20px 24px 0",
+          maxWidth: 1400, margin: "0 auto", width: "100%",
+        }}
+      >
+        <div style={{
+          fontFamily: "'Syne', sans-serif",
+          fontSize: "clamp(18px, 3vw, 24px)",
+          fontWeight: 800, color: "#f0f6fc",
+          marginBottom: 2,
+        }}>{greeting}</div>
+        <div style={{ fontSize: 13, color: "#78909c" }}>
+          {plants.length > 0
+            ? `Tienes ${plants.length} planta${plants.length !== 1 ? "s" : ""} monitoreadas`
+            : "Comienza agregando tus primeras plantas"}
+        </div>
+      </motion.div>
+
+      {/* Stats — con skeleton mientras carga */}
+      {loading ? (
+        <div style={{ padding: "20px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+          <DashboardSkeleton />
+        </div>
+      ) : (
+        <QuickStats plants={plants} />
+      )}
 
       <div className="top-section">
         <SystemStatus />
         <AverageHumidity plants={plants} />
       </div>
 
-      {/* ── Sectores lado a lado ── */}
+      {/* Sectores */}
       <div className="sectors-wrapper">
 
         {/* Sector Superior */}
@@ -80,26 +145,20 @@ function Dashboard({ onLogout }) {
             <h2 className="section-title">🌿 Patio Superior</h2>
             {allSup.length > 0 && (
               <button className="btn-see-all" onClick={() => navigate("/superior")}>
-                {allSup.length > 2
-                  ? `${t("dash.seeAll")} (${allSup.length}) →`
-                  : t("dash.goSector")}
+                {allSup.length > 2 ? `${t("dash.seeAll")} (${allSup.length}) →` : t("dash.goSector")}
               </button>
             )}
           </div>
           <div className="plant-grid">
-            {loading ? (
-              <PlantGridSkeleton count={2} />
-            ) : prevSup.length === 0 ? (
-              <SectorEmpty sector="Superior" onGo={() => navigate("/superior")} />
-            ) : (
-              prevSup.map((plant, i) => (
-                <PlantCard
-                  key={plant._id} plant={plant} index={i}
-                  onEdit={() => navigate("/superior")}
-                  onDelete={handleDelete}
-                />
-              ))
-            )}
+            {loading ? <PlantGridSkeleton count={2} /> :
+             prevSup.length === 0 ? <SectorEmpty sector="Superior" onGo={() => navigate("/superior")} /> :
+             prevSup.map((plant, i) => (
+               <PlantCard key={plant._id} plant={plant} index={i}
+                 onEdit={() => navigate("/superior")}
+                 onDelete={handleDelete}
+                 onToggleValve={handleToggleValve}
+               />
+             ))}
           </div>
         </div>
 
@@ -109,26 +168,20 @@ function Dashboard({ onLogout }) {
             <h2 className="section-title">🌱 Patio Inferior</h2>
             {allInf.length > 0 && (
               <button className="btn-see-all" onClick={() => navigate("/inferior")}>
-                {allInf.length > 2
-                  ? `${t("dash.seeAll")} (${allInf.length}) →`
-                  : t("dash.goSector")}
+                {allInf.length > 2 ? `${t("dash.seeAll")} (${allInf.length}) →` : t("dash.goSector")}
               </button>
             )}
           </div>
           <div className="plant-grid">
-            {loading ? (
-              <PlantGridSkeleton count={2} />
-            ) : prevInf.length === 0 ? (
-              <SectorEmpty sector="Inferior" onGo={() => navigate("/inferior")} />
-            ) : (
-              prevInf.map((plant, i) => (
-                <PlantCard
-                  key={plant._id} plant={plant} index={i}
-                  onEdit={() => navigate("/inferior")}
-                  onDelete={handleDelete}
-                />
-              ))
-            )}
+            {loading ? <PlantGridSkeleton count={2} /> :
+             prevInf.length === 0 ? <SectorEmpty sector="Inferior" onGo={() => navigate("/inferior")} /> :
+             prevInf.map((plant, i) => (
+               <PlantCard key={plant._id} plant={plant} index={i}
+                 onEdit={() => navigate("/inferior")}
+                 onDelete={handleDelete}
+                 onToggleValve={handleToggleValve}
+               />
+             ))}
           </div>
         </div>
 

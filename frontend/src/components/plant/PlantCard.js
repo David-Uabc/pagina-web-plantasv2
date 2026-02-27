@@ -8,6 +8,7 @@ import {
 } from "chart.js";
 import { useToast } from "../../context/ToastProvider";
 import ConfirmModal from "./ConfirmModal";
+import ConfirmIrrigationModal from "./ConfirmIrrigationModal"; // ✅ nuevo
 
 ChartJS.register(LineElement, BarElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend);
 
@@ -41,10 +42,8 @@ function getHumState(h, min, max) {
 }
 
 function generateHistory(plant, days = 14) {
-  const now = Date.now();
-  const DAY = 86400000;
-  const humidity = [];
-  const irrigations = [];
+  const now = Date.now(); const DAY = 86400000;
+  const humidity = []; const irrigations = [];
   let current = plant.currentHumidity ?? 55;
   for (let i = days; i >= 0; i--) {
     const ts = now - i * DAY;
@@ -60,28 +59,20 @@ function generateHistory(plant, days = 14) {
   return { humidity, irrigations };
 }
 
-function fmt(ts) {
-  return new Date(ts).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
-}
+function fmt(ts) { return new Date(ts).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }); }
 
 const HISTORY_TABS = ["Humedad", "Riegos"];
 
 function HistoryPanel({ plant, range, onRangeChange }) {
   const [tab, setTab] = useState("Humedad");
   const { humidity, irrigations } = generateHistory(plant, range);
-  const humLabels = humidity.map(h => fmt(h.ts));
   const humValues = humidity.map(h => h.value);
   const avg = Math.round(humValues.reduce((a, b) => a + b, 0) / humValues.length);
 
-  // ✅ tooltipBase con bodyColor SIEMPRE blanco
   const tooltipBase = {
-    backgroundColor: "rgba(5,14,10,0.95)",
-    borderWidth: 1,
-    titleColor: "#f0f6fc",
-    bodyColor:  "#f0f6fc",   // FIX: antes era el color de la linea → invisible
-    padding: 10,
-    cornerRadius: 8,
-    displayColors: false,
+    backgroundColor: "rgba(5,14,10,0.95)", borderWidth: 1,
+    titleColor: "#f0f6fc", bodyColor: "#f0f6fc", // ✅ siempre blanco
+    padding: 10, cornerRadius: 8, displayColors: false,
   };
 
   const chartBase = {
@@ -95,34 +86,22 @@ function HistoryPanel({ plant, range, onRangeChange }) {
   };
 
   const humData = {
-    labels: humLabels,
+    labels: humidity.map(h => fmt(h.ts)),
     datasets: [
       { data: humValues, fill: true, tension: 0.45, borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.07)", pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: "#22c55e", pointHoverBorderColor: "#fff", pointHoverBorderWidth: 2, borderWidth: 1.8 },
       { data: Array(humValues.length).fill(plant.minHumidity), borderColor: "rgba(248,113,113,0.45)", borderDash: [5,4], borderWidth: 1.2, pointRadius: 0, fill: false },
       { data: Array(humValues.length).fill(plant.maxHumidity), borderColor: "rgba(56,189,248,0.45)", borderDash: [5,4], borderWidth: 1.2, pointRadius: 0, fill: false },
     ],
   };
-  const humOptions = {
-    ...chartBase,
-    plugins: { ...chartBase.plugins, tooltip: { ...tooltipBase, borderColor: "rgba(34,197,94,0.3)" } },
-    scales: { ...chartBase.scales, y: { ...chartBase.scales.y, min: 0, max: 100, ticks: { ...chartBase.scales.y.ticks, callback: v => `${v}%` } } },
-  };
-
+  const humOptions = { ...chartBase, plugins: { ...chartBase.plugins, tooltip: { ...tooltipBase, borderColor: "rgba(34,197,94,0.3)" } }, scales: { ...chartBase.scales, y: { ...chartBase.scales.y, min: 0, max: 100, ticks: { ...chartBase.scales.y.ticks, callback: v => `${v}%` } } } };
   const irrData = {
     labels: irrigations.map(r => fmt(r.ts)),
     datasets: [
       { label: "Duración (min)", data: irrigations.map(r => r.duration), backgroundColor: "rgba(56,189,248,0.6)", borderColor: "#38bdf8", borderWidth: 1.5, borderRadius: 5 },
-      { label: "Humedad +%", data: irrigations.map(r => r.raised), backgroundColor: "rgba(34,197,94,0.55)", borderColor: "#22c55e", borderWidth: 1.5, borderRadius: 5 },
+      { label: "Humedad +%",    data: irrigations.map(r => r.raised),   backgroundColor: "rgba(34,197,94,0.55)",  borderColor: "#22c55e", borderWidth: 1.5, borderRadius: 5 },
     ],
   };
-  const irrOptions = {
-    ...chartBase,
-    plugins: {
-      ...chartBase.plugins,
-      legend: { display: true, labels: { color: "#a3c4b0", font: { size: 10 }, boxWidth: 14, padding: 10 } },
-      tooltip: { ...tooltipBase, borderColor: "rgba(56,189,248,0.3)" },
-    },
-  };
+  const irrOptions = { ...chartBase, plugins: { ...chartBase.plugins, legend: { display: true, labels: { color: "#a3c4b0", font: { size: 10 }, boxWidth: 14, padding: 10 } }, tooltip: { ...tooltipBase, borderColor: "rgba(56,189,248,0.3)" } } };
 
   return (
     <motion.div className="pc-history-panel"
@@ -153,8 +132,7 @@ function HistoryPanel({ plant, range, onRangeChange }) {
         <AnimatePresence mode="wait">
           <motion.div key={tab} className="pc-hist-chart"
             initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18 }}
-          >
+            exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18 }}>
             {tab === "Humedad" ? <Line data={humData} options={humOptions} /> :
              irrigations.length === 0 ? <div className="pc-hist-empty">Sin riegos en este período 🌵</div> :
              <Bar data={irrData} options={irrOptions} />}
@@ -177,18 +155,26 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
   const isAlert  = humidity < plant.minHumidity;
   const isOn     = plant.valveStatus === "OPEN";
 
-  const [confirmOpen,  setConfirmOpen]  = useState(false);
-  const [historyOpen,  setHistoryOpen]  = useState(false);
-  const [historyRange, setHistoryRange] = useState(14);
-  const [imgLoaded,    setImgLoaded]    = useState(false);
-  const [toggling,     setToggling]     = useState(false);
+  const [confirmOpen,     setConfirmOpen]     = useState(false);
+  const [irrigConfirm,    setIrrigConfirm]    = useState(false); // ✅ nuevo
+  const [historyOpen,     setHistoryOpen]     = useState(false);
+  const [historyRange,    setHistoryRange]    = useState(14);
+  const [imgLoaded,       setImgLoaded]       = useState(false);
+  const [toggling,        setToggling]        = useState(false);
 
-  const handleToggle = useCallback(async () => {
+  // ✅ Abrir confirm modal en vez de ejecutar directo
+  const handleToggleClick = useCallback(() => {
     if (toggling) return;
+    setIrrigConfirm(true);
+  }, [toggling]);
+
+  // ✅ Ejecutar riego después de confirmar
+  const handleToggleConfirmed = useCallback(async () => {
+    setIrrigConfirm(false);
     setToggling(true);
     if (onToggleValve) await onToggleValve(plant);
     setToggling(false);
-  }, [toggling, plant, onToggleValve]);
+  }, [plant, onToggleValve]);
 
   return (
     <>
@@ -230,14 +216,12 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
             <div className="pc2-track">
               <div className="pc2-zone-ok" style={{ left: `${plant.minHumidity}%`, width: `${plant.maxHumidity - plant.minHumidity}%` }} />
               <motion.div className="pc2-fill"
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(humidity, 100)}%` }}
+                initial={{ width: 0 }} animate={{ width: `${Math.min(humidity, 100)}%` }}
                 transition={{ duration: 1.1, delay: index * 0.08 + 0.3, ease: "easeOut" }}
                 style={{ background: hs.bar }}
               />
               <motion.div className="pc2-thumb"
-                initial={{ left: "0%" }}
-                animate={{ left: `${Math.min(humidity, 100)}%` }}
+                initial={{ left: "0%" }} animate={{ left: `${Math.min(humidity, 100)}%` }}
                 transition={{ duration: 1.1, delay: index * 0.08 + 0.3, ease: "easeOut" }}
                 style={{ background: hs.color, boxShadow: `0 0 8px ${hs.color}88` }}
               />
@@ -248,20 +232,37 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
               <span>{plant.maxHumidity}%</span>
             </div>
           </div>
+
           {isAlert && (
             <motion.div className="pc2-alert-strip"
               initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
               ⚠ Humedad bajo mínimo — riego recomendado
             </motion.div>
           )}
-          <motion.button
-            className={`pc2-water-btn ${isOn ? "stop" : "go"}`}
-            onClick={handleToggle}
-            whileTap={{ scale: 0.96 }} whileHover={{ scale: 1.02 }}
-            disabled={toggling}
-          >
-            {toggling ? "⏳ Procesando..." : isOn ? "🛑 Detener Riego" : "💧 Regar Ahora"}
-          </motion.button>
+
+          {/* ✅ Botón con pulso animado cuando está regando */}
+          <div style={{ position: "relative" }}>
+            {isOn && (
+              <motion.div
+                animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                style={{
+                  position: "absolute", inset: 0, borderRadius: 10,
+                  background: "rgba(52,211,153,0.25)", pointerEvents: "none",
+                }}
+              />
+            )}
+            <motion.button
+              className={`pc2-water-btn ${isOn ? "stop" : "go"}`}
+              onClick={handleToggleClick}
+              whileTap={{ scale: 0.96 }} whileHover={{ scale: 1.02 }}
+              disabled={toggling}
+              style={{ position: "relative" }}
+            >
+              {toggling ? "⏳ Procesando..." : isOn ? "🛑 Detener Riego" : "💧 Regar Ahora"}
+            </motion.button>
+          </div>
+
           <div className="pc2-actions">
             <button className={`pc2-act history ${historyOpen ? "active" : ""}`} onClick={() => setHistoryOpen(v => !v)}>
               {historyOpen ? "▲ Ocultar" : "📈 Historial"}
@@ -276,11 +277,21 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
         </AnimatePresence>
       </motion.div>
 
+      {/* Modal confirmar eliminar */}
       <ConfirmModal
         isOpen={confirmOpen}
         plantName={plant.name}
         onConfirm={() => { setConfirmOpen(false); onDelete(plant._id); toast(`${plant.name} eliminada`, "error"); }}
         onCancel={() => setConfirmOpen(false)}
+      />
+
+      {/* ✅ Modal confirmar riego */}
+      <ConfirmIrrigationModal
+        isOpen={irrigConfirm}
+        plant={plant}
+        isOn={isOn}
+        onConfirm={handleToggleConfirmed}
+        onCancel={() => setIrrigConfirm(false)}
       />
     </>
   );
