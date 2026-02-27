@@ -148,7 +148,7 @@ function QuickStats({ plants }) {
     : "linear-gradient(90deg,#dc2626,#f87171)";
 
   return (
-    <div style={{ padding: "20px clamp(12px,3vw,40px) 0" }}>
+    <div style={{ padding: "20px 0 0", width: "100%" }}>
       {/* ── 4 stat cards ── */}
       <div className="quick-stats">
         {stats.map((s, i) => (

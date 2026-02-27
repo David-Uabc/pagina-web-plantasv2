@@ -1,7 +1,6 @@
 // ComparePlantsModal.jsx — Compara 2 plantas con gráficas de humedad lado a lado
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useMemo } from "react";
-import { X, GitCompare } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
@@ -62,25 +61,81 @@ function StatPill({ label, value, color }) {
 }
 
 function PlantSelector({ plants, selected, onSelect, color, label }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <div style={{ flex: 1 }}>
+    <div style={{ flex: 1, position: "relative" }}>
       <div style={{ fontSize: 11, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
         {label}
       </div>
-      <select
-        value={selected?._id || ""}
-        onChange={e => onSelect(plants.find(p => p._id === e.target.value) || null)}
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen(o => !o)}
         style={{
-          width: "100%", padding: "10px 12px", borderRadius: 11,
-          background: "#0d1117", border: `1px solid ${color}35`,
-          color: "#f0f6fc", fontSize: 13, outline: "none", cursor: "pointer",
+          width: "100%", padding: "10px 14px", borderRadius: 11,
+          background: "rgba(13,17,23,0.95)", border: `1px solid ${color}40`,
+          color: selected ? "#f0f6fc" : "#78909c", fontSize: 13,
           fontFamily: "'Plus Jakarta Sans',sans-serif",
-          WebkitAppearance: "none", appearance: "none",
+          cursor: "pointer", textAlign: "left",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          outline: "none",
         }}
       >
-        <option value="">— Seleccionar planta —</option>
-        {plants.map(p => <option key={p._id} value={p._id}>{p.name} ({p.sector})</option>)}
-      </select>
+        <span>{selected ? `${selected.name} (${selected.sector})` : "— Seleccionar planta —"}</span>
+        <span style={{ fontSize: 10, color: "#4d7a5e", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+      </button>
+
+      {/* Dropdown list */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+              background: "#0d1117", border: `1px solid ${color}30`,
+              borderRadius: 11, overflow: "hidden", zIndex: 100,
+              boxShadow: "0 16px 40px rgba(0,0,0,0.8)",
+            }}
+          >
+            {[null, ...plants].map((p, i) => (
+              <button
+                key={p?._id || "none"}
+                onClick={() => { onSelect(p); setOpen(false); }}
+                style={{
+                  width: "100%", padding: "10px 14px", textAlign: "left", border: "none",
+                  background: selected?._id === p?._id ? `${color}18` : "transparent",
+                  color: p ? "#f0f6fc" : "#4d7a5e",
+                  fontSize: 13, fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+                  borderBottom: i < plants.length ? "1px solid rgba(255,255,255,0.04)" : "none",
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = `${color}12`}
+                onMouseLeave={e => e.currentTarget.style.background = selected?._id === p?._id ? `${color}18` : "transparent"}
+              >
+                {p ? (
+                  <>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 8, flexShrink: 0, overflow: "hidden",
+                      background: `${color}15`, border: `1px solid ${color}20`,
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+                    }}>
+                      {p.imageUrl ? <img src={p.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🌱"}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{p.name}</div>
+                      <div style={{ fontSize: 10, color: "#4d7a5e" }}>{p.sector} · {p.currentHumidity ?? 0}%</div>
+                    </div>
+                  </>
+                ) : "— Seleccionar planta —"}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

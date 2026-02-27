@@ -109,9 +109,7 @@ function Dashboard({ user, onLogout }) {
 
       {/* Stats */}
       {loading ? (
-        <div style={{ padding: "20px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
-          <DashboardSkeleton />
-        </div>
+        <DashboardSkeleton />
       ) : (
         <QuickStats plants={plants} />
       )}
