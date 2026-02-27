@@ -43,6 +43,7 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
   const [tab,     setTab]     = useState("Humedad");
   const [range,   setRange]   = useState(30);
   const [history, setHistory] = useState(null);
+  const [exporting, setExporting] = useState(null); // "csv" | "pdf" | null
 
   useEffect(() => {
     if (isOpen && plant) {
@@ -56,6 +57,23 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
   const { humidity, irrigations } = history;
   const humLabels = humidity.map(h => formatDate(h.ts));
   const humValues = humidity.map(h => h.value);
+
+  // ── Handlers de exportar con feedback visual ──
+  const handleExportCSV = async () => {
+    setExporting("csv");
+    setTimeout(() => {
+      exportCSV(plant, history);
+      setExporting(null);
+    }, 300);
+  };
+
+  const handleExportPDF = async () => {
+    setExporting("pdf");
+    setTimeout(() => {
+      exportPDF(plant, history);
+      setExporting(null);
+    }, 300);
+  };
 
   const humidityChartData = {
     labels: humLabels,
@@ -92,15 +110,11 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
   const humidityOptions = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: true,
-        labels: { color: "#a3c4b0", font: { size: 11 }, boxWidth: 20, padding: 16 }
-      },
+      legend: { display: true, labels: { color: "#a3c4b0", font: { size: 11 }, boxWidth: 20, padding: 16 } },
       tooltip: {
         backgroundColor: "rgba(5,14,10,0.95)",
         borderColor: "rgba(34,197,94,0.3)", borderWidth: 1,
-        titleColor: "#f0f6fc",   // ✅ siempre blanco
-        bodyColor:  "#f0f6fc",   // ✅ FIX: antes era "#22c55e" → invisible sobre fondo oscuro
+        titleColor: "#f0f6fc", bodyColor: "#f0f6fc",
         padding: 12, cornerRadius: 10, displayColors: false,
         titleFont: { size: 11, weight: "600" },
         bodyFont: { family: "'Syne', sans-serif", size: 15, weight: "800" },
@@ -108,53 +122,28 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
       }
     },
     scales: {
-      x: {
-        ticks: { color: "#4d7a5e", font: { size: 10 }, maxTicksLimit: 8 },
-        grid: { color: "rgba(34,197,94,0.06)" },
-      },
-      y: {
-        min: 0, max: 100,
-        ticks: { color: "#4d7a5e", font: { size: 10 }, callback: v => `${v}%` },
-        grid: { color: "rgba(34,197,94,0.06)" },
-      }
+      x: { ticks: { color: "#4d7a5e", font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: "rgba(34,197,94,0.06)" } },
+      y: { min: 0, max: 100, ticks: { color: "#4d7a5e", font: { size: 10 }, callback: v => `${v}%` }, grid: { color: "rgba(34,197,94,0.06)" } }
     },
     interaction: { mode: "nearest", intersect: false },
   };
 
-  const irrLabels   = irrigations.map(r => formatDate(r.ts));
-  const irrDuration = irrigations.map(r => r.duration);
-  const irrRaised   = irrigations.map(r => r.raised);
-
   const irrigationChartData = {
-    labels: irrLabels,
+    labels: irrigations.map(r => formatDate(r.ts)),
     datasets: [
-      {
-        label: "Duración (min)",
-        data: irrDuration,
-        backgroundColor: "rgba(56,189,248,0.65)",
-        borderColor: "#38bdf8", borderWidth: 1.5, borderRadius: 6,
-      },
-      {
-        label: "Humedad ganada (%)",
-        data: irrRaised,
-        backgroundColor: "rgba(34,197,94,0.55)",
-        borderColor: "#22c55e", borderWidth: 1.5, borderRadius: 6,
-      },
+      { label: "Duración (min)", data: irrigations.map(r => r.duration), backgroundColor: "rgba(56,189,248,0.65)", borderColor: "#38bdf8", borderWidth: 1.5, borderRadius: 6 },
+      { label: "Humedad ganada (%)", data: irrigations.map(r => r.raised), backgroundColor: "rgba(34,197,94,0.55)", borderColor: "#22c55e", borderWidth: 1.5, borderRadius: 6 },
     ],
   };
 
   const irrigationOptions = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: true,
-        labels: { color: "#a3c4b0", font: { size: 11 }, boxWidth: 20, padding: 16 }
-      },
+      legend: { display: true, labels: { color: "#a3c4b0", font: { size: 11 }, boxWidth: 20, padding: 16 } },
       tooltip: {
         backgroundColor: "rgba(5,14,10,0.95)",
         borderColor: "rgba(56,189,248,0.3)", borderWidth: 1,
-        titleColor: "#f0f6fc",   // ✅ siempre blanco
-        bodyColor:  "#f0f6fc",   // ✅ FIX: antes era "#38bdf8" → invisible
+        titleColor: "#f0f6fc", bodyColor: "#f0f6fc",
         padding: 12, cornerRadius: 10, displayColors: false,
         titleFont: { size: 11, weight: "600" },
         bodyFont: { family: "'Syne', sans-serif", size: 15, weight: "800" },
@@ -213,6 +202,48 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                   >{d}d</button>
                 ))}
               </div>
+
+              {/* ✅ Botones exportar */}
+              <motion.button
+                onClick={handleExportCSV}
+                whileTap={{ scale: 0.94 }} whileHover={{ scale: 1.05 }}
+                disabled={exporting === "csv"}
+                title="Descargar CSV"
+                style={{
+                  width: 34, height: 34, borderRadius: 10,
+                  border: "1px solid rgba(52,211,153,0.25)",
+                  background: exporting === "csv" ? "rgba(52,211,153,0.20)" : "rgba(52,211,153,0.08)",
+                  color: "#34d399", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.2s",
+                }}
+              >
+                {exporting === "csv"
+                  ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }} style={{ width: 14, height: 14, border: "2px solid #34d399", borderTopColor: "transparent", borderRadius: "50%" }} />
+                  : <Download size={14} />
+                }
+              </motion.button>
+
+              <motion.button
+                onClick={handleExportPDF}
+                whileTap={{ scale: 0.94 }} whileHover={{ scale: 1.05 }}
+                disabled={exporting === "pdf"}
+                title="Exportar PDF"
+                style={{
+                  width: 34, height: 34, borderRadius: 10,
+                  border: "1px solid rgba(96,165,250,0.25)",
+                  background: exporting === "pdf" ? "rgba(96,165,250,0.20)" : "rgba(96,165,250,0.08)",
+                  color: "#60a5fa", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.2s",
+                }}
+              >
+                {exporting === "pdf"
+                  ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }} style={{ width: 14, height: 14, border: "2px solid #60a5fa", borderTopColor: "transparent", borderRadius: "50%" }} />
+                  : <FileText size={14} />
+                }
+              </motion.button>
+
               <button className="history-close" onClick={onClose}>✕</button>
             </div>
           </div>
@@ -240,22 +271,10 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                     <Line data={humidityChartData} options={humidityOptions} />
                   </div>
                   <div className="history-mini-stats">
-                    <div className="hms-item">
-                      <span className="hms-val" style={{ color: "#22c55e" }}>{avgHum}%</span>
-                      <span className="hms-lbl">Promedio</span>
-                    </div>
-                    <div className="hms-item">
-                      <span className="hms-val" style={{ color: "#f87171" }}>{minHum}%</span>
-                      <span className="hms-lbl">Mínimo</span>
-                    </div>
-                    <div className="hms-item">
-                      <span className="hms-val" style={{ color: "#38bdf8" }}>{maxHum}%</span>
-                      <span className="hms-lbl">Máximo</span>
-                    </div>
-                    <div className="hms-item">
-                      <span className="hms-val" style={{ color: alerts > 0 ? "#f87171" : "#4d7a5e" }}>{alerts}</span>
-                      <span className="hms-lbl">Alertas</span>
-                    </div>
+                    <div className="hms-item"><span className="hms-val" style={{ color: "#22c55e" }}>{avgHum}%</span><span className="hms-lbl">Promedio</span></div>
+                    <div className="hms-item"><span className="hms-val" style={{ color: "#f87171" }}>{minHum}%</span><span className="hms-lbl">Mínimo</span></div>
+                    <div className="hms-item"><span className="hms-val" style={{ color: "#38bdf8" }}>{maxHum}%</span><span className="hms-lbl">Máximo</span></div>
+                    <div className="hms-item"><span className="hms-val" style={{ color: alerts > 0 ? "#f87171" : "#4d7a5e" }}>{alerts}</span><span className="hms-lbl">Alertas</span></div>
                   </div>
                 </motion.div>
               )}
@@ -266,9 +285,7 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                   exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.2 }}
                 >
                   {irrigations.length === 0 ? (
-                    <div className="history-empty">
-                      <span>🌵</span>Sin riegos registrados en este período.
-                    </div>
+                    <div className="history-empty"><span>🌵</span>Sin riegos registrados en este período.</div>
                   ) : (
                     <>
                       <div className="history-chart-wrap" style={{ height: 200, marginBottom: 20 }}>
@@ -280,8 +297,7 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                         </div>
                         {irrigations.slice(-10).reverse().map((irr, i) => (
                           <motion.div key={i} className="irr-row"
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.04 }}
                           >
                             <span className="irr-date">{formatDate(irr.ts)}</span>
@@ -304,8 +320,7 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                   <div className="summary-grid">
                     {summaryStats.map((s, i) => (
                       <motion.div key={i} className="summary-card"
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0  }}
+                        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.07 }}
                       >
                         <span className="sum-icon">{s.icon}</span>
@@ -314,13 +329,10 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                       </motion.div>
                     ))}
                   </div>
-
                   <div className="health-bar-section">
                     <div className="health-bar-header">
                       <span className="health-label">Salud general</span>
-                      <span className="health-score" style={{
-                        color: avgHum >= plant.minHumidity && avgHum <= plant.maxHumidity ? "#22c55e" : "#fbbf24"
-                      }}>
+                      <span className="health-score" style={{ color: avgHum >= plant.minHumidity && avgHum <= plant.maxHumidity ? "#22c55e" : "#fbbf24" }}>
                         {avgHum >= plant.minHumidity && avgHum <= plant.maxHumidity ? "Óptima ✓" : "Revisar ⚠"}
                       </span>
                     </div>
@@ -329,11 +341,7 @@ function PlantHistoryModal({ plant, isOpen, onClose }) {
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, Math.max(0, ((avgHum - plant.minHumidity) / (plant.maxHumidity - plant.minHumidity)) * 100))}%` }}
                         transition={{ duration: 1, ease: "easeOut" }}
-                        style={{
-                          background: avgHum >= plant.minHumidity && avgHum <= plant.maxHumidity
-                            ? "linear-gradient(90deg, #22c55e, #10b981)"
-                            : "linear-gradient(90deg, #fbbf24, #f87171)"
-                        }}
+                        style={{ background: avgHum >= plant.minHumidity && avgHum <= plant.maxHumidity ? "linear-gradient(90deg, #22c55e, #10b981)" : "linear-gradient(90deg, #fbbf24, #f87171)" }}
                       />
                     </div>
                     <div className="health-range-labels">

@@ -2,13 +2,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import HumidityGauge from "./HumidityGauge";
 import { useState, useCallback } from "react";
 import { Line, Bar } from "react-chartjs-2";
+import { Download, FileText } from "lucide-react";
 import {
   Chart as ChartJS, LineElement, BarElement, PointElement,
   LinearScale, CategoryScale, Tooltip, Filler, Legend
 } from "chart.js";
 import { useToast } from "../../context/ToastProvider";
 import ConfirmModal from "./ConfirmModal";
-import ConfirmIrrigationModal from "./ConfirmIrrigationModal"; // ✅ nuevo
+import ConfirmIrrigationModal from "./ConfirmIrrigationModal";
+import { exportCSV, exportPDF } from "../../utils/exportHistory";
 
 ChartJS.register(LineElement, BarElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend);
 
@@ -64,17 +66,28 @@ function fmt(ts) { return new Date(ts).toLocaleDateString("es-MX", { day: "2-dig
 const HISTORY_TABS = ["Humedad", "Riegos"];
 
 function HistoryPanel({ plant, range, onRangeChange }) {
-  const [tab, setTab] = useState("Humedad");
-  const { humidity, irrigations } = generateHistory(plant, range);
+  const [tab,      setTab]      = useState("Humedad");
+  const [exporting, setExporting] = useState(null); // "csv" | "pdf" | null
+
+  const history = generateHistory(plant, range);
+  const { humidity, irrigations } = history;
   const humValues = humidity.map(h => h.value);
   const avg = Math.round(humValues.reduce((a, b) => a + b, 0) / humValues.length);
 
-  const tooltipBase = {
-    backgroundColor: "rgba(5,14,10,0.95)", borderWidth: 1,
-    titleColor: "#f0f6fc", bodyColor: "#f0f6fc", // ✅ siempre blanco
-    padding: 10, cornerRadius: 8, displayColors: false,
+  const handleCSV = () => {
+    setExporting("csv");
+    setTimeout(() => { exportCSV(plant, history); setExporting(null); }, 300);
+  };
+  const handlePDF = () => {
+    setExporting("pdf");
+    setTimeout(() => { exportPDF(plant, history); setExporting(null); }, 300);
   };
 
+  const tooltipBase = {
+    backgroundColor: "rgba(5,14,10,0.95)", borderWidth: 1,
+    titleColor: "#f0f6fc", bodyColor: "#f0f6fc",
+    padding: 10, cornerRadius: 8, displayColors: false,
+  };
   const chartBase = {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: tooltipBase },
@@ -94,6 +107,7 @@ function HistoryPanel({ plant, range, onRangeChange }) {
     ],
   };
   const humOptions = { ...chartBase, plugins: { ...chartBase.plugins, tooltip: { ...tooltipBase, borderColor: "rgba(34,197,94,0.3)" } }, scales: { ...chartBase.scales, y: { ...chartBase.scales.y, min: 0, max: 100, ticks: { ...chartBase.scales.y.ticks, callback: v => `${v}%` } } } };
+
   const irrData = {
     labels: irrigations.map(r => fmt(r.ts)),
     datasets: [
@@ -109,6 +123,8 @@ function HistoryPanel({ plant, range, onRangeChange }) {
       exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="pc-hist-inner">
+
+        {/* Header con tabs, rango y botones exportar */}
         <div className="pc-hist-header">
           <div className="pc-hist-tabs">
             {HISTORY_TABS.map(t => (
@@ -117,18 +133,63 @@ function HistoryPanel({ plant, range, onRangeChange }) {
               </button>
             ))}
           </div>
-          <div className="pc-hist-range">
-            {[7, 14, 30].map(d => (
-              <button key={d} className={`pc-hist-range-btn ${range === d ? "active" : ""}`} onClick={() => onRangeChange(d)}>{d}d</button>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {/* Rango */}
+            <div className="pc-hist-range">
+              {[7, 14, 30].map(d => (
+                <button key={d} className={`pc-hist-range-btn ${range === d ? "active" : ""}`} onClick={() => onRangeChange(d)}>{d}d</button>
+              ))}
+            </div>
+            {/* ✅ Botón CSV */}
+            <motion.button
+              onClick={handleCSV} title="Descargar CSV"
+              whileTap={{ scale: 0.92 }} whileHover={{ scale: 1.08 }}
+              disabled={!!exporting}
+              style={{
+                width: 28, height: 28, borderRadius: 8,
+                border: "1px solid rgba(52,211,153,0.25)",
+                background: exporting === "csv" ? "rgba(52,211,153,0.18)" : "rgba(52,211,153,0.08)",
+                color: "#34d399", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+            >
+              {exporting === "csv"
+                ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }} style={{ width: 11, height: 11, border: "2px solid #34d399", borderTopColor: "transparent", borderRadius: "50%" }} />
+                : <Download size={12} />
+              }
+            </motion.button>
+            {/* ✅ Botón PDF */}
+            <motion.button
+              onClick={handlePDF} title="Exportar PDF"
+              whileTap={{ scale: 0.92 }} whileHover={{ scale: 1.08 }}
+              disabled={!!exporting}
+              style={{
+                width: 28, height: 28, borderRadius: 8,
+                border: "1px solid rgba(96,165,250,0.25)",
+                background: exporting === "pdf" ? "rgba(96,165,250,0.18)" : "rgba(96,165,250,0.08)",
+                color: "#60a5fa", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+            >
+              {exporting === "pdf"
+                ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }} style={{ width: 11, height: 11, border: "2px solid #60a5fa", borderTopColor: "transparent", borderRadius: "50%" }} />
+                : <FileText size={12} />
+              }
+            </motion.button>
           </div>
         </div>
+
+        {/* Mini stats */}
         <div className="pc-hist-stats">
           <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#22c55e" }}>{avg}%</span><span className="pc-hs-lbl">Promedio</span></div>
           <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#f87171" }}>{Math.min(...humValues)}%</span><span className="pc-hs-lbl">Mínimo</span></div>
           <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#38bdf8" }}>{Math.max(...humValues)}%</span><span className="pc-hs-lbl">Máximo</span></div>
           <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#10b981" }}>{irrigations.length}</span><span className="pc-hs-lbl">Riegos</span></div>
         </div>
+
+        {/* Gráfica */}
         <AnimatePresence mode="wait">
           <motion.div key={tab} className="pc-hist-chart"
             initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
@@ -155,20 +216,18 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
   const isAlert  = humidity < plant.minHumidity;
   const isOn     = plant.valveStatus === "OPEN";
 
-  const [confirmOpen,     setConfirmOpen]     = useState(false);
-  const [irrigConfirm,    setIrrigConfirm]    = useState(false); // ✅ nuevo
-  const [historyOpen,     setHistoryOpen]     = useState(false);
-  const [historyRange,    setHistoryRange]    = useState(14);
-  const [imgLoaded,       setImgLoaded]       = useState(false);
-  const [toggling,        setToggling]        = useState(false);
+  const [confirmOpen,  setConfirmOpen]  = useState(false);
+  const [irrigConfirm, setIrrigConfirm] = useState(false);
+  const [historyOpen,  setHistoryOpen]  = useState(false);
+  const [historyRange, setHistoryRange] = useState(14);
+  const [imgLoaded,    setImgLoaded]    = useState(false);
+  const [toggling,     setToggling]     = useState(false);
 
-  // ✅ Abrir confirm modal en vez de ejecutar directo
   const handleToggleClick = useCallback(() => {
     if (toggling) return;
     setIrrigConfirm(true);
   }, [toggling]);
 
-  // ✅ Ejecutar riego después de confirmar
   const handleToggleConfirmed = useCallback(async () => {
     setIrrigConfirm(false);
     setToggling(true);
@@ -240,16 +299,13 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
             </motion.div>
           )}
 
-          {/* ✅ Botón con pulso animado cuando está regando */}
+          {/* Botón regar con pulso animado */}
           <div style={{ position: "relative" }}>
             {isOn && (
               <motion.div
                 animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-                style={{
-                  position: "absolute", inset: 0, borderRadius: 10,
-                  background: "rgba(52,211,153,0.25)", pointerEvents: "none",
-                }}
+                style={{ position: "absolute", inset: 0, borderRadius: 10, background: "rgba(52,211,153,0.25)", pointerEvents: "none" }}
               />
             )}
             <motion.button
@@ -277,15 +333,12 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
         </AnimatePresence>
       </motion.div>
 
-      {/* Modal confirmar eliminar */}
       <ConfirmModal
         isOpen={confirmOpen}
         plantName={plant.name}
         onConfirm={() => { setConfirmOpen(false); onDelete(plant._id); toast(`${plant.name} eliminada`, "error"); }}
         onCancel={() => setConfirmOpen(false)}
       />
-
-      {/* ✅ Modal confirmar riego */}
       <ConfirmIrrigationModal
         isOpen={irrigConfirm}
         plant={plant}
