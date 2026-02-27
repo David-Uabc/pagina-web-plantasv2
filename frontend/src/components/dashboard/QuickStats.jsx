@@ -55,6 +55,10 @@ function QuickStats({ plants }) {
     ? Math.round(plants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / total)
     : 0;
 
+  const healthyPct = total > 0
+    ? Math.round((plants.filter(p => (p.currentHumidity ?? 0) >= p.minHumidity).length / total) * 100)
+    : 100;
+
   const isDark = !document.body.classList.contains("light-mode");
 
   const stats = [
@@ -64,10 +68,8 @@ function QuickStats({ plants }) {
       value: total, unit: "",
       gradient: "linear-gradient(135deg, #059669, #34d399)",
       color: isDark ? "#34d399" : "#059669",
-      // Dark
       darkBg:     "rgba(5,150,105,0.09)",
       darkBorder: "rgba(52,211,153,0.18)",
-      // Light — tinte verde suave
       lightBg:     "linear-gradient(145deg, rgba(236,253,245,1) 0%, rgba(209,250,229,0.80) 100%)",
       lightBorder: "rgba(16,185,129,0.25)",
       lightIcon:   "rgba(16,185,129,0.15)",
@@ -85,7 +87,6 @@ function QuickStats({ plants }) {
         : (watering > 0 ? "#0284c7" : "#64748b"),
       darkBg:     watering > 0 ? "rgba(56,189,248,0.09)" : "rgba(255,255,255,0.03)",
       darkBorder: watering > 0 ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.07)",
-      // Light — tinte azul suave
       lightBg:     watering > 0
         ? "linear-gradient(145deg, rgba(239,246,255,1) 0%, rgba(219,234,254,0.80) 100%)"
         : "linear-gradient(145deg, rgba(248,250,252,1) 0%, rgba(241,245,249,0.80) 100%)",
@@ -105,7 +106,6 @@ function QuickStats({ plants }) {
         : (alerts > 0 ? "#dc2626" : "#059669"),
       darkBg:     alerts > 0 ? "rgba(248,113,113,0.09)" : "rgba(52,211,153,0.06)",
       darkBorder: alerts > 0 ? "rgba(248,113,113,0.20)" : "rgba(52,211,153,0.14)",
-      // Light — tinte rojo o verde suave
       lightBg:     alerts > 0
         ? "linear-gradient(145deg, rgba(254,242,242,1) 0%, rgba(254,226,226,0.80) 100%)"
         : "linear-gradient(145deg, rgba(236,253,245,1) 0%, rgba(209,250,229,0.80) 100%)",
@@ -134,71 +134,125 @@ function QuickStats({ plants }) {
     },
   ];
 
+  const now   = new Date();
+  const hours = now.getHours();
+  const period = hours < 12 ? "🌅 Mañana" : hours < 18 ? "☀️ Tarde" : "🌙 Noche";
+  const dateLabel = now.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+  const dateCapitalized = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
+
+  const healthColor = healthyPct >= 80 ? "#34d399" : healthyPct >= 50 ? "#fbbf24" : "#f87171";
+  const healthGradient = healthyPct >= 80
+    ? "linear-gradient(90deg,#059669,#34d399)"
+    : healthyPct >= 50
+    ? "linear-gradient(90deg,#d97706,#fbbf24)"
+    : "linear-gradient(90deg,#dc2626,#f87171)";
+
   return (
-    <div className="quick-stats">
-      {stats.map((s, i) => (
-        <motion.div
-          key={s.label}
-          className="stat-card"
-          initial={{ opacity: 0, y: 20, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0,  scale: 1    }}
-          transition={{ duration: 0.42, delay: i * 0.09, ease: [0.22, 1, 0.36, 1] }}
-          whileHover={{ y: -4, transition: { duration: 0.18 } }}
-        >
-          <div
-            className="stat-card-inner"
-            style={{
-              background: isDark ? s.darkBg : s.lightBg,
-              border: `1px solid ${isDark ? s.darkBorder : s.lightBorder}`,
-            }}
+    <div style={{ maxWidth: 1400, margin: "0 auto", width: "100%", padding: "20px 24px 0" }}>
+      {/* ── 4 stat cards ── */}
+      <div className="quick-stats">
+        {stats.map((s, i) => (
+          <motion.div
+            key={s.label}
+            className="stat-card"
+            initial={{ opacity: 0, y: 20, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0,  scale: 1    }}
+            transition={{ duration: 0.42, delay: i * 0.09, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={{ y: -4, transition: { duration: 0.18 } }}
           >
-            {/* Línea top con color */}
-            <div className="stat-card-line" style={{ background: s.gradient }} />
+            <div
+              className="stat-card-inner"
+              style={{
+                background: isDark ? s.darkBg : s.lightBg,
+                border: `1px solid ${isDark ? s.darkBorder : s.lightBorder}`,
+              }}
+            >
+              <div className="stat-card-line" style={{ background: s.gradient }} />
 
-            {/* Icono + label en fila */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: isDark
-                  ? "rgba(255,255,255,0.07)"
-                  : s.lightIcon,
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.60)"}`,
-                boxShadow: isDark ? "none" : "0 1px 4px rgba(0,0,0,0.06)",
-              }}>
-                <s.Icon size={16} color={s.color} strokeWidth={2.2} />
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{
+                  width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: isDark ? "rgba(255,255,255,0.07)" : s.lightIcon,
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.60)"}`,
+                  boxShadow: isDark ? "none" : "0 1px 4px rgba(0,0,0,0.06)",
+                }}>
+                  <s.Icon size={16} color={s.color} strokeWidth={2.2} />
+                </div>
+                <span style={{
+                  fontSize: 10, fontWeight: 700,
+                  textTransform: "uppercase", letterSpacing: "0.9px",
+                  color: isDark ? "rgba(176,190,197,0.80)" : "rgba(40,60,50,0.65)",
+                }}>
+                  {s.label}
+                </span>
               </div>
-              <span style={{
-                fontSize: 10, fontWeight: 700,
-                textTransform: "uppercase", letterSpacing: "0.9px",
-                color: isDark ? "rgba(176,190,197,0.80)" : "rgba(40,60,50,0.65)",
-              }}>
-                {s.label}
-              </span>
+
+              <AnimatedCounter to={s.value} unit={s.unit} gradient={s.gradient} delay={i * 0.09} />
+
+              <div className="stat-accent" style={{ background: s.gradient, opacity: isDark ? 0.35 : 0.50 }} />
+
+              <div style={{
+                position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none",
+                background: `radial-gradient(ellipse 90% 70% at 10% 90%, ${s.glow} 0%, transparent 65%)`,
+              }} />
             </div>
+          </motion.div>
+        ))}
+      </div>
 
-            {/* Número animado */}
-            <AnimatedCounter
-              to={s.value}
-              unit={s.unit}
-              gradient={s.gradient}
-              delay={i * 0.09}
-            />
-
-            {/* Accent bottom */}
-            <div className="stat-accent" style={{
-              background: s.gradient,
-              opacity: isDark ? 0.35 : 0.50,
-            }} />
-
-            {/* Glow radial */}
-            <div style={{
-              position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none",
-              background: `radial-gradient(ellipse 90% 70% at 10% 90%, ${s.glow} 0%, transparent 65%)`,
-            }} />
+      {/* ── Barra de salud del sistema (fusionada) ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.45 }}
+        style={{
+          marginTop: 12,
+          padding: "12px 20px",
+          borderRadius: 14,
+          background: isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.92)",
+          border: `1px solid ${isDark ? "rgba(52,211,153,0.10)" : "rgba(0,0,0,0.07)"}`,
+          display: "flex", alignItems: "center", gap: 16,
+          boxShadow: isDark ? "none" : "0 2px 12px rgba(0,0,0,0.05)",
+        }}
+      >
+        {/* Fecha + período */}
+        <div style={{ flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: isDark ? "#f0f6fc" : "#1f2937" }}>
+            Salud del sistema
           </div>
-        </motion.div>
-      ))}
+          <div style={{ fontSize: 11, color: isDark ? "#4d7a5e" : "rgba(55,65,81,0.60)", marginTop: 1 }}>
+            {dateCapitalized}
+          </div>
+        </div>
+
+        {/* Barra */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ height: 6, background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", borderRadius: 99, overflow: "hidden" }}>
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${healthyPct}%` }}
+              transition={{ duration: 1.1, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              style={{ height: "100%", borderRadius: 99, background: healthGradient }}
+            />
+          </div>
+        </div>
+
+        {/* Porcentaje */}
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: healthColor, fontFamily: "'Syne',sans-serif" }}>
+            {healthyPct}%
+          </span>
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            padding: "3px 8px", borderRadius: 99,
+            background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+            color: isDark ? "#78909c" : "rgba(55,65,81,0.60)",
+          }}>
+            {period}
+          </span>
+        </div>
+      </motion.div>
     </div>
   );
 }

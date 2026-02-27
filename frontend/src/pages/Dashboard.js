@@ -10,7 +10,7 @@ import PlantCard       from "../components/plant/PlantCard";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
 import QuickStats      from "../components/dashboard/QuickStats";
 import WelcomeToast    from "../components/dashboard/WelcomeToast";
-import DaySummaryWidget from "../components/dashboard/DaySummaryWidget";
+
 import ComparePlantsModal from "../components/plant/ComparePlantsModal";
 import { getGreeting }  from "../App";
 import { useNotifications } from "../hooks/useNotifications";
@@ -116,8 +116,8 @@ function Dashboard({ user, onLogout }) {
         <QuickStats plants={plants} />
       )}
 
-      {/* ✅ Resumen del día */}
-      {!loading && <DaySummaryWidget plants={plants} />}
+      
+      
 
       <div className="top-section">
         <SystemStatus />
