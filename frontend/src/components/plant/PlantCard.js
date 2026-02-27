@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import HumidityGauge from "./HumidityGauge";
 import { useState, useCallback } from "react";
 import { Line, Bar } from "react-chartjs-2";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, AlertTriangle, Clock } from "lucide-react";
 import {
   Chart as ChartJS, LineElement, BarElement, PointElement,
   LinearScale, CategoryScale, Tooltip, Filler, Legend
@@ -10,6 +10,8 @@ import {
 import { useToast } from "../../context/ToastProvider";
 import ConfirmModal from "./ConfirmModal";
 import ConfirmIrrigationModal from "./ConfirmIrrigationModal";
+import AlertHistoryModal from "./AlertHistoryModal";
+import RainEffect from "./RainEffect";
 import { exportCSV, exportPDF } from "../../utils/exportHistory";
 
 ChartJS.register(LineElement, BarElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend);
@@ -61,13 +63,28 @@ function generateHistory(plant, days = 14) {
   return { humidity, irrigations };
 }
 
-function fmt(ts) { return new Date(ts).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }); }
+function fmt(ts) {
+  return new Date(ts).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+}
+
+const DAYS_SHORT = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+function ScheduleBadge({ schedule }) {
+  if (!schedule?.enabled || !schedule.days?.length) return null;
+  const daysLabel = schedule.days.map(d => DAYS_SHORT[d]).join(", ");
+  return (
+    <div className="schedule-badge" title={`Riego automático: ${daysLabel} a las ${schedule.time}`}>
+      <Clock size={9} />
+      {schedule.time} · {daysLabel}
+    </div>
+  );
+}
 
 const HISTORY_TABS = ["Humedad", "Riegos"];
 
 function HistoryPanel({ plant, range, onRangeChange }) {
   const [tab,      setTab]      = useState("Humedad");
-  const [exporting, setExporting] = useState(null); // "csv" | "pdf" | null
+  const [exporting, setExporting] = useState(null);
 
   const history = generateHistory(plant, range);
   const { humidity, irrigations } = history;
@@ -123,8 +140,6 @@ function HistoryPanel({ plant, range, onRangeChange }) {
       exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="pc-hist-inner">
-
-        {/* Header con tabs, rango y botones exportar */}
         <div className="pc-hist-header">
           <div className="pc-hist-tabs">
             {HISTORY_TABS.map(t => (
@@ -134,54 +149,28 @@ function HistoryPanel({ plant, range, onRangeChange }) {
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {/* Rango */}
             <div className="pc-hist-range">
               {[7, 14, 30].map(d => (
                 <button key={d} className={`pc-hist-range-btn ${range === d ? "active" : ""}`} onClick={() => onRangeChange(d)}>{d}d</button>
               ))}
             </div>
-            {/* ✅ Botón CSV */}
-            <motion.button
-              onClick={handleCSV} title="Descargar CSV"
+            <motion.button onClick={handleCSV} title="Descargar CSV"
               whileTap={{ scale: 0.92 }} whileHover={{ scale: 1.08 }}
               disabled={!!exporting}
-              style={{
-                width: 28, height: 28, borderRadius: 8,
-                border: "1px solid rgba(52,211,153,0.25)",
-                background: exporting === "csv" ? "rgba(52,211,153,0.18)" : "rgba(52,211,153,0.08)",
-                color: "#34d399", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "all 0.2s",
-              }}
+              style={{ width:28, height:28, borderRadius:8, border:"1px solid rgba(52,211,153,0.25)", background:exporting==="csv"?"rgba(52,211,153,0.18)":"rgba(52,211,153,0.08)", color:"#34d399", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s" }}
             >
-              {exporting === "csv"
-                ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }} style={{ width: 11, height: 11, border: "2px solid #34d399", borderTopColor: "transparent", borderRadius: "50%" }} />
-                : <Download size={12} />
-              }
+              {exporting==="csv" ? <motion.div animate={{rotate:360}} transition={{duration:0.6,repeat:Infinity,ease:"linear"}} style={{width:11,height:11,border:"2px solid #34d399",borderTopColor:"transparent",borderRadius:"50%"}} /> : <Download size={12} />}
             </motion.button>
-            {/* ✅ Botón PDF */}
-            <motion.button
-              onClick={handlePDF} title="Exportar PDF"
+            <motion.button onClick={handlePDF} title="Exportar PDF"
               whileTap={{ scale: 0.92 }} whileHover={{ scale: 1.08 }}
               disabled={!!exporting}
-              style={{
-                width: 28, height: 28, borderRadius: 8,
-                border: "1px solid rgba(96,165,250,0.25)",
-                background: exporting === "pdf" ? "rgba(96,165,250,0.18)" : "rgba(96,165,250,0.08)",
-                color: "#60a5fa", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "all 0.2s",
-              }}
+              style={{ width:28, height:28, borderRadius:8, border:"1px solid rgba(96,165,250,0.25)", background:exporting==="pdf"?"rgba(96,165,250,0.18)":"rgba(96,165,250,0.08)", color:"#60a5fa", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s" }}
             >
-              {exporting === "pdf"
-                ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }} style={{ width: 11, height: 11, border: "2px solid #60a5fa", borderTopColor: "transparent", borderRadius: "50%" }} />
-                : <FileText size={12} />
-              }
+              {exporting==="pdf" ? <motion.div animate={{rotate:360}} transition={{duration:0.6,repeat:Infinity,ease:"linear"}} style={{width:11,height:11,border:"2px solid #60a5fa",borderTopColor:"transparent",borderRadius:"50%"}} /> : <FileText size={12} />}
             </motion.button>
           </div>
         </div>
 
-        {/* Mini stats */}
         <div className="pc-hist-stats">
           <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#22c55e" }}>{avg}%</span><span className="pc-hs-lbl">Promedio</span></div>
           <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#f87171" }}>{Math.min(...humValues)}%</span><span className="pc-hs-lbl">Mínimo</span></div>
@@ -189,14 +178,15 @@ function HistoryPanel({ plant, range, onRangeChange }) {
           <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#10b981" }}>{irrigations.length}</span><span className="pc-hs-lbl">Riegos</span></div>
         </div>
 
-        {/* Gráfica */}
         <AnimatePresence mode="wait">
           <motion.div key={tab} className="pc-hist-chart"
             initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18 }}>
-            {tab === "Humedad" ? <Line data={humData} options={humOptions} /> :
-             irrigations.length === 0 ? <div className="pc-hist-empty">Sin riegos en este período 🌵</div> :
-             <Bar data={irrData} options={irrOptions} />}
+            {tab === "Humedad"
+              ? <Line data={humData} options={humOptions} />
+              : irrigations.length === 0
+                ? <div className="pc-hist-empty">Sin riegos en este período 🌵</div>
+                : <Bar data={irrData} options={irrOptions} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -209,19 +199,20 @@ export const cardVariants = {
   visible: { opacity: 1, y: 0,  scale: 1    },
 };
 
-function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
+function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, index = 0 }) {
   const toast    = useToast();
   const humidity = plant.currentHumidity ?? 0;
   const hs       = getHumState(humidity, plant.minHumidity, plant.maxHumidity);
   const isAlert  = humidity < plant.minHumidity;
   const isOn     = plant.valveStatus === "OPEN";
 
-  const [confirmOpen,  setConfirmOpen]  = useState(false);
-  const [irrigConfirm, setIrrigConfirm] = useState(false);
-  const [historyOpen,  setHistoryOpen]  = useState(false);
-  const [historyRange, setHistoryRange] = useState(14);
-  const [imgLoaded,    setImgLoaded]    = useState(false);
-  const [toggling,     setToggling]     = useState(false);
+  const [confirmOpen,   setConfirmOpen]   = useState(false);
+  const [irrigConfirm,  setIrrigConfirm]  = useState(false);
+  const [historyOpen,   setHistoryOpen]   = useState(false);
+  const [historyRange,  setHistoryRange]  = useState(14);
+  const [alertsOpen,    setAlertsOpen]    = useState(false);
+  const [imgLoaded,     setImgLoaded]     = useState(false);
+  const [toggling,      setToggling]      = useState(false);
 
   const handleToggleClick = useCallback(() => {
     if (toggling) return;
@@ -235,6 +226,10 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
     setToggling(false);
   }, [plant, onToggleValve]);
 
+  const alertCount = (plant.alertHistory || []).filter(a => !a.resolved).length;
+  const hasNotes   = plant.notes && plant.notes.trim().length > 0;
+  const hasSchedule = plant.schedule?.enabled && plant.schedule?.days?.length > 0;
+
   return (
     <>
       <motion.div
@@ -244,6 +239,7 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
         whileHover={!historyOpen ? { y: -4, transition: { duration: 0.2 } } : {}}
         layout
       >
+        {/* ── Imagen con lluvia ── */}
         <div className="pc2-img-wrap">
           <img src={getImage(plant)} alt={plant.name}
             className={`pc2-img ${imgLoaded ? "loaded" : ""}`}
@@ -251,6 +247,10 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
             onError={e => { e.target.src = FALLBACK; setImgLoaded(true); }}
           />
           <div className="pc2-img-gradient" />
+
+          {/* ✅ Lluvia cuando válvula abierta */}
+          <RainEffect active={isOn} />
+
           <div className="pc2-top-badges">
             <span className="pc2-sector">{plant.sector}</span>
             {isOn && (
@@ -261,7 +261,7 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
               </motion.span>
             )}
           </div>
-          <div className="pc2-hum-overlay" style={{ background: "rgba(6,10,16,0.55)", backdropFilter: "blur(8px)", padding: "8px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="pc2-hum-overlay" style={{ background:"rgba(6,10,16,0.55)", backdropFilter:"blur(8px)", padding:"8px 12px", borderRadius:14, border:"1px solid rgba(255,255,255,0.08)" }}>
             <HumidityGauge value={humidity} min={plant.minHumidity} max={plant.maxHumidity} size={100} />
           </div>
         </div>
@@ -271,9 +271,40 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
             <h3 className="pc2-name">{plant.name}</h3>
             <span className="pc2-irr-type">{plant.irrigationType}</span>
           </div>
+
+          {/* ✅ Badges: horario + alertas */}
+          {(hasSchedule || alertCount > 0) && (
+            <div style={{ display:"flex", alignItems:"center", gap:6, padding:"0 16px", marginBottom:8, flexWrap:"wrap" }}>
+              {hasSchedule && <ScheduleBadge schedule={plant.schedule} />}
+              {alertCount > 0 && (
+                <button
+                  className="alert-history-btn"
+                  onClick={() => setAlertsOpen(true)}
+                  title="Ver historial de alertas"
+                >
+                  <AlertTriangle size={9} />
+                  {alertCount} alerta{alertCount !== 1 ? "s" : ""}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ✅ Notas si existen */}
+          {hasNotes && (
+            <motion.div
+              className="plant-notes"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              transition={{ duration: 0.3 }}
+            >
+              📝 {plant.notes}
+            </motion.div>
+          )}
+
+          {/* Barra de humedad */}
           <div className="pc2-progress">
             <div className="pc2-track">
-              <div className="pc2-zone-ok" style={{ left: `${plant.minHumidity}%`, width: `${plant.maxHumidity - plant.minHumidity}%` }} />
+              <div className="pc2-zone-ok" style={{ left:`${plant.minHumidity}%`, width:`${plant.maxHumidity - plant.minHumidity}%` }} />
               <motion.div className="pc2-fill"
                 initial={{ width: 0 }} animate={{ width: `${Math.min(humidity, 100)}%` }}
                 transition={{ duration: 1.1, delay: index * 0.08 + 0.3, ease: "easeOut" }}
@@ -299,13 +330,13 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
             </motion.div>
           )}
 
-          {/* Botón regar con pulso animado */}
+          {/* Botón regar */}
           <div style={{ position: "relative" }}>
             {isOn && (
               <motion.div
                 animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-                style={{ position: "absolute", inset: 0, borderRadius: 10, background: "rgba(52,211,153,0.25)", pointerEvents: "none" }}
+                style={{ position:"absolute", inset:0, borderRadius:10, background:"rgba(52,211,153,0.25)", pointerEvents:"none" }}
               />
             )}
             <motion.button
@@ -346,6 +377,16 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, index = 0 }) {
         onConfirm={handleToggleConfirmed}
         onCancel={() => setIrrigConfirm(false)}
       />
+
+      {/* ✅ Modal historial de alertas */}
+      <AnimatePresence>
+        {alertsOpen && (
+          <AlertHistoryModal
+            plant={plant}
+            onClose={() => setAlertsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
