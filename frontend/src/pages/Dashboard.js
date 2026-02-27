@@ -10,6 +10,7 @@ import PlantCard      from "../components/plant/PlantCard";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
 import QuickStats     from "../components/dashboard/QuickStats";
 import { getGreeting } from "../App";
+import WelcomeToast from "../components/dashboard/WelcomeToast";
 
 // Skeletons para las stat cards del dashboard
 function DashboardSkeleton() {
@@ -100,27 +101,8 @@ function Dashboard({ user, onLogout }) {
     <div className="dashboard-full">
       <Navbar onLogout={onLogout} plants={plants} />
 
-      {/* ✅ Saludo personalizado al inicio del dashboard */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        style={{
-          padding: "20px 24px 0",
-          maxWidth: 1400, margin: "0 auto", width: "100%",
-        }}
-      >
-        <div style={{
-          fontFamily: "'Syne', sans-serif",
-          fontSize: "clamp(18px, 3vw, 24px)",
-          fontWeight: 800, color: "#f0f6fc",
-          marginBottom: 2,
-        }}>{greeting}</div>
-        <div style={{ fontSize: 13, color: "#78909c" }}>
-          {plants.length > 0
-            ? `Tienes ${plants.length} planta${plants.length !== 1 ? "s" : ""} monitoreadas`
-            : "Comienza agregando tus primeras plantas"}
-        </div>
-      </motion.div>
+      {/* ✅ Toast de bienvenida — aparece solo una vez por sesión */}
+      <WelcomeToast />
 
       {/* Stats — con skeleton mientras carga */}
       {loading ? (
