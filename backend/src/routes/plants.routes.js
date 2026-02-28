@@ -1,55 +1,75 @@
+// routes/plants.routes.js
 const express  = require("express");
 const router   = express.Router();
 const Plant    = require("../models/Plant");
 const Log      = require("../models/Log");
 const { protect } = require("../middleware/auth");
+const { processReading } = require("./iot.routes");
 
-// Todas las rutas requieren autenticación
 router.use(protect);
 
-// =============================
-// 🔹 OBTENER PLANTAS DEL USUARIO
-// =============================
+// GET /api/plants
 router.get("/", async (req, res) => {
   try {
-    const plants = await Plant.find({ owner: req.user._id }).sort({ createdAt: -1 });
+    const plants = await Plant.find({ owner: req.user._id }).sort({ order: 1, createdAt: -1 });
     res.json(plants);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// =============================
-// 🔹 CREAR PLANTA
-// =============================
+// POST /api/plants
 router.post("/", async (req, res) => {
   try {
-    const newPlant = new Plant({ ...req.body, owner: req.user._id });
-    const savedPlant = await newPlant.save();
-    res.status(201).json(savedPlant);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+    const plant = new Plant({ ...req.body, owner: req.user._id });
+    await plant.save();
+    res.status(201).json(plant);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
-// =============================
-// 🔹 EDITAR PLANTA
-// =============================
+// PUT /api/plants/:id
 router.put("/:id", async (req, res) => {
   try {
     const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
     if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
 
+    const io      = req.app.get("io");
     const updated = await Plant.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    // ✅ Emitir cambio en tiempo real (incluye cambio manual de válvula)
+    if (io) {
+      io.emit("plant:update", {
+        _id:             updated._id.toString(),
+        name:            updated.name,
+        sector:          updated.sector,
+        currentHumidity: updated.currentHumidity,
+        valveStatus:     updated.valveStatus,
+        lastIrrigation:  updated.lastIrrigation,
+        minHumidity:     updated.minHumidity,
+        maxHumidity:     updated.maxHumidity,
+        alertHistory:    updated.alertHistory,
+        schedule:        updated.schedule,
+        notes:           updated.notes,
+        order:           updated.order,
+      });
+
+      // Notificar al ESP32 indirectamente via evento de socket
+      io.emit("valve:command", {
+        sector:  updated.sector,
+        command: updated.valveStatus,
+        plantId: updated._id.toString(),
+      });
+    }
+
     res.json(updated);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
-// =============================
-// 🔹 ELIMINAR PLANTA
-// =============================
+// DELETE /api/plants/:id
 router.delete("/:id", async (req, res) => {
   try {
     const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
@@ -58,56 +78,51 @@ router.delete("/:id", async (req, res) => {
     await Plant.findByIdAndDelete(req.params.id);
     await Log.deleteMany({ plantId: req.params.id });
 
-    res.json({ message: "Planta y logs eliminados correctamente" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const io = req.app.get("io");
+    if (io) io.emit("plant:deleted", { _id: req.params.id });
+
+    res.json({ message: "Planta eliminada" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ============================================
-// 🔹 RECIBIR HUMEDAD (SIMULA ESP32)
-// ============================================
+// POST /api/plants/:id/humidity — mantener para compatibilidad
 router.post("/:id/humidity", async (req, res) => {
   try {
-    const { humidity, deviceId, sector } = req.body;
+    const { humidity, deviceId } = req.body;
     const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
     if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
 
-    plant.currentHumidity = humidity;
-    plant.humidityHistory.push({ humidity, date: new Date() });
+    const io = req.app.get("io");
+    await processReading(plant, humidity, deviceId || "manual", io);
 
-    let irrigationExecuted = false;
-    let valveStatus = "CLOSED";
-
-    if (humidity < plant.minHumidity) {
-      plant.valveStatus = "OPEN";
-      plant.lastIrrigation = new Date();
-      irrigationExecuted = true;
-      valveStatus = "OPEN";
-    } else if (humidity >= plant.maxHumidity) {
-      plant.valveStatus = "CLOSED";
-    }
-
-    await plant.save();
-
-    const newLog = await Log.create({
-      plantId: plant._id,
-      deviceId: deviceId || "ESP32-SIM",
-      sector: sector || plant.sector,
-      humidity,
-      irrigationExecuted,
-      valveStatus,
-    });
-
-    res.status(201).json({ message: "Humedad actualizada", plant, log: newLog });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.json({ message: "Humedad actualizada", plant });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
-// ============================================
-// 🔹 HISTORIAL DE LOGS
-// ============================================
+// GET /api/plants/:id/history — historial REAL de la DB
+router.get("/:id/history", async (req, res) => {
+  try {
+    const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
+    if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
+
+    const days = parseInt(req.query.days) || 14;
+    const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000);
+
+    const history = plant.humidityHistory
+      .filter(h => new Date(h.date) >= cutoff)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/plants/:id/logs
 router.get("/:id/logs", async (req, res) => {
   try {
     const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
@@ -115,22 +130,21 @@ router.get("/:id/logs", async (req, res) => {
 
     const logs = await Log.find({ plantId: req.params.id }).sort({ createdAt: 1 });
     res.json(logs);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ============================================
-// 🔹 HISTORIAL INTERNO
-// ============================================
-router.get("/:id/history", async (req, res) => {
+// GET /api/plants/:id/alerts — historial de alertas
+router.get("/:id/alerts", async (req, res) => {
   try {
     const plant = await Plant.findOne({ _id: req.params.id, owner: req.user._id });
     if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
 
-    res.json(plant.humidityHistory);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const alerts = [...plant.alertHistory].reverse();
+    res.json(alerts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

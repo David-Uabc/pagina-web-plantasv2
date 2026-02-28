@@ -1,113 +1,64 @@
+// mqtt/simulator.js — Simulador ESP32 con Socket.io + alertHistory
 const Plant  = require("../models/Plant");
 const Log    = require("../models/Log");
 const Device = require("../models/Device");
+const { processReading } = require("../routes/iot.routes");
 
-// ── Configuración del simulador ───────────────────────
 const DEVICES = [
   { deviceId: "ESP32-SUP-01", sector: "Superior" },
   { deviceId: "ESP32-INF-01", sector: "Inferior" },
 ];
 
-const INTERVAL_MS = 10000; // cada 10 segundos
-let   simulatorInterval = null;
-let   isRunning         = false;
+const INTERVAL_MS = 10000;
+let simulatorInterval = null;
+let isRunning         = false;
+let _io               = null;
 
-// ── Simula una lectura de humedad realista ─────────────
 function simulateHumidity(current, min, max) {
-  // Oscila ±3% con tendencia a bajar (evaporación natural)
-  const drift  = -0.5 + Math.random() * 1.5; // tiende a bajar
+  const drift  = -0.5 + Math.random() * 1.5;
   const noise  = (Math.random() - 0.5) * 4;
   let newValue = (current || 50) + drift + noise;
-  // Mantener dentro de rango razonable
-  newValue = Math.max(5, Math.min(95, newValue));
-  return Math.round(newValue);
+  return Math.round(Math.max(5, Math.min(95, newValue)));
 }
 
-// ── Procesa una planta: lee humedad → decide válvula ──
-async function processPlant(plant, deviceId) {
-  const humidity = simulateHumidity(
-    plant.currentHumidity,
-    plant.minHumidity,
-    plant.maxHumidity
-  );
-
-  plant.currentHumidity = humidity;
-  plant.humidityHistory.push({ humidity, date: new Date() });
-
-  // Mantener solo últimas 200 lecturas (evitar documentos gigantes)
-  if (plant.humidityHistory.length > 200) {
-    plant.humidityHistory = plant.humidityHistory.slice(-200);
-  }
-
-  let irrigationExecuted = false;
-  let valveStatus        = plant.valveStatus;
-
-  if (humidity < plant.minHumidity) {
-    plant.valveStatus    = "OPEN";
-    plant.lastIrrigation = new Date();
-    irrigationExecuted   = true;
-    valveStatus          = "OPEN";
-  } else if (humidity >= plant.maxHumidity) {
-    plant.valveStatus = "CLOSED";
-    valveStatus       = "CLOSED";
-  }
-
-  await plant.save();
-
-  await Log.create({
-    plantId:           plant._id,
-    deviceId,
-    sector:            plant.sector,
-    humidity,
-    irrigationExecuted,
-    valveStatus,
-  });
-
-  return { plantId: plant._id, name: plant.name, humidity, valveStatus };
-}
-
-// ── Tick principal del simulador ──────────────────────
 async function simulatorTick() {
   try {
-    // Registrar dispositivos como Online
     for (const dev of DEVICES) {
       await Device.findOneAndUpdate(
         { deviceId: dev.deviceId },
         { deviceId: dev.deviceId, sector: dev.sector, status: "Online", lastConnection: new Date() },
         { upsert: true, new: true }
       );
+      // Emitir heartbeat al frontend
+      if (_io) {
+        _io.emit("device:heartbeat", {
+          deviceId: dev.deviceId, sector: dev.sector,
+          lastConnection: new Date(), status: "Online",
+        });
+      }
     }
 
-    // Leer todas las plantas y simular por sector
     const plants = await Plant.find();
-    const results = [];
-
     for (const plant of plants) {
-      const device = DEVICES.find(d => d.sector === plant.sector) || DEVICES[0];
-      const result = await processPlant(plant, device.deviceId);
-      results.push(result);
+      const device   = DEVICES.find(d => d.sector === plant.sector) || DEVICES[0];
+      const humidity = simulateHumidity(plant.currentHumidity, plant.minHumidity, plant.maxHumidity);
+      // Reutiliza la misma lógica del endpoint IoT real
+      await processReading(plant, humidity, device.deviceId, _io);
     }
 
-    console.log(`🤖 [MQTT-SIM] Tick — ${new Date().toLocaleTimeString()} — ${results.length} plantas`);
-    results.forEach(r =>
-      console.log(`   📊 ${r.name}: ${r.humidity}% | Válvula: ${r.valveStatus}`)
-    );
-
-  } catch (error) {
-    console.error("❌ [MQTT-SIM] Error en tick:", error.message);
+    console.log(`🤖 [SIM] Tick ${new Date().toLocaleTimeString()} — ${plants.length} plantas`);
+  } catch (err) {
+    console.error("❌ [SIM] Error:", err.message);
   }
 }
 
-// ── API pública del simulador ─────────────────────────
-function startSimulator() {
-  if (isRunning) {
-    console.log("⚠️  [MQTT-SIM] Ya está corriendo");
-    return;
-  }
+function startSimulator(io) {
+  if (isRunning) return;
+  _io = io || null;
   simulatorInterval = setInterval(simulatorTick, INTERVAL_MS);
   isRunning = true;
-  console.log(`✅ [MQTT-SIM] Simulador iniciado (cada ${INTERVAL_MS / 1000}s)`);
-  simulatorTick(); // primer tick inmediato
+  console.log(`✅ [SIM] Simulador iniciado (cada ${INTERVAL_MS / 1000}s)`);
+  simulatorTick();
 }
 
 function stopSimulator() {
@@ -115,7 +66,7 @@ function stopSimulator() {
     clearInterval(simulatorInterval);
     simulatorInterval = null;
     isRunning = false;
-    console.log("🛑 [MQTT-SIM] Simulador detenido");
+    console.log("🛑 [SIM] Simulador detenido");
   }
 }
 

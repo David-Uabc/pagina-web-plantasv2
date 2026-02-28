@@ -1,26 +1,30 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, ArrowLeft, Plus } from "lucide-react";
+import { Search, SlidersHorizontal, ArrowLeft, Plus, GripVertical } from "lucide-react";
 import api from "../api";
 import Navbar    from "../components/layout/Navbar";
 import PlantCard from "../components/plant/PlantCard";
 import PlantModal from "../components/plant/PlantModal";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
-import EmptyPlants from "../components/plant/EmptyPlants";   // ✅ importado
+import EmptyPlants from "../components/plant/EmptyPlants";
+import AlertHistoryModal from "../components/plant/AlertHistoryModal";
 import { useToast } from "../context/ToastProvider";
+import { useNotifications } from "../hooks/useNotifications";
+import { useSocket } from "../hooks/useSocket";
 
 const SORT_OPTIONS = [
-  { value: "name-asc",      label: "Nombre A–Z"  },
-  { value: "name-desc",     label: "Nombre Z–A"  },
-  { value: "humidity-asc",  label: "Humedad ↑"   },
-  { value: "humidity-desc", label: "Humedad ↓"   },
+  { value: "order",         label: "Personalizado" },
+  { value: "name-asc",      label: "Nombre A–Z"    },
+  { value: "name-desc",     label: "Nombre Z–A"    },
+  { value: "humidity-asc",  label: "Humedad ↑"     },
+  { value: "humidity-desc", label: "Humedad ↓"     },
 ];
 
 const STATUS_CHIPS = [
   { value: "all",      label: "Todas",     icon: null },
   { value: "active",   label: "Regando",   icon: "💧" },
-  { value: "inactive", label: "Inactivas", icon: "⏸" },
+  { value: "inactive", label: "Inactivas", icon: "⏸"  },
   { value: "alert",    label: "Alerta",    icon: "⚠"  },
 ];
 
@@ -51,30 +55,62 @@ function SectorPage({ sector, onLogout }) {
   const toast    = useToast();
   const navigate = useNavigate();
   const theme    = SECTOR_THEME[sector] || SECTOR_THEME.Superior;
+  const { requestPermission, checkPlants } = useNotifications();
 
-  const [plants,       setPlants]       = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [showModal,    setShowModal]    = useState(false);
-  const [editingPlant, setEditingPlant] = useState(null);
-  const [search,       setSearch]       = useState("");
-  const [sort,         setSort]         = useState("name-asc");
-  const [status,       setStatus]       = useState("all");
+  const [plants,        setPlants]        = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [showModal,     setShowModal]     = useState(false);
+  const [editingPlant,  setEditingPlant]  = useState(null);
+  const [alertPlant,    setAlertPlant]    = useState(null);
+  const [search,        setSearch]        = useState("");
+  const [sort,          setSort]          = useState("order");
+  const [status,        setStatus]        = useState("all");
+  const [dragEnabled,   setDragEnabled]   = useState(false);
+  const [orderedPlants, setOrderedPlants] = useState([]);
+
+  useEffect(() => { requestPermission(); }, []);
 
   useEffect(() => {
-    const fetchPlants = async () => {
+    const fetch = async () => {
       try {
         const res = await api.get("/api/plants");
         setPlants(res.data);
-      } catch {
-        // mantiene estado anterior
-      } finally {
-        setLoading(false);
-      }
+        checkPlants(res.data.filter(p => p.sector === sector));
+      } catch {}
+      finally { setLoading(false); }
     };
-    fetchPlants();
-    const interval = setInterval(fetchPlants, 5000);
+    fetch();
+    const interval = setInterval(fetch, 30000); // fallback cada 30s
     return () => clearInterval(interval);
   }, [sector]);
+
+  // ── Socket.io tiempo real ────────────────────────────
+  useSocket({
+    onPlantUpdate: useCallback((data) => {
+      if (data.sector !== sector) return;
+      setPlants(prev => prev.map(p => p._id === data._id ? { ...p, ...data } : p));
+    }, [sector]),
+
+    onPlantDeleted: useCallback((data) => {
+      setPlants(prev => prev.filter(p => p._id !== data._id));
+    }, []),
+
+    onAlert: useCallback((data) => {
+      if (data.sector !== sector) return;
+      toast(`⚠️ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
+    }, [sector]),
+
+    onScheduleTriggered: useCallback((data) => {
+      if (data.sector !== sector) return;
+      toast(`⏰ Riego automático — ${data.name}`, "info");
+    }, [sector]),
+  });
+
+  const sectorPlants = plants.filter(p => p.sector === sector);
+
+  useEffect(() => {
+    setOrderedPlants([...sectorPlants].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+  }, [plants, sector]);
 
   const handleSave = async (data) => {
     try {
@@ -88,7 +124,7 @@ function SectorPage({ sector, onLogout }) {
         toast(`${data.name} agregada ✓`, "success");
       }
     } catch (err) {
-      toast(err.response?.data?.error || "Error al guardar la planta", "error");
+      toast(err.response?.data?.error || "Error al guardar", "error");
     }
     setShowModal(false);
     setEditingPlant(null);
@@ -99,7 +135,7 @@ function SectorPage({ sector, onLogout }) {
       await api.delete(`/api/plants/${id}`);
       setPlants(prev => prev.filter(p => p._id !== id));
     } catch {
-      toast("Error al eliminar la planta", "error");
+      toast("Error al eliminar", "error");
     }
   };
 
@@ -117,14 +153,26 @@ function SectorPage({ sector, onLogout }) {
     }
   };
 
-  const sectorPlants  = plants.filter(p => p.sector === sector);
-  const avgHum        = sectorPlants.length
-    ? Math.round(sectorPlants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / sectorPlants.length)
-    : 0;
-  const alertCount    = sectorPlants.filter(p => p.currentHumidity < p.minHumidity).length;
+  const handleReorderEnd = useCallback(async (newOrder) => {
+    setOrderedPlants(newOrder);
+    try {
+      await Promise.all(
+        newOrder.map((p, i) => p.order !== i ? api.put(`/api/plants/${p._id}`, { order: i }) : Promise.resolve())
+      );
+      setPlants(prev => prev.map(p => {
+        const idx = newOrder.findIndex(o => o._id === p._id);
+        return idx !== -1 ? { ...p, order: idx } : p;
+      }));
+    } catch {
+      toast("Error al guardar orden", "error");
+    }
+  }, []);
+
+  const avgHum        = sectorPlants.length ? Math.round(sectorPlants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / sectorPlants.length) : 0;
+  const alertCount    = sectorPlants.filter(p => (p.currentHumidity ?? 0) < p.minHumidity).length;
   const wateringCount = sectorPlants.filter(p => p.valveStatus === "OPEN").length;
 
-  const filtered = sectorPlants
+  const filteredPlants = [...orderedPlants]
     .filter(p => {
       const q = search.toLowerCase();
       return p.name?.toLowerCase().includes(q) || p.irrigationType?.toLowerCase().includes(q);
@@ -132,11 +180,12 @@ function SectorPage({ sector, onLogout }) {
     .filter(p => {
       if (status === "all")      return true;
       if (status === "active")   return p.valveStatus === "OPEN";
-      if (status === "inactive") return p.valveStatus !== "OPEN" && p.currentHumidity >= p.minHumidity;
-      if (status === "alert")    return p.currentHumidity < p.minHumidity;
+      if (status === "inactive") return p.valveStatus !== "OPEN" && (p.currentHumidity ?? 0) >= p.minHumidity;
+      if (status === "alert")    return (p.currentHumidity ?? 0) < p.minHumidity;
       return true;
     })
     .sort((a, b) => {
+      if (sort === "order")         return (a.order ?? 0) - (b.order ?? 0);
       if (sort === "name-asc")      return a.name?.localeCompare(b.name);
       if (sort === "name-desc")     return b.name?.localeCompare(a.name);
       if (sort === "humidity-asc")  return (a.currentHumidity || 0) - (b.currentHumidity || 0);
@@ -144,13 +193,14 @@ function SectorPage({ sector, onLogout }) {
       return 0;
     });
 
-  // ── ¿Hay filtros activos? ──
   const hasFilters = search !== "" || status !== "all";
+  const isDragging = dragEnabled && sort === "order" && !hasFilters;
 
   return (
     <div className="sp-page">
-      <Navbar onLogout={onLogout} />
+      <Navbar onLogout={onLogout} plants={plants} />
 
+      {/* Hero */}
       <motion.div className="sp-hero"
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -202,6 +252,7 @@ function SectorPage({ sector, onLogout }) {
         </div>
       </motion.div>
 
+      {/* Filtros */}
       <motion.div className="sp-filters"
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
         style={{ "--sector-accent": theme.accent, "--sector-accent-dim": theme.accentDim, "--sector-accent-border": theme.accentBorder }}
@@ -219,63 +270,111 @@ function SectorPage({ sector, onLogout }) {
         <div className="sp-chips">
           {STATUS_CHIPS.map(chip => (
             <button key={chip.value} className={`sp-chip ${status === chip.value ? "active" : ""}`} onClick={() => setStatus(chip.value)}>
-              {chip.icon && <span>{chip.icon}</span>}
-              {chip.label}
+              {chip.icon && <span>{chip.icon}</span>}{chip.label}
               {chip.value !== "all" && (
                 <span className="sp-chip-count">
-                  {chip.value === "active" ? wateringCount :
-                   chip.value === "alert"  ? alertCount    :
-                   sectorPlants.filter(p => p.valveStatus !== "OPEN" && p.currentHumidity >= p.minHumidity).length}
+                  {chip.value === "active"   ? wateringCount :
+                   chip.value === "alert"    ? alertCount    :
+                   sectorPlants.filter(p => p.valveStatus !== "OPEN" && (p.currentHumidity ?? 0) >= p.minHumidity).length}
                 </span>
               )}
             </button>
           ))}
         </div>
-        <span className="sp-count">{filtered.length} / {sectorPlants.length} plantas</span>
+        {sectorPlants.length > 1 && (
+          <button onClick={() => setDragEnabled(d => !d)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 700,
+              border: "none", cursor: "pointer", transition: "all 0.2s",
+              background: dragEnabled ? theme.accentDim : "rgba(255,255,255,0.05)",
+              color: dragEnabled ? theme.accent : "#78909c",
+              border: dragEnabled ? `1px solid ${theme.accentBorder}` : "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <GripVertical size={13} />
+            {dragEnabled ? "Listo" : "Ordenar"}
+          </button>
+        )}
+        <span className="sp-count">{filteredPlants.length} / {sectorPlants.length} plantas</span>
       </motion.div>
 
+      {/* Grid */}
       <div className="sp-grid-wrap">
-        <AnimatePresence mode="popLayout">
-          <div className="plant-grid" style={{ position: "relative" }}>
-            {loading ? (
-              <PlantGridSkeleton count={4} />
-            ) : sectorPlants.length === 0 ? (
-              // ✅ EmptyPlants cuando el sector no tiene ninguna planta
-              <EmptyPlants
-                sector={sector}
-                onAdd={() => { setEditingPlant(null); setShowModal(true); }}
-              />
-            ) : filtered.length === 0 ? (
-              // Estado vacío por filtros activos
-              <motion.div className="sp-empty"
-                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        <AnimatePresence>
+          {isDragging && (
+            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+              style={{ margin: "0 0 12px", padding: "10px 16px", borderRadius: 12,
+                background: theme.accentDim, border: `1px solid ${theme.accentBorder}`,
+                fontSize: 12, color: theme.accent, display: "flex", alignItems: "center", gap: 8 }}
+            >
+              <GripVertical size={14} />
+              Arrastra las tarjetas para reorganizar el orden.
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {loading ? (
+          <div className="plant-grid"><PlantGridSkeleton count={4} /></div>
+        ) : sectorPlants.length === 0 ? (
+          <EmptyPlants sector={sector} onAdd={() => { setEditingPlant(null); setShowModal(true); }} />
+        ) : filteredPlants.length === 0 ? (
+          <motion.div className="sp-empty" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+            <span className="sp-empty-icon">🔍</span>
+            <p>No hay plantas con esos filtros</p>
+            {hasFilters && <button className="sp-empty-reset" onClick={() => { setSearch(""); setStatus("all"); }}>Limpiar filtros</button>}
+          </motion.div>
+        ) : isDragging ? (
+          <Reorder.Group axis="x" values={orderedPlants} onReorder={setOrderedPlants}
+            className="plant-grid" style={{ listStyle: "none", padding: 0, margin: 0 }} as="div"
+          >
+            {orderedPlants.map((plant, i) => (
+              <Reorder.Item key={plant._id} value={plant}
+                onDragEnd={() => handleReorderEnd(orderedPlants)}
+                style={{ cursor: "grab" }}
+                whileDrag={{ scale: 1.04, zIndex: 50 }}
               >
-                <span className="sp-empty-icon">🔍</span>
-                <p>No hay plantas con esos filtros</p>
-                {hasFilters && (
-                  <button className="sp-empty-reset" onClick={() => { setSearch(""); setStatus("all"); }}>
-                    Limpiar filtros
-                  </button>
-                )}
-              </motion.div>
-            ) : (
-              filtered.map((plant, i) => (
+                <div style={{ position: "relative" }}>
+                  <div style={{
+                    position: "absolute", top: 8, left: 8, zIndex: 10,
+                    width: 24, height: 24, borderRadius: 6, background: theme.accentDim,
+                    border: `1px solid ${theme.accentBorder}`, display: "flex",
+                    alignItems: "center", justifyContent: "center", color: theme.accent,
+                  }}>
+                    <GripVertical size={12} />
+                  </div>
+                  <PlantCard plant={plant} index={i}
+                    onEdit={p => { setEditingPlant(p); setShowModal(true); }}
+                    onDelete={handleDelete}
+                    onToggleValve={handleToggleValve}
+                    onShowAlerts={p => setAlertPlant(p)}
+                  />
+                </div>
+              </Reorder.Item>
+            ))}
+          </Reorder.Group>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            <div className="plant-grid">
+              {filteredPlants.map((plant, i) => (
                 <PlantCard key={plant._id} plant={plant} index={i}
                   onEdit={p => { setEditingPlant(p); setShowModal(true); }}
                   onDelete={handleDelete}
                   onToggleValve={handleToggleValve}
+                  onShowAlerts={p => setAlertPlant(p)}
                 />
-              ))
-            )}
-          </div>
-        </AnimatePresence>
+              ))}
+            </div>
+          </AnimatePresence>
+        )}
       </div>
 
+      {/* FAB */}
       <motion.button className="sp-fab"
         onClick={() => { setEditingPlant(null); setShowModal(true); }}
-        style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}aa)`, boxShadow: `0 8px 32px ${theme.glow}, 0 2px 8px rgba(0,0,0,0.4)` }}
+        style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}aa)`, boxShadow: `0 8px 32px ${theme.glow}` }}
         whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}
-        initial={{ opacity: 0, scale: 0, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.6, type: "spring", bounce: 0.4 }}
       >
         <Plus size={22} color="#000" strokeWidth={2.5} />
@@ -288,6 +387,10 @@ function SectorPage({ sector, onLogout }) {
         plant={editingPlant}
         defaultSector={sector}
       />
+
+      <AnimatePresence>
+        {alertPlant && <AlertHistoryModal plant={alertPlant} onClose={() => setAlertPlant(null)} />}
+      </AnimatePresence>
     </div>
   );
 }

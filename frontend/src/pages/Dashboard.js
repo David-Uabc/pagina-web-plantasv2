@@ -1,38 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useI18n } from "../i18n";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import api from "../api";
-import Navbar          from "../components/layout/Navbar";
-import SystemStatus    from "../components/dashboard/SystemStatus";
-import AverageHumidity from "../components/dashboard/AverageHumidity";
-import PlantCard       from "../components/plant/PlantCard";
+import Navbar             from "../components/layout/Navbar";
+import SystemStatus       from "../components/dashboard/SystemStatus";
+import AverageHumidity    from "../components/dashboard/AverageHumidity";
+import PlantCard          from "../components/plant/PlantCard";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
-import QuickStats      from "../components/dashboard/QuickStats";
-import WelcomeToast    from "../components/dashboard/WelcomeToast";
-
+import QuickStats         from "../components/dashboard/QuickStats";
+import WelcomeToast       from "../components/dashboard/WelcomeToast";
 import ComparePlantsModal from "../components/plant/ComparePlantsModal";
-import { getGreeting }  from "../App";
 import { useNotifications } from "../hooks/useNotifications";
-
-function DashboardSkeleton() {
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-      {[1,2,3,4].map(i => (
-        <div key={i} style={{
-          height: 80, borderRadius: 14,
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.06)",
-          animation: "pulse 1.5s ease-in-out infinite",
-        }} />
-      ))}
-    </div>
-  );
-}
+import { useSocket }        from "../hooks/useSocket";
+import { useToast }         from "../context/ToastProvider";
 
 function SectorEmpty({ sector, onGo }) {
   return (
-    <motion.div className="dashboard-sector-empty"
+    <motion.div
       initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
       style={{
         gridColumn: "1 / -1", textAlign: "center", padding: "32px 20px",
@@ -41,9 +26,7 @@ function SectorEmpty({ sector, onGo }) {
       }}
     >
       <div style={{ fontSize: 40, marginBottom: 10 }}>🌱</div>
-      <p style={{ color: "#78909c", fontSize: 14, marginBottom: 14 }}>
-        No hay plantas en este sector todavía
-      </p>
+      <p style={{ color: "#78909c", fontSize: 14, marginBottom: 14 }}>No hay plantas en este sector todavía</p>
       <button className="btn-see-all" onClick={onGo} style={{ fontSize: 13 }}>
         Ir a Sector {sector} para agregar →
       </button>
@@ -54,28 +37,61 @@ function SectorEmpty({ sector, onGo }) {
 function Dashboard({ user, onLogout }) {
   const navigate = useNavigate();
   const { t }    = useI18n();
+  const toast    = useToast();
   const { checkPlants } = useNotifications();
 
-  const [plants,        setPlants]        = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [showCompare,   setShowCompare]   = useState(false);
+  const [plants,      setPlants]      = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [showCompare, setShowCompare] = useState(false);
+  // Dispositivos para SystemStatus
+  const [devices,     setDevices]     = useState({});
 
+  // ── Carga inicial ────────────────────────────────────
   useEffect(() => {
     const fetchPlants = async () => {
       try {
         const res = await api.get("/api/plants");
         setPlants(res.data);
-        checkPlants(res.data); // ✅ verificar alertas y notificar
-      } catch {
-        // sin backend
-      } finally {
-        setLoading(false);
-      }
+        checkPlants(res.data);
+      } catch {}
+      finally { setLoading(false); }
     };
     fetchPlants();
-    const interval = setInterval(fetchPlants, 5000);
+    // Mantener polling como fallback (30s en vez de 5s ahora que tenemos sockets)
+    const interval = setInterval(fetchPlants, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // ── Socket.io — actualizaciones en tiempo real ───────
+  useSocket({
+    onPlantUpdate: useCallback((data) => {
+      setPlants(prev => {
+        const exists = prev.some(p => p._id === data._id);
+        if (exists) return prev.map(p => p._id === data._id ? { ...p, ...data } : p);
+        return prev; // plantas nuevas se agregan por API
+      });
+    }, []),
+
+    onPlantDeleted: useCallback((data) => {
+      setPlants(prev => prev.filter(p => p._id !== data._id));
+    }, []),
+
+    onAlert: useCallback((data) => {
+      toast(`⚠️ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
+      checkPlants([data]);
+    }, []),
+
+    onDeviceHeartbeat: useCallback((data) => {
+      setDevices(prev => ({
+        ...prev,
+        [data.deviceId]: { ...data, lastSeen: new Date() },
+      }));
+    }, []),
+
+    onScheduleTriggered: useCallback((data) => {
+      toast(`⏰ Riego programado iniciado — ${data.name}`, "info");
+    }, []),
+  });
 
   const handleDelete = async (id) => {
     try { await api.delete(`/api/plants/${id}`); } catch {}
@@ -97,35 +113,22 @@ function Dashboard({ user, onLogout }) {
 
   return (
     <div className="dashboard-full">
-      {/* ✅ onCompare prop para activar modal de comparación */}
       <Navbar
         onLogout={onLogout}
         plants={plants}
         onCompare={plants.length >= 2 ? () => setShowCompare(true) : undefined}
       />
-
-      {/* ✅ Toast de bienvenida */}
       <WelcomeToast />
 
-      {/* Stats */}
-      {loading ? (
-        <DashboardSkeleton />
-      ) : (
-        <QuickStats plants={plants} />
-      )}
-
-      
-      
+      {loading ? <PlantGridSkeleton count={4} /> : <QuickStats plants={plants} />}
 
       <div className="top-section">
-        <SystemStatus />
+        {/* Pasar devices al SystemStatus para mostrar ESP32 */}
+        <SystemStatus devices={devices} />
         <AverageHumidity plants={plants} />
       </div>
 
-      {/* Sectores */}
       <div className="sectors-wrapper">
-
-        {/* Sector Superior */}
         <div className="sector-column">
           <div className="section-header">
             <h2 className="section-title">🌿 Patio Superior</h2>
@@ -148,7 +151,6 @@ function Dashboard({ user, onLogout }) {
           </div>
         </div>
 
-        {/* Sector Inferior */}
         <div className="sector-column">
           <div className="section-header">
             <h2 className="section-title">🌱 Patio Inferior</h2>
@@ -172,10 +174,9 @@ function Dashboard({ user, onLogout }) {
         </div>
       </div>
 
-      {/* ✅ Modal comparar plantas */}
-      {showCompare && (
-        <ComparePlantsModal plants={plants} onClose={() => setShowCompare(false)} />
-      )}
+      <AnimatePresence>
+        {showCompare && <ComparePlantsModal plants={plants} onClose={() => setShowCompare(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

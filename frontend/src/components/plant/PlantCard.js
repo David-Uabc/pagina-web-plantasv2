@@ -45,6 +45,7 @@ function getHumState(h, min, max) {
   return              { color: "#22c55e", label: "Óptima",  bar: "linear-gradient(90deg,#16a34a,#22c55e)" };
 }
 
+// generateHistory solo se usa como fallback si la API no tiene datos aún
 function generateHistory(plant, days = 14) {
   const now = Date.now(); const DAY = 86400000;
   const humidity = []; const irrigations = [];
@@ -83,13 +84,39 @@ function ScheduleBadge({ schedule }) {
 const HISTORY_TABS = ["Humedad", "Riegos"];
 
 function HistoryPanel({ plant, range, onRangeChange }) {
-  const [tab,      setTab]      = useState("Humedad");
+  const [tab,       setTab]       = useState("Humedad");
   const [exporting, setExporting] = useState(null);
+  const [realHistory, setRealHistory] = useState(null); // null = loading
+  const [usingReal,   setUsingReal]   = useState(false);
 
-  const history = generateHistory(plant, range);
+  // Cargar historial real de la API
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setRealHistory(null);
+      try {
+        const { default: api } = await import("../../api");
+        const res = await api.get(`/api/plants/${plant._id}/history?days=${range}`);
+        if (!cancelled && res.data && res.data.length > 3) {
+          // Convertir formato DB → formato gráfica
+          const humidity = res.data.map(h => ({ ts: new Date(h.date).getTime(), value: h.humidity }));
+          setRealHistory({ humidity, irrigations: [] });
+          setUsingReal(true);
+        } else {
+          if (!cancelled) { setRealHistory(generateHistory(plant, range)); setUsingReal(false); }
+        }
+      } catch {
+        if (!cancelled) { setRealHistory(generateHistory(plant, range)); setUsingReal(false); }
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [plant._id, range]);
+
+  const history = realHistory || generateHistory(plant, range);
   const { humidity, irrigations } = history;
   const humValues = humidity.map(h => h.value);
-  const avg = Math.round(humValues.reduce((a, b) => a + b, 0) / humValues.length);
+  const avg = humValues.length ? Math.round(humValues.reduce((a, b) => a + b, 0) / humValues.length) : 0;
 
   const handleCSV = () => {
     setExporting("csv");
@@ -149,6 +176,17 @@ function HistoryPanel({ plant, range, onRangeChange }) {
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {/* ✅ Badge datos reales vs simulados */}
+            {realHistory && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
+                background: usingReal ? "rgba(52,211,153,0.15)" : "rgba(251,191,36,0.12)",
+                border: usingReal ? "1px solid rgba(52,211,153,0.30)" : "1px solid rgba(251,191,36,0.25)",
+                color: usingReal ? "#34d399" : "#fbbf24",
+              }}>
+                {usingReal ? "📡 Datos reales" : "🔄 Simulado"}
+              </span>
+            )}
             <div className="pc-hist-range">
               {[7, 14, 30].map(d => (
                 <button key={d} className={`pc-hist-range-btn ${range === d ? "active" : ""}`} onClick={() => onRangeChange(d)}>{d}d</button>
@@ -182,7 +220,13 @@ function HistoryPanel({ plant, range, onRangeChange }) {
           <motion.div key={tab} className="pc-hist-chart"
             initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18 }}>
-            {tab === "Humedad"
+            {!realHistory ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", gap: 8, color: "#4d7a5e", fontSize: 12 }}>
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  style={{ width: 14, height: 14, border: "2px solid #34d399", borderTopColor: "transparent", borderRadius: "50%" }} />
+                Cargando historial…
+              </div>
+            ) : tab === "Humedad"
               ? <Line data={humData} options={humOptions} />
               : irrigations.length === 0
                 ? <div className="pc-hist-empty">Sin riegos en este período 🌵</div>
