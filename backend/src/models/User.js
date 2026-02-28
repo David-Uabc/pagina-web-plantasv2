@@ -38,7 +38,6 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-
   // ── Reset password ────────────────────────────────
   resetPasswordToken:   { type: String },
   resetPasswordExpires: { type: Date   },
@@ -53,16 +52,16 @@ UserSchema.pre("save", async function (next) {
   next();
 });
 
-// Método para comparar contraseña
+// Comparar contraseña
 UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Generar token de reset
+// Generar token de reset — 24h para sobrevivir el sleep de Render
 UserSchema.methods.getResetToken = function () {
   const token = crypto.randomBytes(32).toString("hex");
   this.resetPasswordToken   = crypto.createHash("sha256").update(token).digest("hex");
-  this.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hora
+  this.resetPasswordExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 horas
   return token;
 };
 
