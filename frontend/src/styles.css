@@ -4183,26 +4183,25 @@ body.light-mode .stat-label {
 
 
 .plant-notes {
-  font-size: 13px;
+  font-size: 12.5px;
   color: #e2faf2;
-  padding: 10px 14px;
+  padding: 8px 12px;
   margin: 0 16px 12px;
-  border-radius: 10px;
-  background: rgba(5, 40, 25, 0.75);
-  border: 1px solid rgba(52,211,153,0.30);
-  border-left: 3px solid #34d399;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  border-left: 2px solid #34d399;
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
-  font-style: italic;
+  opacity: 0.82;
 }
 
 body.light-mode .plant-notes {
-  color: #052e16;
-  background: rgba(220, 252, 231, 0.90);
-  border-color: rgba(34, 197, 94, 0.40);
-  border-left-color: #16a34a;
-  font-style: italic;
+  color: #1a1a1a;
+  background: transparent;
+  border-left: 2px solid #16a34a;
+  opacity: 1;
 }
 
 /* ── Schedule badge en PlantCard ── */
