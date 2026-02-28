@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import HumidityGauge from "./HumidityGauge";
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import { Download, FileText, AlertTriangle, Clock } from "lucide-react";
 import {

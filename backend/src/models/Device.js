@@ -1,13 +1,12 @@
 const mongoose = require("mongoose");
 
 const DeviceSchema = new mongoose.Schema({
-  // ── Dueño del dispositivo ─────────────────────────
+  // owner es opcional — el ESP32 no tiene usuario, se asocia por sector
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true,
+    required: false,
   },
-
   deviceId: {
     type: String,
     required: true,
@@ -16,7 +15,7 @@ const DeviceSchema = new mongoose.Schema({
   sector: {
     type: String,
     enum: ["Superior", "Inferior"],
-    required: true,
+    required: false, // el simulador no siempre lo envía en el upsert inicial
   },
   status: {
     type: String,

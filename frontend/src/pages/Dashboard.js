@@ -43,10 +43,8 @@ function Dashboard({ user, onLogout }) {
   const [plants,      setPlants]      = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [showCompare, setShowCompare] = useState(false);
-  // Dispositivos para SystemStatus
   const [devices,     setDevices]     = useState({});
 
-  // ── Carga inicial ────────────────────────────────────
   useEffect(() => {
     const fetchPlants = async () => {
       try {
@@ -57,37 +55,28 @@ function Dashboard({ user, onLogout }) {
       finally { setLoading(false); }
     };
     fetchPlants();
-    // Mantener polling como fallback (30s en vez de 5s ahora que tenemos sockets)
     const interval = setInterval(fetchPlants, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // ── Socket.io — actualizaciones en tiempo real ───────
   useSocket({
     onPlantUpdate: useCallback((data) => {
       setPlants(prev => {
         const exists = prev.some(p => p._id === data._id);
         if (exists) return prev.map(p => p._id === data._id ? { ...p, ...data } : p);
-        return prev; // plantas nuevas se agregan por API
+        return prev;
       });
     }, []),
-
     onPlantDeleted: useCallback((data) => {
       setPlants(prev => prev.filter(p => p._id !== data._id));
     }, []),
-
     onAlert: useCallback((data) => {
       toast(`⚠️ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
       checkPlants([data]);
     }, []),
-
     onDeviceHeartbeat: useCallback((data) => {
-      setDevices(prev => ({
-        ...prev,
-        [data.deviceId]: { ...data, lastSeen: new Date() },
-      }));
+      setDevices(prev => ({ ...prev, [data.deviceId]: { ...data, lastSeen: new Date() } }));
     }, []),
-
     onScheduleTriggered: useCallback((data) => {
       toast(`⏰ Riego programado iniciado — ${data.name}`, "info");
     }, []),
@@ -123,7 +112,6 @@ function Dashboard({ user, onLogout }) {
       {loading ? <PlantGridSkeleton count={4} /> : <QuickStats plants={plants} />}
 
       <div className="top-section">
-        {/* Pasar devices al SystemStatus para mostrar ESP32 */}
         <SystemStatus devices={devices} />
         <AverageHumidity plants={plants} />
       </div>
