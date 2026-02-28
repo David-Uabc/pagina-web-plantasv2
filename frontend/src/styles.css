@@ -718,15 +718,10 @@ body.light-mode .section-title::before { box-shadow: none; }
   container-type: inline-size;
 }
 
-/* ✅ Card con historial expandido ocupa fila completa */
-.plant-grid .pc2.pc2-expanded {
-  grid-column: 1 / -1;
-}
-
 /* ✅ Stats del historial en 2 col cuando la card es angosta */
 @container (max-width: 400px) {
   .pc-hist-stats { grid-template-columns: repeat(2, 1fr) !important; }
-  .pc-hist-header { flex-wrap: wrap; }
+  .pc-hist-header { flex-wrap: wrap; row-gap: 6px; }
 }
 
 .plant-grid-empty {
@@ -1715,11 +1710,13 @@ body.light-mode .login-card { background: rgba(24, 47, 36, 0.97); box-shadow: va
   padding: 14px 16px 18px;
   background: rgba(5,14,10,0.55);
   backdrop-filter: blur(12px);
+  min-width: 0;
 }
 .pc-hist-header {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 12px; gap: 8px;
-  flex-wrap: wrap; /* ✅ wrap en pantallas pequeñas */
+  margin-bottom: 12px; gap: 6px;
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 .pc-hist-tabs {
   display: flex; gap: 3px;
@@ -1729,8 +1726,8 @@ body.light-mode .login-card { background: rgba(24, 47, 36, 0.97); box-shadow: va
   flex-shrink: 0;
 }
 .pc-hist-tab {
-  padding: 5px 11px; border-radius: 7px; border: none;
-  font-size: 11px; font-weight: 600; color: var(--text-3);
+  padding: 5px 9px; border-radius: 7px; border: none;
+  font-size: 10px; font-weight: 600; color: var(--text-3);
   background: transparent; cursor: pointer; white-space: nowrap;
   transition: all 0.18s ease;
 }
@@ -1743,42 +1740,44 @@ body.light-mode .login-card { background: rgba(24, 47, 36, 0.97); box-shadow: va
   flex-shrink: 0;
 }
 .pc-hist-range-btn {
-  padding: 4px 9px; border-radius: 6px; border: none;
+  padding: 4px 8px; border-radius: 6px; border: none;
   font-size: 10px; font-weight: 700; color: var(--text-3);
-  background: transparent; cursor: pointer;
+  background: transparent; cursor: pointer; white-space: nowrap;
 }
 .pc-hist-range-btn.active { background: var(--green-dim); color: var(--green); }
 .pc-hist-range-btn:hover:not(.active) { color: var(--text-2); }
 .pc-hist-stats {
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px; margin-bottom: 12px;
+  min-width: 0;
 }
-/* ✅ En cards angostas (dentro del grid de sector) stats en 2 columnas */
-@container (max-width: 340px) {
-  .pc-hist-stats { grid-template-columns: repeat(2, 1fr); }
+/* En cards angostas (sector page) pasar a 2 columnas */
+@container (max-width: 380px) {
+  .pc-hist-stats { grid-template-columns: repeat(2, 1fr) !important; }
 }
 .pc-hs-item {
   background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-  border-radius: var(--r-xs); padding: 7px 8px;
+  border-radius: var(--r-xs); padding: 6px 4px;
   text-align: center; display: flex; flex-direction: column; gap: 2px;
-  min-width: 0;
+  min-width: 0; overflow: hidden;
 }
 .pc-hs-val {
-  font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; line-height: 1;
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(11px, 2.5vw, 15px);
+  font-weight: 800; line-height: 1;
 }
 .pc-hs-lbl {
-  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  font-size: 8px; font-weight: 600; text-transform: uppercase;
   letter-spacing: 0.5px; color: var(--text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.pc-hist-chart { height: 150px; position: relative; min-width: 0; }
+.pc-hist-chart {
+  height: 150px; position: relative; min-width: 0; overflow: hidden;
+}
 .pc-hist-empty {
   height: 100%; display: flex; align-items: center;
   justify-content: center; font-size: 12px; color: var(--text-3);
-}
-
-/* ✅ Cuando el historial está abierto en SectorPage, la card ocupa toda la fila */
-.sp-grid-wrap .plant-grid .pc2.pc2-expanded {
-  grid-column: 1 / -1;
 }
 
 /* =====================================================
@@ -4070,29 +4069,24 @@ body.light-mode .sp-filters {
    Las cards deben ocupar todo el ancho disponible
 ===================================================== */
 
-/* Grid en SectorPage — ocupa todo el ancho */
+/* =====================================================
+   🌿 SECTOR PAGE — GRID
+   Cards con ancho máximo fijo, nunca se estiran a pantalla completa
+===================================================== */
+
 .sp-grid-wrap .plant-grid,
 .sp-grid-wrap > .plant-grid {
-  grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 28vw, 340px), 1fr)) !important;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 340px)) !important;
+  justify-content: start;
   width: 100%;
   container-type: inline-size;
 }
 
-/* ✅ Card expandida en SectorPage ocupa toda la fila */
-.sp-grid-wrap .plant-grid .pc2.pc2-expanded {
-  grid-column: 1 / -1 !important;
-}
-
-/* ✅ Stats del historial en 2 col cuando la card es angosta en sector */
-@container (max-width: 460px) {
-  .pc-hist-stats { grid-template-columns: repeat(2, 1fr) !important; }
-  .pc-hist-header { flex-wrap: wrap; row-gap: 6px; }
-}
-
-/* PlantCard v2 dentro de SectorPage — ocupa todo su slot */
+/* PlantCard v2 dentro de SectorPage */
 .sp-grid-wrap .pc2 {
   width: 100%;
   min-width: 0;
+  max-width: 340px;
 }
 
 /* Si el grid es de Framer Motion (motion.div) */
@@ -4100,33 +4094,23 @@ body.light-mode .sp-filters {
   width: 100%;
 }
 
-/* Con pocas plantas (1-2) — no dejar cards pequeñas */
-.sp-grid-wrap .plant-grid:has(.pc2:only-child),
-.sp-grid-wrap .plant-grid:has(.pc2:nth-child(1):nth-last-child(1)) {
-  grid-template-columns: repeat(1, minmax(0, 500px)) !important;
-  justify-content: start;
-}
-
-/* 3 o más plantas — columnas fluidas */
-@media (min-width: 1200px) {
-  .sp-grid-wrap .plant-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
-  }
-}
 @media (max-width: 900px) {
   .sp-grid-wrap .plant-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 320px)) !important;
   }
+  .sp-grid-wrap .pc2 { max-width: 320px; }
 }
 @media (max-width: 600px) {
   .sp-grid-wrap .plant-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+  .sp-grid-wrap .pc2 { max-width: 100%; }
 }
 @media (max-width: 420px) {
   .sp-grid-wrap .plant-grid {
     grid-template-columns: 1fr !important;
   }
+  .sp-grid-wrap .pc2 { max-width: 100%; }
 }
 
 /* =====================================================
