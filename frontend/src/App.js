@@ -2,130 +2,171 @@ import { I18nProvider } from "./i18n";
 import "./styles.css";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ToastProvider } from "./context/ToastProvider";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import ParticleBackground from "./components/ParticleBackground";
-import SplashScreen  from "./components/SplashScreen";
+import SplashScreen from "./components/SplashScreen";
 import OfflineBanner from "./components/OfflineBanner";
-import Dashboard     from "./pages/Dashboard";
-import SectorPage    from "./pages/SectorPage";
-import Login         from "./pages/Login";
-import NotFound      from "./pages/NotFound";
+import Dashboard from "./pages/Dashboard";
+import SectorPage from "./pages/SectorPage";
+import Login from "./pages/Login";
+import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 
-// ── Títulos dinámicos por ruta ──────────────────────
 const PAGE_TITLES = {
-  "/":               "Dashboard",
-  "/superior":       "Sector Superior",
-  "/inferior":       "Sector Inferior",
-  "/login":          "Iniciar sesión",
-  "/reset-password": "Recuperar contraseña",
+  "/": "Dashboard",
+  "/superior": "Sector Superior",
+  "/inferior": "Sector Inferior",
+  "/login": "Iniciar sesion",
+  "/reset-password": "Recuperar contrasena",
 };
 
 function useDynamicTitle() {
   const location = useLocation();
+
   useEffect(() => {
-    const path  = location.pathname.startsWith("/reset-password")
+    const path = location.pathname.startsWith("/reset-password")
       ? "/reset-password"
       : location.pathname;
-    const title = PAGE_TITLES[path] ?? "Página no encontrada";
-    document.title = `${title} — Riego IoT 🌱`;
+    const title = PAGE_TITLES[path] ?? "Pagina no encontrada";
+    document.title = `${title} - RiegoIQ`;
   }, [location.pathname]);
 }
 
-// ── Saludo dinámico exportado para Navbar y WelcomeToast ──
 export function getGreeting(name = "") {
   const h = new Date().getHours();
-  const base = h < 12 ? "Buenos días" : h < 18 ? "Buenas tardes" : "Buenas noches";
-  return name ? `${base}, ${name} 🌱` : `${base} 🌱`;
+  const base = h < 12 ? "Buenos dias" : h < 18 ? "Buenas tardes" : "Buenas noches";
+  return name ? `${base}, ${name}` : base;
 }
 
-function PrivateRoute({ children }) {
-  return localStorage.getItem("iot_session") ? children : <Navigate to="/login" replace />;
+function PrivateRoute({ children, user, loading }) {
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#080a0e",
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            border: "3px solid rgba(52,211,153,0.2)",
+            borderTopColor: "#34d399",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+      </div>
+    );
+  }
+
+  return user ? children : <Navigate to="/login" replace />;
 }
 
-const fade       = { initial:{ opacity:0, y:16  }, animate:{ opacity:1, y:0  }, exit:{ opacity:0, y:-16 } };
-const slideRight = { initial:{ opacity:0, x:50  }, animate:{ opacity:1, x:0  }, exit:{ opacity:0, x:-50 } };
-const slideLeft  = { initial:{ opacity:0, x:-50 }, animate:{ opacity:1, x:0  }, exit:{ opacity:0, x:50  } };
+const fade = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -16 } };
+const slideRight = { initial: { opacity: 0, x: 50 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -50 } };
+const slideLeft = { initial: { opacity: 0, x: -50 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: 50 } };
 const T = { duration: 0.28 };
 
-function AnimatedRoutes({ user, setUser }) {
+function AnimatedRoutes() {
   const location = useLocation();
-  useDynamicTitle();
+  const { user, authLoading } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("iot_session");
-    setUser(null);
-  };
+  useDynamicTitle();
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
+        <Route
+          path="/login"
+          element={
+            user && !authLoading ? (
+              <Navigate to="/" replace />
+            ) : (
+              <motion.div {...fade} transition={T}>
+                <Login />
+              </motion.div>
+            )
+          }
+        />
 
-        <Route path="/login" element={
-          <motion.div {...fade} transition={T}>
-            <Login onLogin={u => setUser(u)} />
-          </motion.div>
-        }/>
-
-        <Route path="/reset-password/:token" element={
-          <motion.div {...fade} transition={T}>
-            <ResetPassword />
-          </motion.div>
-        }/>
-
-        <Route path="/" element={
-          <PrivateRoute>
+        <Route
+          path="/reset-password/:token"
+          element={
             <motion.div {...fade} transition={T}>
-              <Dashboard user={user} onLogout={handleLogout} />
+              <ResetPassword />
             </motion.div>
-          </PrivateRoute>
-        }/>
+          }
+        />
 
-        <Route path="/superior" element={
-          <PrivateRoute>
-            <motion.div {...slideRight} transition={T}>
-              <SectorPage sector="Superior" onLogout={handleLogout} />
-            </motion.div>
-          </PrivateRoute>
-        }/>
+        <Route
+          path="/"
+          element={
+            <PrivateRoute user={user} loading={authLoading}>
+              <motion.div {...fade} transition={T}>
+                <Dashboard />
+              </motion.div>
+            </PrivateRoute>
+          }
+        />
 
-        <Route path="/inferior" element={
-          <PrivateRoute>
-            <motion.div {...slideLeft} transition={T}>
-              <SectorPage sector="Inferior" onLogout={handleLogout} />
-            </motion.div>
-          </PrivateRoute>
-        }/>
+        <Route
+          path="/superior"
+          element={
+            <PrivateRoute user={user} loading={authLoading}>
+              <motion.div {...slideRight} transition={T}>
+                <SectorPage sector="Superior" />
+              </motion.div>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/inferior"
+          element={
+            <PrivateRoute user={user} loading={authLoading}>
+              <motion.div {...slideLeft} transition={T}>
+                <SectorPage sector="Inferior" />
+              </motion.div>
+            </PrivateRoute>
+          }
+        />
 
         <Route path="*" element={<NotFound />} />
-
       </Routes>
     </AnimatePresence>
   );
 }
 
-function App() {
-  const [user,    setUser]    = useState(() => {
-    const saved = localStorage.getItem("iot_session");
-    return saved ? JSON.parse(saved) : null;
-  });
+function AppShell() {
   const [splashDone, setSplashDone] = useState(false);
 
   return (
-    <I18nProvider>
-      {/* ✅ Splash screen — desaparece solo después de 1.8s */}
+    <>
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-
-      {/* App principal — renderiza debajo del splash */}
       <Router>
         <ToastProvider>
-          {/* ✅ Banner offline — visible en todas las páginas */}
           <OfflineBanner />
           <ParticleBackground />
-          <AnimatedRoutes user={user} setUser={setUser} />
+          <AnimatedRoutes />
         </ToastProvider>
       </Router>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <I18nProvider>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
     </I18nProvider>
   );
 }

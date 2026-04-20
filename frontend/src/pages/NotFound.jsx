@@ -135,7 +135,7 @@ function NotFound() {
               }}
             >
               <div>
-                <span style={{ color: "#78909c" }}>// </span>
+                <span style={{ color: "#78909c" }}>{"// "}</span>
                 <span style={{ color: "#34d399" }}>plant</span>
                 <span style={{ color: "#b0bec5" }}>.findById(</span>
                 <span style={{ color: "#fbbf24" }}>this_page</span>
@@ -143,7 +143,7 @@ function NotFound() {
               </div>
               <div>
                 <span style={{ color: "#f87171" }}>→ null </span>
-                <span style={{ color: "#78909c" }}>// no encontrado</span>
+                <span style={{ color: "#78909c" }}>{"// no encontrado"}</span>
               </div>
             </motion.div>
           </div>

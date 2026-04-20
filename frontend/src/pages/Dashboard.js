@@ -34,7 +34,7 @@ function SectorEmpty({ sector, onGo }) {
   );
 }
 
-function Dashboard({ user, onLogout }) {
+function Dashboard() {
   const navigate = useNavigate();
   const { t }    = useI18n();
   const toast    = useToast();
@@ -45,19 +45,20 @@ function Dashboard({ user, onLogout }) {
   const [showCompare, setShowCompare] = useState(false);
   const [devices,     setDevices]     = useState({});
 
+  const fetchPlants = useCallback(async () => {
+    try {
+      const res = await api.get("/api/plants");
+      setPlants(res.data);
+      checkPlants(res.data);
+    } catch {}
+    finally { setLoading(false); }
+  }, [checkPlants]);
+
   useEffect(() => {
-    const fetchPlants = async () => {
-      try {
-        const res = await api.get("/api/plants");
-        setPlants(res.data);
-        checkPlants(res.data);
-      } catch {}
-      finally { setLoading(false); }
-    };
     fetchPlants();
     const interval = setInterval(fetchPlants, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchPlants]);
 
   useSocket({
     onPlantUpdate: useCallback((data) => {
@@ -73,13 +74,13 @@ function Dashboard({ user, onLogout }) {
     onAlert: useCallback((data) => {
       toast(`⚠️ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
       checkPlants([data]);
-    }, []),
+    }, [checkPlants, toast]),
     onDeviceHeartbeat: useCallback((data) => {
       setDevices(prev => ({ ...prev, [data.deviceId]: { ...data, lastSeen: new Date() } }));
     }, []),
     onScheduleTriggered: useCallback((data) => {
       toast(`⏰ Riego programado iniciado — ${data.name}`, "info");
-    }, []),
+    }, [toast]),
   });
 
   const handleDelete = async (id) => {
@@ -103,7 +104,6 @@ function Dashboard({ user, onLogout }) {
   return (
     <div className="dashboard-full">
       <Navbar
-        onLogout={onLogout}
         plants={plants}
         onCompare={plants.length >= 2 ? () => setShowCompare(true) : undefined}
       />

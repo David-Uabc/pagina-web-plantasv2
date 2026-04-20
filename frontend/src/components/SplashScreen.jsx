@@ -13,7 +13,7 @@ function SplashScreen({ onDone }) {
     const t1 = setTimeout(() => setPhase("out"), 1200);
     const t2 = setTimeout(() => onDone?.(), 1800);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+  }, [onDone]);
 
   return (
     <AnimatePresence>

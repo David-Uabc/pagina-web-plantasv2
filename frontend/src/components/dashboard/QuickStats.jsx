@@ -16,11 +16,10 @@ function AnimatedCounter({ to, unit, gradient, delay = 0 }) {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      const controls = animate(count, to, { duration: 1.2, ease: [0.16, 1, 0.3, 1] });
-      return () => controls.stop();
+      animate(count, to, { duration: 1.2, ease: [0.16, 1, 0.3, 1] });
     }, delay * 1000 + 200);
     return () => clearTimeout(timeout);
-  }, [to, delay]);
+  }, [count, to, delay]);
 
   useEffect(() => {
     return rounded.on("change", v => {

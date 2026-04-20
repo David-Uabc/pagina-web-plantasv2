@@ -12,7 +12,6 @@ function timeAgo(date, t) {
   return `${Math.floor(s / 86400)} ${t("sys.daysAgo")}`;
 }
 
-// Considera un dispositivo online si reportó en los últimos 60s
 function isOnline(device) {
   if (!device?.lastSeen && !device?.lastConnection) return false;
   const last = new Date(device.lastSeen || device.lastConnection).getTime();
@@ -22,7 +21,9 @@ function isOnline(device) {
 function DeviceRow({ device, label }) {
   const online  = isOnline(device);
   const lastStr = device?.lastSeen || device?.lastConnection
-    ? new Date(device.lastSeen || device.lastConnection).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    ? new Date(device.lastSeen || device.lastConnection).toLocaleTimeString("es-MX", {
+        hour: "2-digit", minute: "2-digit", second: "2-digit"
+      })
     : "—";
 
   return (
@@ -45,23 +46,42 @@ function DeviceRow({ device, label }) {
 function SystemStatus({ devices = {} }) {
   const { t } = useI18n();
 
-  const [mqtt,           setMqttState] = useState(true);
-  const [db,             setDbState]   = useState(true);
-  const [lastIrrigation, setLastIrr]   = useState(null);
-  const [, setTick]                    = useState(0);
+  const [mqtt,           setMqttState]  = useState(true);
+  const [db,             setDbState]    = useState(true);
+  const [lastIrrigation, setLastIrr]    = useState(null);
+  const [apiDevices,     setApiDevices] = useState({});
+  const [, setTick]                     = useState(0);
 
+  // Tick cada segundo para actualizar el "hace X segundos"
   useEffect(() => {
     const interval = setInterval(() => setTick(n => n + 1), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Obtener último riego real de la DB
+  // ✅ Polling de devices desde la API cada 15s
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const res = await api.get("/api/devices");
+        const map = {};
+        res.data.forEach(d => { map[d.deviceId] = d; });
+        setApiDevices(map);
+      } catch {}
+    };
+    fetchDevices();
+    const i = setInterval(fetchDevices, 15000);
+    return () => clearInterval(i);
+  }, []);
+
+  // Último riego
   useEffect(() => {
     const fetchLastIrr = async () => {
       try {
         const res = await api.get("/api/plants");
-        const all = res.data;
-        const dates = all.map(p => p.lastIrrigation).filter(Boolean).map(d => new Date(d));
+        const dates = res.data
+          .map(p => p.lastIrrigation)
+          .filter(Boolean)
+          .map(d => new Date(d));
         if (dates.length) setLastIrr(new Date(Math.max(...dates)));
       } catch {}
     };
@@ -70,7 +90,6 @@ function SystemStatus({ devices = {} }) {
     return () => clearInterval(i);
   }, []);
 
-  // Exponer para dev
   useEffect(() => {
     window.setMqtt = setMqttState;
     window.setDb   = setDbState;
@@ -78,9 +97,10 @@ function SystemStatus({ devices = {} }) {
 
   const allOk = mqtt && db;
 
-  // Extraer dispositivos ESP32 del prop devices
-  const esp32Sup = devices["ESP32-SUP-01"] || null;
-  const esp32Inf = devices["ESP32-INF-01"] || null;
+  // ✅ Merge: Socket.io (tiempo real) tiene prioridad sobre polling (API)
+  const mergedDevices = { ...apiDevices, ...devices };
+  const esp32Sup = mergedDevices["ESP32-SUP-01"] || null;
+  const esp32Inf = mergedDevices["ESP32-INF-01"] || null;
   const anyEsp32 = esp32Sup || esp32Inf;
 
   return (
@@ -135,14 +155,13 @@ function SystemStatus({ devices = {} }) {
           <div className="status-dot dot-blue" />
         </div>
 
-        {/* ✅ ESP32 Patio Superior */}
+        {/* ESP32 Superior */}
         <DeviceRow device={esp32Sup} label="ESP32 · Patio Superior" />
 
-        {/* ✅ ESP32 Patio Inferior */}
+        {/* ESP32 Inferior */}
         <DeviceRow device={esp32Inf} label="ESP32 · Patio Inferior" />
       </div>
 
-      {/* Indicador "Esperando ESP32" si no hay dispositivos */}
       {!anyEsp32 && (
         <div style={{
           marginTop: 10, padding: "8px 12px", borderRadius: 10, fontSize: 11,

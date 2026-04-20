@@ -2,37 +2,47 @@ const mongoose = require("mongoose");
 
 const PlantSchema = new mongoose.Schema(
   {
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    name:  { type: String, required: true },
+    owner:  { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    name:   { type: String, required: true },
     sector: { type: String, enum: ["Superior", "Inferior"], required: true },
+
     minHumidity:     { type: Number, required: true },
     maxHumidity:     { type: Number, required: true },
     currentHumidity: { type: Number, default: 0 },
+
     irrigationType: {
-      type: String, enum: ["Diario", "Semanal", "Quincenal", "Por humedad"], required: true,
+      type: String,
+      enum: ["Diario", "Semanal", "Quincenal", "Por humedad"],
+      required: true,
     },
+
     lastIrrigation: { type: Date },
-    valveStatus: { type: String, enum: ["OPEN", "CLOSED"], default: "CLOSED" },
-    imageUrl: { type: String },
+    valveStatus:    { type: String, enum: ["OPEN", "CLOSED"], default: "CLOSED" },
+    valveNumber:    { type: Number, enum: [1, 2, 3, 4, 5], required: true, default: 1 },
+    imageUrl:       { type: String },
+    notes:          { type: String, default: "", maxlength: 500 },
+    order:          { type: Number, default: 0 },
 
-    // ✅ Notas del usuario
-    notes: { type: String, default: "", maxlength: 500 },
+    // ✅ NUEVO — Modo mantenimiento
+    // Cuando está activo el sistema NO riega automáticamente
+    // El usuario puede hacer cambios sin que el scheduler interfiera
+    maintenanceMode: { type: Boolean, default: false },
 
-    // ✅ Orden drag-and-drop
-    order: { type: Number, default: 0 },
+    // ✅ NUEVO — Motivo del modo mantenimiento (opcional)
+    maintenanceNote: { type: String, default: "", maxlength: 200 },
 
-    // ✅ Programación de riego automático
+    // Programación de riego automático
     schedule: {
       enabled:  { type: Boolean, default: false },
-      days:     { type: [Number], default: [] },   // 0=Dom…6=Sáb
+      days:     { type: [Number], default: [] },
       time:     { type: String,  default: "07:00" },
-      duration: { type: Number,  default: 10 },    // minutos
+      duration: { type: Number,  default: 10 },
     },
 
-    // ✅ Historial de alertas
+    // Historial de alertas
     alertHistory: [
       {
-        type:      { type: String, enum: ["low_humidity","high_humidity","valve_on","valve_off"], default: "low_humidity" },
+        type:      { type: String, enum: ["low_humidity","high_humidity","valve_on","valve_off","maintenance_on","maintenance_off"], default: "low_humidity" },
         message:   { type: String },
         humidity:  { type: Number },
         resolved:  { type: Boolean, default: false },

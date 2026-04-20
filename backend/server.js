@@ -1,90 +1,142 @@
-const express    = require("express");
-const cors       = require("cors");
-const dotenv     = require("dotenv");
-const http       = require("http");
-const { Server } = require("socket.io");
-const connectDB  = require("./src/config/db");
-const simulator  = require("./src/mqtt/simulator");
-const scheduler  = require("./src/jobs/scheduleRunner");
+const express       = require("express");
+const cors          = require("cors");
+const dotenv        = require("dotenv");
+const http          = require("http");
+const helmet        = require("helmet");
+const rateLimit     = require("express-rate-limit");
+const mongoSanitize = require("express-mongo-sanitize");
+const xss           = require("xss-clean");
+const cookieParser  = require("cookie-parser");
+const { Server }    = require("socket.io");
+const connectDB     = require("./src/config/db");
+const simulator     = require("./src/mqtt/simulator");
+const scheduler     = require("./src/jobs/scheduleRunner");
 
 dotenv.config();
 
 const app    = express();
-const server = http.createServer(app);  // ✅ HTTP server para Socket.io
+const server = http.createServer(app);
+const isDev  = process.env.NODE_ENV !== "production";
 
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  "https://riego-iot-frontend.onrender.com", // hardcoded fallback
+  "https://riego-iot-frontend.onrender.com",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-// ── Socket.io ────────────────────────────────────────
+// ── Socket.io ─────────────────────────────────────────
 const io = new Server(server, {
-  cors: { origin: ALLOWED_ORIGINS, methods: ["GET", "POST"] },
+  cors: { origin: ALLOWED_ORIGINS, methods: ["GET", "POST"], credentials: true },
 });
-
-// Hacer io accesible en toda la app
 app.set("io", io);
-
 io.on("connection", (socket) => {
   console.log(`🔌 Cliente conectado: ${socket.id}`);
-  socket.on("disconnect", () => {
-    console.log(`❌ Cliente desconectado: ${socket.id}`);
-  });
+  socket.on("disconnect", () => console.log(`❌ Desconectado: ${socket.id}`));
 });
 
-// ── Base de datos ────────────────────────────────────
+// ── Base de datos ─────────────────────────────────────
 connectDB();
 
-// ── Middlewares ──────────────────────────────────────
-app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ── Helmet ────────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false,
+}));
 
-// ── Rutas ────────────────────────────────────────────
-app.use("/api/plants",  require("./src/routes/plants.routes"));
-app.use("/api/auth",    require("./src/routes/auth.routes"));
-app.use("/api/stats",   require("./src/routes/stats.routes"));
-app.use("/api/devices", require("./src/routes/devices.routes"));
-app.use("/api/mqtt",    require("./src/routes/mqtt.routes"));
-app.use("/api/iot",     require("./src/routes/iot.routes"));   // ✅ Ruta pública ESP32
+// ── Rate Limiting ─────────────────────────────────────
+// ✅ En desarrollo LOCAL se omite el rate limit para no
+//    bloquear las peticiones duplicadas del React StrictMode
+const skipInDev = () => isDev;
 
-// ── Ruta base ────────────────────────────────────────
-app.get("/", (req, res) => {
-  res.json({
-    message: "🚀 Servidor IoT Riego Inteligente funcionando",
-    version: "3.0",
-    routes: {
-      plants:  "/api/plants",
-      auth:    "/api/auth",
-      stats:   "/api/stats",
-      devices: "/api/devices",
-      mqtt:    "/api/mqtt",
-      iot:     "/api/iot",  // ESP32 public endpoint
-    },
-  });
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: "Demasiadas peticiones. Por favor espera 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInDev, // ✅ en desarrollo no limita
 });
 
-// ── 404 handler ──────────────────────────────────────
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Demasiados intentos de acceso. Por favor espera 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInDev, // ✅ en desarrollo no limita
+});
+
+const iotLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: "Límite de peticiones del dispositivo IoT alcanzado." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInDev,
+});
+
+app.use(generalLimiter);
+
+// ── Middlewares ───────────────────────────────────────
+app.use(cors({
+  origin: ALLOWED_ORIGINS,
+  credentials: true,            // ✅ necesario para cookies httpOnly
+  methods: ["GET","POST","PUT","DELETE","PATCH","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization","x-device-id","x-api-key"],
+}));
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(cookieParser());
+app.use(mongoSanitize());
+app.use(xss());
+
+// ── Rutas ─────────────────────────────────────────────
+app.use("/api/auth",          authLimiter, require("./src/routes/auth.routes"));
+app.use("/api/iot",           iotLimiter,  require("./src/routes/iot.routes"));
+app.use("/api/plants",                     require("./src/routes/plants.routes"));
+app.use("/api/stats",                      require("./src/routes/stats.routes"));
+app.use("/api/devices",                    require("./src/routes/devices.routes"));
+app.use("/api/mqtt",                       require("./src/routes/mqtt.routes"));
+app.use("/api/notifications",              require("./src/routes/notifications.routes"));
+
+// ── Ruta base ─────────────────────────────────────────
+app.get("/", (req, res) => res.json({
+  message: "🚀 RiegoIQ — Sistema de Riego IoT",
+  version: "3.1",
+  status:  "online",
+  env:     process.env.NODE_ENV || "development",
+}));
+
+// ── 404 ───────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ error: `Ruta ${req.originalUrl} no encontrada` });
 });
 
-// ── Iniciar servidor ─────────────────────────────────
+// ── Error handler global ──────────────────────────────
+app.use((err, req, res, next) => {
+  console.error("❌ Error:", err.message);
+  res.status(err.status || 500).json({
+    error: isDev ? err.message : "Ocurrió un error en el servidor.",
+  });
+});
+
+// ── Iniciar servidor ──────────────────────────────────
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`\n🔥 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📡 Socket.io activo`);
-  console.log(`🌿 API disponible en http://localhost:${PORT}/api`);
+  console.log(`\n🔥 RiegoIQ en http://localhost:${PORT}`);
+  console.log(`🛡️  Seguridad: Helmet + ${isDev ? "Rate Limit DESACTIVADO (dev)" : "Rate Limit ACTIVO (prod)"}`);
+  console.log(`🍪 Cookie Parser activo — soporte refresh token`);
+  console.log(`🌍 Ambiente: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🔗 CORS permitido para: ${ALLOWED_ORIGINS.join(", ")}\n`);
 
-  // Simulador (solo si está habilitado)
   if (process.env.MQTT_SIMULATOR === "true") {
     simulator.startSimulator(io);
-  } else {
-    console.log("💡 Simulador MQTT en standby — actívalo en POST /api/mqtt/start");
   }
 
-  // ✅ Scheduler de riegos programados (siempre activo)
   scheduler.start(io);
+
+  // ✅ Cliente MQTT del backend — recibe sensores y publica comandos de válvula
+  const { startMqttClient } = require("./src/mqtt/mqttClient");
+  startMqttClient(io);
 });

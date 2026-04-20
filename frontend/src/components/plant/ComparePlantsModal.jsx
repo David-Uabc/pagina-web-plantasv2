@@ -16,12 +16,6 @@ function buildChartData(plantA, plantB, days = 7) {
   const histA = (plantA?.humidityHistory || []).filter(h => new Date(h.date).getTime() > cutoff);
   const histB = (plantB?.humidityHistory || []).filter(h => new Date(h.date).getTime() > cutoff);
 
-  // Merge all timestamps
-  const allDates = [...new Set([
-    ...histA.map(h => new Date(h.date).toLocaleDateString("es-MX", { month:"short", day:"numeric" })),
-    ...histB.map(h => new Date(h.date).toLocaleDateString("es-MX", { month:"short", day:"numeric" })),
-  ])].slice(-days * 4); // max puntos razonables
-
   // Group by date label - take last reading per day
   function groupByDate(hist) {
     const map = {};
@@ -228,7 +222,7 @@ export default function ComparePlantsModal({ plants, onClose }) {
             <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
               {[7, 14, 30].map(d => (
                 <button key={d} onClick={() => setDays(d)} style={{
-                  padding: "5px 14px", borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none",
+                  padding: "5px 14px", borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: "pointer",
                   background: days === d ? "rgba(52,211,153,0.20)" : "rgba(255,255,255,0.05)",
                   color: days === d ? "#34d399" : "#78909c",
                   border: days === d ? "1px solid rgba(52,211,153,0.35)" : "1px solid rgba(255,255,255,0.07)",

@@ -132,9 +132,10 @@ export default function AverageHumidity({ plants = [] }) {
       {/* ── Valor principal ── */}
       <div className="ah-value-row">
         <span className="ah-value" style={{
-          background: `linear-gradient(135deg, ${line}, ${line}aa)`,
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          backgroundClip: "text"
+           backgroundImage: `linear-gradient(135deg, ${line}, ${line}aa)`,
+           WebkitBackgroundClip: "text",
+           WebkitTextFillColor: "transparent",
+           backgroundClip: "text"
         }}>
           {avgNow}%
         </span>

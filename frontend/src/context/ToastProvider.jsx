@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, XCircle, AlertTriangle, Droplets, X, Info } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Droplets, X } from "lucide-react";
 
 const ToastContext = createContext(null);
 export function useToast() { return useContext(ToastContext); }

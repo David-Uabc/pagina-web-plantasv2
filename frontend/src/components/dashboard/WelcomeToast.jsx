@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import { getGreeting } from "../../App";
 
 /**
@@ -8,9 +9,8 @@ import { getGreeting } from "../../App";
  */
 function WelcomeToast() {
   const [visible, setVisible] = useState(false);
-
-  const session  = JSON.parse(localStorage.getItem("iot_session") || "{}");
-  const userName = session.name || session.username || "";
+  const { user } = useAuth();
+  const userName = user?.name || user?.username || "";
   const greeting = getGreeting(userName);
 
   // Mostrar una vez por período del día (mañana / tarde / noche)

@@ -1,10 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import { FaCheckCircle } from "react-icons/fa";
+import { FaCheckCircle, FaInfoCircle } from "react-icons/fa";
 
+// ── Datos del formulario por defecto ─────────────────
 const DEFAULT_FORM = {
   name: "", sector: "Superior", minHumidity: "", maxHumidity: "",
   irrigationType: "Diario", imageUrl: "", notes: "",
+  valveNumber: 1,
   schedule: { enabled: false, days: [], time: "07:00", duration: 10 },
 };
 
@@ -15,8 +17,8 @@ const IRRIGATION_OPTIONS = [
   { value: "Por humedad", label: "Por humedad", icon: "💧", desc: "Según sensor" },
 ];
 const SECTOR_OPTIONS = [
-  { value: "Superior", label: "Patio Superior", icon: "🌿", color: "#34d399" },
-  { value: "Inferior", label: "Patio Inferior", icon: "🌱", color: "#60a5fa" },
+  { value: "Superior", label: "Patio Superior", icon: "🌿", color: "#34d399", rgb: "52,211,153" },
+  { value: "Inferior", label: "Patio Inferior", icon: "🌱", color: "#60a5fa", rgb: "96,165,250" },
 ];
 const QUICK_IMAGES = [
   { label: "Rosa",     url: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80",  emoji: "🌹" },
@@ -27,17 +29,32 @@ const QUICK_IMAGES = [
   { label: "Girasol", url: "https://images.unsplash.com/photo-1597848212624-a19eb35e2651?w=600&q=80",  emoji: "🌻" },
 ];
 const DAYS = [
-  { short:"D", label:"Dom", value:0 }, { short:"L", label:"Lun", value:1 },
-  { short:"M", label:"Mar", value:2 }, { short:"X", label:"Mié", value:3 },
-  { short:"J", label:"Jue", value:4 }, { short:"V", label:"Vie", value:5 },
-  { short:"S", label:"Sáb", value:6 },
+  { short: "D", label: "Domingo",   value: 0 },
+  { short: "L", label: "Lunes",     value: 1 },
+  { short: "M", label: "Martes",    value: 2 },
+  { short: "X", label: "Miércoles", value: 3 },
+  { short: "J", label: "Jueves",    value: 4 },
+  { short: "V", label: "Viernes",   value: 5 },
+  { short: "S", label: "Sábado",    value: 6 },
 ];
 
-function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior" }) {
-  const [formData, setFormData] = useState({ ...DEFAULT_FORM, sector: defaultSector });
-  const [errors,   setErrors]   = useState({});
-  const [step,     setStep]     = useState(1);
-  const [imgPreviewOk, setImgPreviewOk] = useState(false);
+// ── Válvulas físicas ──────────────────────────────────
+// valveNumber 1-5 → relé D2-D6 → pin ESP32 26,27,14,12,13
+const VALVE_OPTIONS = [
+  { value: 1, pin: "D2", pinNum: 26, color: "#34d399" },
+  { value: 2, pin: "D3", pinNum: 27, color: "#60a5fa" },
+  { value: 3, pin: "D4", pinNum: 14, color: "#a78bfa" },
+  { value: 4, pin: "D5", pinNum: 12, color: "#fbbf24" },
+  { value: 5, pin: "D6", pinNum: 13, color: "#f87171" },
+];
+
+// ═══════════════════════════════════════════════════════
+function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior", usedValves = [] }) {
+  const [formData,    setFormData]    = useState({ ...DEFAULT_FORM, sector: defaultSector });
+  const [errors,      setErrors]      = useState({});
+  const [step,        setStep]        = useState(1);
+  const [imgPreviewOk,setImgPreviewOk]= useState(false);
+  const [tooltip,     setTooltip]     = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -45,7 +62,7 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
         ? { ...DEFAULT_FORM, ...plant, schedule: { ...DEFAULT_FORM.schedule, ...(plant.schedule || {}) } }
         : { ...DEFAULT_FORM, sector: defaultSector }
       );
-      setErrors({}); setStep(1); setImgPreviewOk(false);
+      setErrors({}); setStep(1); setImgPreviewOk(false); setTooltip(null);
     }
   }, [isOpen, plant, defaultSector]);
 
@@ -61,7 +78,7 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
   };
   const validateStep1 = () => {
     const errs = {};
-    if (!formData.name?.trim()) errs.name = "El nombre es requerido";
+    if (!formData.name?.trim()) errs.name = "Escribe el nombre de la planta";
     return errs;
   };
   const validateStep2 = () => {
@@ -69,7 +86,7 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
     if (formData.minHumidity === "") errs.minHumidity = "Requerido";
     if (formData.maxHumidity === "") errs.maxHumidity = "Requerido";
     if (formData.minHumidity !== "" && formData.maxHumidity !== "" &&
-        Number(formData.minHumidity) >= Number(formData.maxHumidity))
+      Number(formData.minHumidity) >= Number(formData.maxHumidity))
       errs.maxHumidity = "El máximo debe ser mayor que el mínimo";
     return errs;
   };
@@ -78,17 +95,18 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setStep(2);
   };
-  const handleSubmit = (e) => {
-    if (e) e.preventDefault();
+  const handleSubmit = () => {
     const errs = validateStep2();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     onSave(formData);
   };
   const handleClose = () => { setErrors({}); onClose(); };
 
-  const minH = Number(formData.minHumidity) || 0;
-  const maxH = Number(formData.maxHumidity) || 0;
+  const minH       = Number(formData.minHumidity) || 0;
+  const maxH       = Number(formData.maxHumidity) || 0;
   const rangeValid = maxH > minH && minH >= 0 && maxH <= 100;
+  const sectorColor = SECTOR_OPTIONS.find(s => s.value === formData.sector)?.color || "#34d399";
+  const sectorRgb   = SECTOR_OPTIONS.find(s => s.value === formData.sector)?.rgb   || "52,211,153";
 
   if (!isOpen) return null;
 
@@ -98,266 +116,482 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={e => { if (e.target === e.currentTarget) handleClose(); }}
         style={{
-          position:"fixed", inset:0, background:"rgba(0,0,0,0.75)",
-          backdropFilter:"blur(16px)", display:"flex", alignItems:"center",
-          justifyContent:"center", zIndex:99999, padding:16,
+          position: "fixed", inset: 0,
+          background: "rgba(0,0,0,0.80)",
+          backdropFilter: "blur(20px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 99999, padding: 16,
         }}
       >
         <motion.div
-          initial={{ scale:0.88, y:32, opacity:0 }}
-          animate={{ scale:1, y:0, opacity:1 }}
-          exit={{ scale:0.88, y:20, opacity:0 }}
-          transition={{ duration:0.3, ease:[0.22,1,0.36,1] }}
+          initial={{ scale: 0.88, y: 32, opacity: 0 }}
+          animate={{ scale: 1, y: 0, opacity: 1 }}
+          exit={{ scale: 0.88, y: 20, opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           style={{
-            width:"100%", maxWidth:500,
-            background:"rgba(8,14,10,0.97)",
-            border:"1px solid rgba(52,211,153,0.18)",
-            borderRadius:24, overflow:"hidden",
-            boxShadow:"0 32px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06)",
-            position:"relative", maxHeight:"90vh", overflowY:"auto",
+            width: "100%", maxWidth: 520,
+            background: "rgba(6, 12, 8, 0.98)",
+            border: `1px solid rgba(${sectorRgb}, 0.22)`,
+            borderRadius: 26, overflow: "hidden",
+            boxShadow: `0 40px 100px rgba(0,0,0,0.85), 0 0 40px rgba(${sectorRgb},0.06), inset 0 1px 0 rgba(255,255,255,0.06)`,
+            position: "relative", maxHeight: "92vh", overflowY: "auto",
+            transition: "border-color 0.4s ease, box-shadow 0.4s ease",
           }}
         >
-          <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:"linear-gradient(90deg,transparent,#34d399,#60a5fa,transparent)" }} />
+          {/* Top accent animado */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, height: 2,
+            background: `linear-gradient(90deg, transparent, ${sectorColor}, #60a5fa, transparent)`,
+            transition: "background 0.4s ease",
+          }} />
 
-          {/* Header */}
-          <div style={{ padding:"28px 28px 0", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          {/* ── HEADER ── */}
+          <div style={{ padding: "28px 28px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {/* Avatar con imagen preview */}
               <div style={{
-                width:46, height:46, borderRadius:13,
-                background:"linear-gradient(135deg,rgba(52,211,153,0.2),rgba(96,165,250,0.15))",
-                border:"1px solid rgba(52,211,153,0.25)",
-                display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, overflow:"hidden",
+                width: 52, height: 52, borderRadius: 15,
+                background: `linear-gradient(135deg, rgba(${sectorRgb},0.2), rgba(96,165,250,0.12))`,
+                border: `1px solid rgba(${sectorRgb},0.28)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 24, overflow: "hidden", flexShrink: 0,
+                boxShadow: `0 4px 20px rgba(${sectorRgb},0.15)`,
               }}>
                 {formData.imageUrl && imgPreviewOk
-                  ? <img src={formData.imageUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                  ? <img src={formData.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : (plant ? "✏️" : "🌱")}
               </div>
               <div>
-                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:19, fontWeight:800, color:"#f0f6fc", marginBottom:2 }}>
+                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800, color: "#f0f6fc", marginBottom: 3, letterSpacing: "-0.3px" }}>
                   {plant ? "Editar Planta" : "Nueva Planta"}
                 </div>
-                <div style={{ fontSize:12, color:"#78909c" }}>
-                  {step===1 ? "Información básica" : "Humedad, horario y notas"}
+                <div style={{ fontSize: 13, color: "#78909c", fontWeight: 500 }}>
+                  {step === 1 ? "Paso 1 — Información básica" : "Paso 2 — Humedad y programación"}
                 </div>
               </div>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+
+            {/* Indicador de pasos + botón cerrar */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {!plant && (
-                <div style={{ display:"flex", gap:5 }}>
-                  {[1,2].map(s => (
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {[1, 2].map(s => (
                     <div key={s} style={{
-                      width:s===step?20:7, height:7, borderRadius:99,
-                      background:s===step?"#34d399":s<step?"rgba(52,211,153,0.4)":"rgba(255,255,255,0.1)",
-                      transition:"all 0.3s ease",
+                      width: s === step ? 24 : 8, height: 8, borderRadius: 99,
+                      background: s === step ? sectorColor : s < step ? `rgba(${sectorRgb},0.45)` : "rgba(255,255,255,0.1)",
+                      transition: "all 0.35s ease",
                     }} />
                   ))}
                 </div>
               )}
               <button onClick={handleClose} style={{
-                width:32, height:32, borderRadius:9,
-                border:"1px solid rgba(255,255,255,0.08)",
-                background:"rgba(255,255,255,0.05)", color:"#78909c", cursor:"pointer",
-                display:"flex", alignItems:"center", justifyContent:"center", fontSize:13,
-              }}>✕</button>
+                width: 36, height: 36, borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.09)",
+                background: "rgba(255,255,255,0.05)", color: "#78909c",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 14, transition: "all 0.15s",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(248,113,113,0.12)"; e.currentTarget.style.color = "#f87171"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#78909c"; }}
+              >✕</button>
             </div>
           </div>
 
-          <div style={{ padding:"24px 28px 28px" }}>
+          {/* ── CONTENIDO ── */}
+          <div style={{ padding: "22px 28px 30px" }}>
             <AnimatePresence mode="wait">
 
-              {/* STEP 1 */}
-              {step===1 && (
+              {/* ══════════════ STEP 1 ══════════════ */}
+              {step === 1 && (
                 <motion.div key="step1"
-                  initial={{opacity:0,x:20}} animate={{opacity:1,x:0}}
-                  exit={{opacity:0,x:-20}} transition={{duration:0.22}}>
+                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.22 }}>
 
-                  <div style={{marginBottom:14}}>
+                  {/* NOMBRE */}
+                  <div style={{ marginBottom: 18 }}>
                     <label style={labelStyle}>🌿 Nombre de la planta</label>
-                    <input name="name" placeholder="ej. Rosa, Cactus, Albahaca..."
-                      value={formData.name} onChange={handleChange} autoFocus
-                      style={{...inputStyle, borderColor:errors.name?"rgba(248,113,113,0.5)":"rgba(255,255,255,0.08)"}} />
-                    {errors.name && <span style={errorStyle}>{errors.name}</span>}
+                    <input
+                      name="name"
+                      placeholder="ej. Rosa, Cactus, Albahaca..."
+                      value={formData.name}
+                      onChange={handleChange}
+                      autoFocus
+                      autoComplete="off"
+                      style={{
+                        ...inputStyle,
+                        fontSize: 15,
+                        borderColor: errors.name ? "rgba(248,113,113,0.55)" : "rgba(255,255,255,0.09)",
+                        minHeight: 48,
+                      }}
+                    />
+                    {errors.name && <span style={errorStyle}>⚠ {errors.name}</span>}
                   </div>
 
-                  <div style={{marginBottom:14}}>
+                  {/* SECTOR */}
+                  <div style={{ marginBottom: 18 }}>
                     <label style={labelStyle}>📍 Sector</label>
-                    <div style={{display:"flex",gap:10}}>
+                    <div style={{ display: "flex", gap: 12 }}>
                       {SECTOR_OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
-                          onClick={()=>setFormData(p=>({...p,sector:opt.value}))}
+                          onClick={() => setFormData(p => ({ ...p, sector: opt.value }))}
                           style={{
-                            flex:1, padding:"14px 10px", borderRadius:13,
-                            border:formData.sector===opt.value?`1px solid ${opt.color}50`:"1px solid rgba(255,255,255,0.07)",
-                            background:formData.sector===opt.value?`rgba(${opt.value==="Superior"?"52,211,153":"96,165,250"},0.10)`:"rgba(255,255,255,0.03)",
-                            cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:6,
-                            transition:"all 0.2s", position:"relative", overflow:"hidden",
+                            flex: 1, padding: "16px 12px", borderRadius: 15,
+                            border: formData.sector === opt.value
+                              ? `1.5px solid ${opt.color}60`
+                              : "1px solid rgba(255,255,255,0.07)",
+                            background: formData.sector === opt.value
+                              ? `rgba(${opt.rgb},0.12)`
+                              : "rgba(255,255,255,0.03)",
+                            cursor: "pointer", display: "flex", flexDirection: "column",
+                            alignItems: "center", gap: 8, transition: "all 0.22s",
+                            position: "relative", overflow: "hidden",
+                            boxShadow: formData.sector === opt.value
+                              ? `0 4px 20px rgba(${opt.rgb},0.12)`
+                              : "none",
                           }}>
-                          {formData.sector===opt.value && (
-                            <div style={{position:"absolute",top:7,right:7,width:16,height:16,borderRadius:"50%",background:opt.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#000",fontWeight:700}}>✓</div>
+                          {formData.sector === opt.value && (
+                            <div style={{
+                              position: "absolute", top: 8, right: 8,
+                              width: 18, height: 18, borderRadius: "50%",
+                              background: opt.color,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: 10, color: "#000", fontWeight: 800,
+                            }}>✓</div>
                           )}
-                          <span style={{fontSize:24}}>{opt.icon}</span>
-                          <span style={{fontSize:12,fontWeight:700,color:formData.sector===opt.value?opt.color:"#78909c"}}>{opt.label}</span>
+                          <span style={{ fontSize: 28 }}>{opt.icon}</span>
+                          <span style={{
+                            fontSize: 13, fontWeight: 700,
+                            color: formData.sector === opt.value ? opt.color : "#78909c",
+                          }}>{opt.label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div style={{marginBottom:14}}>
+                  {/* VÁLVULA ASIGNADA */}
+                  <div style={{ marginBottom: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <label style={{ ...labelStyle, marginBottom: 0 }}>🔧 Válvula asignada al ESP32</label>
+                      <div
+                        style={{ color: "#4d7a5e", cursor: "pointer", fontSize: 13 }}
+                        onMouseEnter={() => setTooltip("Cada válvula controla un relé físico en la caja de control. Asigna una válvula diferente a cada planta.")}
+                        onMouseLeave={() => setTooltip(null)}
+                      >
+                        <FaInfoCircle />
+                      </div>
+                    </div>
+
+                    {/* Tooltip */}
+                    <AnimatePresence>
+                      {tooltip && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                          style={{
+                            padding: "9px 13px", borderRadius: 10, marginBottom: 10,
+                            background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)",
+                            fontSize: 12, color: "#94a3b8", lineHeight: 1.5,
+                          }}
+                        >
+                          💡 {tooltip}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10 }}>
+                      {VALVE_OPTIONS.map(opt => {
+                        const ocupada    = usedValves.includes(opt.value) && opt.value !== formData.valveNumber;
+                        const seleccion  = formData.valveNumber === opt.value;
+                        return (
+                          <button key={opt.value} type="button"
+                            onClick={() => !ocupada && setFormData(p => ({ ...p, valveNumber: opt.value }))}
+                            title={ocupada ? `Válvula ${opt.value} ya está asignada a otra planta` : `Pin ${opt.pin} — GPIO ${opt.pinNum}`}
+                            style={{
+                              padding: "14px 6px", borderRadius: 13,
+                              border: seleccion
+                                ? `1.5px solid ${opt.color}70`
+                                : ocupada
+                                  ? "1px solid rgba(255,255,255,0.04)"
+                                  : "1px solid rgba(255,255,255,0.08)",
+                              background: seleccion
+                                ? `rgba(${opt.color.replace("#","")},0.05)`  // fallback
+                                : ocupada
+                                  ? "rgba(255,255,255,0.02)"
+                                  : "rgba(255,255,255,0.03)",
+                              cursor: ocupada ? "not-allowed" : "pointer",
+                              display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+                              transition: "all 0.2s", opacity: ocupada ? 0.38 : 1,
+                              boxShadow: seleccion ? `0 4px 16px rgba(52,211,153,0.15)` : "none",
+                            }}>
+                            <span style={{ fontSize: 18 }}>{ocupada ? "🔒" : "💧"}</span>
+                            <span style={{
+                              fontSize: 13, fontWeight: 800,
+                              color: seleccion ? opt.color : ocupada ? "#4d5e52" : "#94a3b8",
+                            }}>V{opt.value}</span>
+                            <span style={{
+                              fontSize: 10, fontWeight: 600,
+                              color: seleccion ? `${opt.color}90` : "#3d5444",
+                            }}>{opt.pin}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#4d7a5e", marginTop: 7, display: "flex", alignItems: "center", gap: 5 }}>
+                      <span>⚡</span>
+                      <span>V{formData.valveNumber} → Relé {formData.valveNumber} → Pin {VALVE_OPTIONS[formData.valveNumber-1]?.pin} (GPIO {VALVE_OPTIONS[formData.valveNumber-1]?.pinNum})</span>
+                    </div>
+                  </div>
+
+                  {/* TIPO DE RIEGO */}
+                  <div style={{ marginBottom: 18 }}>
                     <label style={labelStyle}>💧 Tipo de riego</label>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                       {IRRIGATION_OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
-                          onClick={()=>setFormData(p=>({...p,irrigationType:opt.value}))}
+                          onClick={() => setFormData(p => ({ ...p, irrigationType: opt.value }))}
                           style={{
-                            padding:"11px 12px", borderRadius:11,
-                            border:formData.irrigationType===opt.value?"1px solid rgba(52,211,153,0.4)":"1px solid rgba(255,255,255,0.07)",
-                            background:formData.irrigationType===opt.value?"rgba(52,211,153,0.10)":"rgba(255,255,255,0.03)",
-                            cursor:"pointer", display:"flex", alignItems:"center", gap:9, transition:"all 0.2s", textAlign:"left",
+                            padding: "13px 14px", borderRadius: 13,
+                            border: formData.irrigationType === opt.value
+                              ? "1.5px solid rgba(52,211,153,0.45)"
+                              : "1px solid rgba(255,255,255,0.07)",
+                            background: formData.irrigationType === opt.value
+                              ? "rgba(52,211,153,0.10)"
+                              : "rgba(255,255,255,0.03)",
+                            cursor: "pointer", display: "flex", alignItems: "center",
+                            gap: 10, transition: "all 0.2s", textAlign: "left",
+                            boxShadow: formData.irrigationType === opt.value
+                              ? "0 4px 16px rgba(52,211,153,0.10)"
+                              : "none",
                           }}>
-                          <span style={{fontSize:18}}>{opt.icon}</span>
+                          <span style={{ fontSize: 20 }}>{opt.icon}</span>
                           <div>
-                            <div style={{fontSize:12,fontWeight:700,color:formData.irrigationType===opt.value?"#34d399":"#b0bec5"}}>{opt.label}</div>
-                            <div style={{fontSize:10,color:"#78909c"}}>{opt.desc}</div>
+                            <div style={{
+                              fontSize: 13, fontWeight: 700,
+                              color: formData.irrigationType === opt.value ? "#34d399" : "#b0bec5",
+                              marginBottom: 2,
+                            }}>{opt.label}</div>
+                            <div style={{ fontSize: 11, color: "#5a7a66" }}>{opt.desc}</div>
                           </div>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div style={{marginBottom:20}}>
+                  {/* IMAGEN */}
+                  <div style={{ marginBottom: 22 }}>
                     <label style={labelStyle}>🖼 Imagen (opcional)</label>
-                    <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+                    <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
                       {QUICK_IMAGES.map(img => (
                         <button key={img.label} type="button"
-                          onClick={()=>{setFormData(p=>({...p,imageUrl:img.url}));setImgPreviewOk(true);}}
+                          onClick={() => { setFormData(p => ({ ...p, imageUrl: img.url })); setImgPreviewOk(true); }}
                           style={{
-                            padding:"5px 10px", borderRadius:99, fontSize:11,
-                            border:formData.imageUrl===img.url?"1px solid rgba(52,211,153,0.5)":"1px solid rgba(255,255,255,0.08)",
-                            background:formData.imageUrl===img.url?"rgba(52,211,153,0.12)":"rgba(255,255,255,0.03)",
-                            color:formData.imageUrl===img.url?"#34d399":"#78909c", cursor:"pointer", transition:"all 0.2s",
+                            padding: "6px 12px", borderRadius: 99, fontSize: 12, fontWeight: 600,
+                            border: formData.imageUrl === img.url
+                              ? "1.5px solid rgba(52,211,153,0.5)"
+                              : "1px solid rgba(255,255,255,0.08)",
+                            background: formData.imageUrl === img.url
+                              ? "rgba(52,211,153,0.12)"
+                              : "rgba(255,255,255,0.03)",
+                            color: formData.imageUrl === img.url ? "#34d399" : "#78909c",
+                            cursor: "pointer", transition: "all 0.18s",
                           }}>{img.emoji} {img.label}</button>
                       ))}
                       {formData.imageUrl && (
-                        <button type="button" onClick={()=>{setFormData(p=>({...p,imageUrl:""}));setImgPreviewOk(false);}}
-                          style={{padding:"5px 10px",borderRadius:99,fontSize:11,border:"1px solid rgba(248,113,113,0.3)",background:"rgba(248,113,113,0.08)",color:"#f87171",cursor:"pointer"}}>
-                          ✕ Quitar</button>
+                        <button type="button"
+                          onClick={() => { setFormData(p => ({ ...p, imageUrl: "" })); setImgPreviewOk(false); }}
+                          style={{
+                            padding: "6px 12px", borderRadius: 99, fontSize: 12,
+                            border: "1px solid rgba(248,113,113,0.3)", background: "rgba(248,113,113,0.08)",
+                            color: "#f87171", cursor: "pointer",
+                          }}>✕ Quitar</button>
                       )}
                     </div>
-                    <div style={{position:"relative"}}>
+                    <div style={{ position: "relative" }}>
                       <input name="imageUrl" placeholder="O pega una URL de imagen..."
-                        value={formData.imageUrl} onChange={e=>{handleChange(e);setImgPreviewOk(false);}}
-                        style={{...inputStyle,paddingRight:formData.imageUrl?40:14}} />
+                        value={formData.imageUrl}
+                        onChange={e => { handleChange(e); setImgPreviewOk(false); }}
+                        style={{ ...inputStyle, paddingRight: formData.imageUrl ? 42 : 14, fontSize: 13 }}
+                      />
                       {formData.imageUrl && imgPreviewOk && (
-                        <FaCheckCircle style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",color:"#34d399",fontSize:14}} />
+                        <FaCheckCircle style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", color: "#34d399", fontSize: 15 }} />
                       )}
                     </div>
                     {formData.imageUrl && (
-                      <motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:"auto"}} style={{marginTop:8}}>
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} style={{ marginTop: 10 }}>
                         <img src={formData.imageUrl} alt="preview"
-                          onLoad={()=>setImgPreviewOk(true)} onError={()=>setImgPreviewOk(false)}
-                          style={{width:"100%",height:80,objectFit:"cover",borderRadius:10,border:"1px solid rgba(52,211,153,0.2)",display:imgPreviewOk?"block":"none"}} />
-                        {!imgPreviewOk && <div style={{fontSize:11,color:"#f87171",marginTop:4}}>⚠ URL de imagen inválida</div>}
+                          onLoad={() => setImgPreviewOk(true)} onError={() => setImgPreviewOk(false)}
+                          style={{
+                            width: "100%", height: 90, objectFit: "cover",
+                            borderRadius: 12, border: "1px solid rgba(52,211,153,0.2)",
+                            display: imgPreviewOk ? "block" : "none",
+                          }} />
+                        {!imgPreviewOk && (
+                          <div style={{ fontSize: 12, color: "#f87171", marginTop: 5 }}>⚠ URL de imagen inválida</div>
+                        )}
                       </motion.div>
                     )}
                   </div>
 
-                  <button type="button" onClick={plant?()=>handleSubmit():handleNext} style={submitStyle}>
-                    {plant?"💾 Guardar cambios":"Continuar →"}
+                  <button type="button"
+                    onClick={plant ? handleSubmit : handleNext}
+                    style={btnPrimary(sectorColor)}
+                    onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                    onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+                  >
+                    {plant ? "💾 Guardar cambios" : "Continuar →"}
                   </button>
                 </motion.div>
               )}
 
-              {/* STEP 2 */}
-              {step===2 && (
+              {/* ══════════════ STEP 2 ══════════════ */}
+              {step === 2 && (
                 <motion.div key="step2"
-                  initial={{opacity:0,x:20}} animate={{opacity:1,x:0}}
-                  exit={{opacity:0,x:-20}} transition={{duration:0.22}}>
+                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.22 }}>
 
-                  {/* Humedad */}
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                  {/* HUMEDAD */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
                     <div>
                       <label style={labelStyle}>🔻 Humedad mínima (%)</label>
                       <input type="number" name="minHumidity" placeholder="ej. 30"
                         value={formData.minHumidity} onChange={handleChange} min={0} max={100}
-                        style={{...inputStyle,borderColor:errors.minHumidity?"rgba(248,113,113,0.5)":"rgba(255,255,255,0.08)"}} />
-                      {errors.minHumidity && <span style={errorStyle}>{errors.minHumidity}</span>}
+                        style={{
+                          ...inputStyle, fontSize: 16, fontWeight: 700, minHeight: 50,
+                          borderColor: errors.minHumidity ? "rgba(248,113,113,0.55)" : "rgba(255,255,255,0.09)",
+                        }}
+                      />
+                      {errors.minHumidity && <span style={errorStyle}>⚠ {errors.minHumidity}</span>}
                     </div>
                     <div>
                       <label style={labelStyle}>🔺 Humedad máxima (%)</label>
                       <input type="number" name="maxHumidity" placeholder="ej. 70"
                         value={formData.maxHumidity} onChange={handleChange} min={0} max={100}
-                        style={{...inputStyle,borderColor:errors.maxHumidity?"rgba(248,113,113,0.5)":"rgba(255,255,255,0.08)"}} />
-                      {errors.maxHumidity && <span style={errorStyle}>{errors.maxHumidity}</span>}
+                        style={{
+                          ...inputStyle, fontSize: 16, fontWeight: 700, minHeight: 50,
+                          borderColor: errors.maxHumidity ? "rgba(248,113,113,0.55)" : "rgba(255,255,255,0.09)",
+                        }}
+                      />
+                      {errors.maxHumidity && <span style={errorStyle}>⚠ {errors.maxHumidity}</span>}
                     </div>
                   </div>
 
-                  {/* Preview rango */}
-                  <div style={{padding:14,borderRadius:14,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",marginBottom:20}}>
-                    <div style={{fontSize:10,fontWeight:700,color:"#78909c",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:10}}>Vista previa del rango</div>
-                    <div style={{position:"relative",height:8,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden",marginBottom:6}}>
+                  {/* VISTA PREVIA DEL RANGO */}
+                  <div style={{
+                    padding: "16px 18px", borderRadius: 16,
+                    background: "rgba(255,255,255,0.025)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    marginBottom: 20,
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#5a7a66", textTransform: "uppercase", letterSpacing: "0.9px", marginBottom: 12 }}>
+                      Vista previa del rango de humedad
+                    </div>
+                    <div style={{ position: "relative", height: 10, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden", marginBottom: 8 }}>
                       {rangeValid && (
-                        <div style={{position:"absolute",top:0,bottom:0,left:`${minH}%`,width:`${maxH-minH}%`,background:"linear-gradient(90deg,#34d399,#60a5fa)",borderRadius:99}} />
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${maxH - minH}%`, left: `${minH}%` }}
+                          style={{ position: "absolute", top: 0, bottom: 0, background: "linear-gradient(90deg,#34d399,#60a5fa)", borderRadius: 99 }}
+                        />
                       )}
                     </div>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#78909c"}}>
-                      <span>0%</span>
-                      {rangeValid && <span style={{color:"#34d399",fontWeight:700}}>Zona óptima: {minH}% — {maxH}%</span>}
-                      <span>100%</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#5a7a66" }}>
+                      <span>0% — Muy seco</span>
+                      {rangeValid && (
+                        <span style={{ color: "#34d399", fontWeight: 700, fontSize: 12 }}>
+                          ✓ Zona óptima: {minH}% — {maxH}%
+                        </span>
+                      )}
+                      <span>100% — Muy húmedo</span>
                     </div>
                   </div>
 
-                  {/* ✅ Programar riego */}
-                  <div style={{marginBottom:20}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                      <label style={{...labelStyle,marginBottom:0}}>⏰ Programar riego automático</label>
-                      <button type="button" onClick={()=>handleScheduleChange("enabled",!formData.schedule.enabled)}
+                  {/* PROGRAMAR RIEGO */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <div>
+                        <label style={{ ...labelStyle, marginBottom: 2 }}>⏰ Riego automático programado</label>
+                        <div style={{ fontSize: 12, color: "#4d7a5e" }}>
+                          El sistema regará en los días y hora que elijas
+                        </div>
+                      </div>
+                      {/* Toggle switch */}
+                      <button type="button"
+                        onClick={() => handleScheduleChange("enabled", !formData.schedule.enabled)}
                         style={{
-                          width:42, height:24, borderRadius:99, border:"none", cursor:"pointer",
-                          background:formData.schedule.enabled?"linear-gradient(135deg,#059669,#34d399)":"rgba(255,255,255,0.1)",
-                          position:"relative", transition:"background 0.25s", flexShrink:0,
+                          width: 48, height: 27, borderRadius: 99, border: "none", cursor: "pointer",
+                          background: formData.schedule.enabled
+                            ? "linear-gradient(135deg,#059669,#34d399)"
+                            : "rgba(255,255,255,0.10)",
+                          position: "relative", transition: "background 0.28s", flexShrink: 0,
                         }}>
-                        <motion.div animate={{x:formData.schedule.enabled?18:0}}
-                          transition={{type:"spring",stiffness:500,damping:32}}
-                          style={{position:"absolute",top:3,left:3,width:18,height:18,borderRadius:"50%",background:"#fff",boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}} />
+                        <motion.div
+                          animate={{ x: formData.schedule.enabled ? 21 : 0 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 32 }}
+                          style={{
+                            position: "absolute", top: 3, left: 3,
+                            width: 21, height: 21, borderRadius: "50%",
+                            background: "#fff", boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
+                          }}
+                        />
                       </button>
                     </div>
+
                     <AnimatePresence>
                       {formData.schedule.enabled && (
                         <motion.div
-                          initial={{opacity:0,height:0}} animate={{opacity:1,height:"auto"}}
-                          exit={{opacity:0,height:0}} transition={{duration:0.25}} style={{overflow:"hidden"}}>
-                          <div style={{padding:14,borderRadius:13,background:"rgba(52,211,153,0.05)",border:"1px solid rgba(52,211,153,0.15)"}}>
-                            <div style={{marginBottom:12}}>
-                              <div style={{fontSize:11,color:"#78909c",fontWeight:600,marginBottom:8}}>Días de riego</div>
-                              <div style={{display:"flex",gap:6}}>
+                          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.28 }}
+                          style={{ overflow: "hidden" }}>
+                          <div style={{
+                            padding: "16px 16px", borderRadius: 16,
+                            background: "rgba(52,211,153,0.05)",
+                            border: "1px solid rgba(52,211,153,0.16)",
+                          }}>
+                            {/* Días */}
+                            <div style={{ marginBottom: 14 }}>
+                              <div style={{ fontSize: 12, color: "#78909c", fontWeight: 600, marginBottom: 10 }}>
+                                Días de riego
+                              </div>
+                              <div style={{ display: "flex", gap: 7 }}>
                                 {DAYS.map(d => (
-                                  <button key={d.value} type="button" onClick={()=>toggleDay(d.value)}
+                                  <button key={d.value} type="button" onClick={() => toggleDay(d.value)}
+                                    title={d.label}
                                     style={{
-                                      width:32, height:32, borderRadius:9, border:"none", cursor:"pointer",
-                                      background:formData.schedule.days?.includes(d.value)?"linear-gradient(135deg,#059669,#34d399)":"rgba(255,255,255,0.06)",
-                                      color:formData.schedule.days?.includes(d.value)?"#fff":"#78909c",
-                                      fontSize:11, fontWeight:700, transition:"all 0.15s",
-                                    }} title={d.label}>{d.short}</button>
+                                      width: 36, height: 36, borderRadius: 10, border: "none", cursor: "pointer",
+                                      background: formData.schedule.days?.includes(d.value)
+                                        ? "linear-gradient(135deg,#059669,#34d399)"
+                                        : "rgba(255,255,255,0.06)",
+                                      color: formData.schedule.days?.includes(d.value) ? "#fff" : "#78909c",
+                                      fontSize: 12, fontWeight: 700, transition: "all 0.15s",
+                                    }}>{d.short}</button>
                                 ))}
                               </div>
                             </div>
-                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+
+                            {/* Hora y duración */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                               <div>
-                                <div style={{fontSize:11,color:"#78909c",fontWeight:600,marginBottom:6}}>Hora de inicio</div>
+                                <div style={{ fontSize: 12, color: "#78909c", fontWeight: 600, marginBottom: 7 }}>
+                                  Hora de inicio
+                                </div>
                                 <input type="time" value={formData.schedule.time}
-                                  onChange={e=>handleScheduleChange("time",e.target.value)}
-                                  style={{...inputStyle,padding:"9px 12px"}} />
+                                  onChange={e => handleScheduleChange("time", e.target.value)}
+                                  style={{ ...inputStyle, padding: "11px 12px", fontSize: 14, minHeight: 44 }}
+                                />
                               </div>
                               <div>
-                                <div style={{fontSize:11,color:"#78909c",fontWeight:600,marginBottom:6}}>Duración (min)</div>
+                                <div style={{ fontSize: 12, color: "#78909c", fontWeight: 600, marginBottom: 7 }}>
+                                  Duración (minutos)
+                                </div>
                                 <input type="number" min={1} max={120} value={formData.schedule.duration}
-                                  onChange={e=>handleScheduleChange("duration",Number(e.target.value))}
-                                  style={{...inputStyle,padding:"9px 12px"}} />
+                                  onChange={e => handleScheduleChange("duration", Number(e.target.value))}
+                                  style={{ ...inputStyle, padding: "11px 12px", fontSize: 14, minHeight: 44 }}
+                                />
                               </div>
                             </div>
-                            {formData.schedule.days?.length>0 && (
-                              <div style={{marginTop:10,fontSize:11,color:"#34d399"}}>
-                                ✓ Regará {formData.schedule.days.map(d=>DAYS[d].label).join(", ")} a las {formData.schedule.time} por {formData.schedule.duration} min
+
+                            {formData.schedule.days?.length > 0 && (
+                              <div style={{ marginTop: 12, fontSize: 12, color: "#34d399", lineHeight: 1.6 }}>
+                                ✓ Regará {formData.schedule.days.map(d => DAYS[d].label).join(", ")} a las {formData.schedule.time} por {formData.schedule.duration} min
                               </div>
                             )}
                           </div>
@@ -366,27 +600,43 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
                     </AnimatePresence>
                   </div>
 
-                  {/* ✅ Notas */}
-                  <div style={{marginBottom:24}}>
-                    <label style={labelStyle}>📝 Notas (opcional)</label>
+                  {/* NOTAS */}
+                  <div style={{ marginBottom: 26 }}>
+                    <label style={labelStyle}>📝 Notas personales (opcional)</label>
                     <textarea name="notes"
-                      placeholder="ej. Trasplantada el 15 feb, abonada con NPK, prefiere sombra parcial..."
-                      value={formData.notes||""} onChange={handleChange}
+                      placeholder="ej. Trasplantada el 15 feb, prefiere sombra parcial, abonada con NPK..."
+                      value={formData.notes || ""} onChange={handleChange}
                       rows={3} maxLength={500}
-                      style={{...inputStyle,resize:"vertical",minHeight:70,lineHeight:1.5,fontFamily:"'Plus Jakarta Sans',sans-serif"}} />
-                    <div style={{fontSize:10,color:"#4d7a5e",textAlign:"right",marginTop:3}}>
-                      {(formData.notes||"").length}/500
+                      style={{
+                        ...inputStyle, resize: "vertical", minHeight: 80,
+                        lineHeight: 1.6, fontFamily: "'Inter',sans-serif",
+                        fontSize: 14, padding: "12px 14px",
+                      }}
+                    />
+                    <div style={{ fontSize: 11, color: "#4d5e52", textAlign: "right", marginTop: 4 }}>
+                      {(formData.notes || "").length}/500
                     </div>
                   </div>
 
-                  <div style={{display:"flex",gap:10}}>
-                    <button type="button" onClick={()=>setStep(1)} style={{
-                      flex:1, padding:13, borderRadius:12, border:"1px solid rgba(255,255,255,0.08)",
-                      background:"rgba(255,255,255,0.04)", color:"#b0bec5",
-                      fontWeight:600, fontSize:14, cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif",
-                    }}>← Atrás</button>
-                    <button type="button" onClick={handleSubmit} style={{...submitStyle,flex:2}}>
-                      💾 {plant?"Guardar cambios":"Crear planta"}
+                  {/* BOTONES */}
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <button type="button" onClick={() => setStep(1)} style={{
+                      flex: 1, padding: "14px 0", borderRadius: 13,
+                      border: "1px solid rgba(255,255,255,0.09)",
+                      background: "rgba(255,255,255,0.04)", color: "#b0bec5",
+                      fontWeight: 600, fontSize: 14, cursor: "pointer",
+                      fontFamily: "'Inter',sans-serif", transition: "all 0.18s",
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.07)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
+                    >← Atrás</button>
+
+                    <button type="button" onClick={handleSubmit}
+                      style={{ ...btnPrimary(sectorColor), flex: 2 }}
+                      onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                      onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+                    >
+                      💾 {plant ? "Guardar cambios" : "Crear planta"}
                     </button>
                   </div>
                 </motion.div>
@@ -399,9 +649,31 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
   );
 }
 
-const labelStyle  = { display:"block", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.8px", color:"#78909c", marginBottom:7 };
-const inputStyle  = { width:"100%", padding:"12px 14px", borderRadius:11, border:"1px solid rgba(255,255,255,0.08)", background:"rgba(255,255,255,0.04)", color:"#f0f6fc", fontSize:14, fontFamily:"'Plus Jakarta Sans',sans-serif", outline:"none", boxSizing:"border-box", transition:"border-color 0.2s,background 0.2s" };
-const submitStyle = { width:"100%", padding:13, borderRadius:12, border:"none", background:"linear-gradient(135deg,#059669,#34d399)", color:"#fff", fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:15, cursor:"pointer", boxShadow:"0 4px 20px rgba(52,211,153,0.30)", transition:"box-shadow 0.2s,transform 0.15s" };
-const errorStyle  = { fontSize:11, color:"#f87171", marginTop:4, display:"block" };
+// ── Estilos ───────────────────────────────────────────
+const labelStyle = {
+  display: "block", fontSize: 12, fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: "0.9px",
+  color: "#6b8f7a", marginBottom: 8,
+};
+const inputStyle = {
+  width: "100%", padding: "12px 14px", borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.09)",
+  background: "rgba(255,255,255,0.04)", color: "#f0f6fc",
+  fontSize: 14, fontFamily: "'Inter',sans-serif",
+  outline: "none", boxSizing: "border-box",
+  transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s",
+};
+const errorStyle = {
+  fontSize: 12, color: "#f87171", marginTop: 5,
+  display: "block", fontWeight: 500,
+};
+const btnPrimary = (color = "#34d399") => ({
+  width: "100%", padding: "14px 0", borderRadius: 13, border: "none",
+  background: `linear-gradient(135deg, #059669, ${color})`,
+  color: "#fff", fontFamily: "'Inter',sans-serif",
+  fontWeight: 700, fontSize: 15, cursor: "pointer",
+  boxShadow: `0 4px 24px rgba(5,150,105,0.30)`,
+  transition: "box-shadow 0.2s, transform 0.18s",
+});
 
 export default PlantModal;

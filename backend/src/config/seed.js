@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-const dotenv   = require("dotenv");
-dotenv.config({ path: "../../.env" });
+const path     = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 
 const Plant  = require("../models/Plant");
 const Device = require("../models/Device");
@@ -37,67 +37,59 @@ function generateHistory(baseHumidity, days = 30) {
 async function seed() {
   try {
     const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/riego_iot";
+    console.log("🔌 Conectando a:", uri.substring(0, 50) + "...");
     await mongoose.connect(uri);
     console.log("✅ Conectado a MongoDB\n");
 
-    // ── Buscar o crear usuario demo — NUNCA toca usuarios existentes ──
-    let demoUser = await User.findOne({ username: "david" });
-
-    if (!demoUser) {
-      demoUser = await User.create({
-        name:     "David",
-        username: "david",
-        email:    "david@riego.iot",
-        password: "david123",
-        role:     "admin",
-      });
-      console.log("👤 Usuario demo creado  — david / david123");
-    } else {
-      console.log("👤 Usuario demo ya existe — omitiendo creación");
+    // ── Borrar datos existentes del usuario demo para empezar limpio ──
+    const existingUser = await User.findOne({ username: "david" });
+    if (existingUser) {
+      await Plant.deleteMany({ owner: existingUser._id });
+      await Device.deleteMany({ owner: existingUser._id });
+      await User.deleteOne({ _id: existingUser._id });
+      console.log("🧹 Datos anteriores del usuario demo eliminados");
     }
 
-    // ── Verificar si el usuario demo ya tiene plantas ──
-    const existingPlants = await Plant.countDocuments({ owner: demoUser._id });
+    // ── Crear usuario demo ──
+    const demoUser = await User.create({
+      name:     "David",
+      username: "david",
+      email:    "david@riego.iot",
+      password: "david123",
+      role:     "admin",
+    });
+    console.log("👤 Usuario demo creado — david / david123");
 
-    if (existingPlants > 0) {
-      console.log(`🌿 El usuario demo ya tiene ${existingPlants} plantas — omitiendo seed de plantas`);
-    } else {
-      const plantsToInsert = DEMO_PLANTS.map(p => ({
-        ...p,
-        owner:            demoUser._id,
-        valveStatus:      p.currentHumidity < p.minHumidity ? "OPEN" : "CLOSED",
-        humidityHistory:  generateHistory(p.currentHumidity),
-        lastWatered:      new Date(Date.now() - Math.random() * 48 * 3600000),
-      }));
-      await Plant.insertMany(plantsToInsert);
-      console.log(`🌿 ${DEMO_PLANTS.length} plantas demo creadas con 30 días de historial`);
-    }
+    // ── Crear plantas ──
+    const plantsToInsert = DEMO_PLANTS.map(p => ({
+      ...p,
+      owner:           demoUser._id,
+      valveStatus:     p.currentHumidity < p.minHumidity ? "OPEN" : "CLOSED",
+      humidityHistory: generateHistory(p.currentHumidity),
+      lastWatered:     new Date(Date.now() - Math.random() * 48 * 3600000),
+    }));
+    await Plant.insertMany(plantsToInsert);
+    console.log(`🌿 ${DEMO_PLANTS.length} plantas demo creadas`);
 
-    // ── Verificar si el usuario demo ya tiene dispositivos ──
-    const existingDevices = await Device.countDocuments({ owner: demoUser._id });
+    // ── Crear dispositivos ──
+    const devicesToInsert = DEMO_DEVICES.map(d => ({
+      ...d,
+      owner:    demoUser._id,
+      lastSeen: new Date(),
+    }));
+    await Device.insertMany(devicesToInsert);
+    console.log(`📡 ${DEMO_DEVICES.length} dispositivos ESP32 creados`);
 
-    if (existingDevices > 0) {
-      console.log(`📡 El usuario demo ya tiene ${existingDevices} dispositivos — omitiendo seed de dispositivos`);
-    } else {
-      const devicesToInsert = DEMO_DEVICES.map(d => ({
-        ...d,
-        owner:    demoUser._id,
-        lastSeen: new Date(),
-      }));
-      await Device.insertMany(devicesToInsert);
-      console.log(`📡 ${DEMO_DEVICES.length} dispositivos ESP32 creados`);
-    }
-
-    // ── Mostrar resumen de TODOS los usuarios (sin tocarlos) ──
+    // ── Resumen ──
     const totalUsers   = await User.countDocuments();
     const totalPlants  = await Plant.countDocuments();
     const totalDevices = await Device.countDocuments();
 
     console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("✅ Seed completado — usuarios existentes intactos");
+    console.log("✅ Seed completado");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.log(`📊 Estado actual de la BD:`);
-    console.log(`   • ${totalUsers}  usuarios totales (ninguno eliminado)`);
+    console.log(`   • ${totalUsers}  usuarios totales`);
     console.log(`   • ${totalPlants}  plantas totales`);
     console.log(`   • ${totalDevices}  dispositivos totales`);
     console.log("\n🔑 Cuenta demo:");
