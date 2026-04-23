@@ -1,5 +1,5 @@
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { Leaf, Droplets, AlertTriangle, BarChart2 } from "lucide-react";
 
 function getHumGradient(pct) {
@@ -16,7 +16,7 @@ function AnimatedCounter({ to, unit, gradient, delay = 0 }) {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      animate(count, to, { duration: 1.2, ease: [0.16, 1, 0.3, 1] });
+      animate(count, to, { duration: 1.4, ease: [0.16, 1, 0.3, 1] });
     }, delay * 1000 + 200);
     return () => clearTimeout(timeout);
   }, [count, to, delay]);
@@ -29,16 +29,17 @@ function AnimatedCounter({ to, unit, gradient, delay = 0 }) {
 
   return (
     <motion.span
-      className="stat-value"
-      initial={{ opacity: 0, scale: 0.7, filter: "blur(8px)" }}
-      animate={{ opacity: 1, scale: 1,   filter: "blur(0px)" }}
-      transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
+      className="qs-value"
+      initial={{ opacity: 0, scale: 0.6, y: 12, filter: "blur(10px)" }}
+      animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}
       style={{
         backgroundImage: gradient,
         WebkitBackgroundClip: "text",
         WebkitTextFillColor: "transparent",
         backgroundClip: "text",
         display: "inline-block",
+        lineHeight: 1,
       }}
     >
       <span ref={displayRef}>0{unit}</span>
@@ -47,6 +48,9 @@ function AnimatedCounter({ to, unit, gradient, delay = 0 }) {
 }
 
 function QuickStats({ plants }) {
+  const [hovered, setHovered] = useState(null);
+  const isDark = !document.body.classList.contains("light-mode");
+
   const total    = plants.length;
   const watering = plants.filter(p => p.valveStatus === true || p.valveStatus === "OPEN").length;
   const alerts   = plants.filter(p => (p.currentHumidity ?? 0) < p.minHumidity).length;
@@ -54,136 +58,254 @@ function QuickStats({ plants }) {
     ? Math.round(plants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / total)
     : 0;
 
-  const isDark = !document.body.classList.contains("light-mode");
-
   const stats = [
     {
       Icon: Leaf,
       label: "Total Plantas",
+      sublabel: `${total} registradas`,
       value: total, unit: "",
       gradient: "linear-gradient(135deg, #059669, #34d399)",
-      color: isDark ? "#34d399" : "#059669",
-      darkBg:     "rgba(5,150,105,0.09)",
-      darkBorder: "rgba(52,211,153,0.18)",
-      lightBg:     "linear-gradient(145deg, rgba(236,253,245,1) 0%, rgba(209,250,229,0.80) 100%)",
-      lightBorder: "rgba(16,185,129,0.25)",
-      lightIcon:   "rgba(16,185,129,0.15)",
-      glow: "rgba(52,211,153,0.10)",
+      color: "#34d399",
+      bg: "rgba(52,211,153,0.06)",
+      border: "rgba(52,211,153,0.20)",
+      borderHover: "rgba(52,211,153,0.55)",
+      glow: "rgba(52,211,153,0.18)",
+      iconBg: "rgba(52,211,153,0.12)",
+      topLine: "linear-gradient(90deg, #059669, #34d399, #6ee7b7)",
+      dot: "#34d399",
+      pulse: false,
     },
     {
       Icon: Droplets,
       label: "Regando Ahora",
+      sublabel: watering > 0 ? "💧 activo" : "sin riego activo",
       value: watering, unit: "",
       gradient: watering > 0
         ? "linear-gradient(135deg, #0284c7, #38bdf8)"
         : "linear-gradient(135deg, #64748b, #94a3b8)",
-      color: isDark
-        ? (watering > 0 ? "#60a5fa" : "#6b7280")
-        : (watering > 0 ? "#0284c7" : "#64748b"),
-      darkBg:     watering > 0 ? "rgba(56,189,248,0.09)" : "rgba(255,255,255,0.03)",
-      darkBorder: watering > 0 ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.07)",
-      lightBg:     watering > 0
-        ? "linear-gradient(145deg, rgba(239,246,255,1) 0%, rgba(219,234,254,0.80) 100%)"
-        : "linear-gradient(145deg, rgba(248,250,252,1) 0%, rgba(241,245,249,0.80) 100%)",
-      lightBorder: watering > 0 ? "rgba(59,130,246,0.22)" : "rgba(148,163,184,0.20)",
-      lightIcon:   watering > 0 ? "rgba(59,130,246,0.12)" : "rgba(148,163,184,0.12)",
-      glow: "rgba(96,165,250,0.09)",
+      color: watering > 0 ? "#60a5fa" : "#6b7280",
+      bg: watering > 0 ? "rgba(56,189,248,0.06)" : "rgba(255,255,255,0.02)",
+      border: watering > 0 ? "rgba(96,165,250,0.20)" : "rgba(255,255,255,0.07)",
+      borderHover: watering > 0 ? "rgba(96,165,250,0.55)" : "rgba(255,255,255,0.18)",
+      glow: watering > 0 ? "rgba(96,165,250,0.18)" : "transparent",
+      iconBg: watering > 0 ? "rgba(56,189,248,0.12)" : "rgba(255,255,255,0.05)",
+      topLine: watering > 0
+        ? "linear-gradient(90deg, #0284c7, #38bdf8, #7dd3fc)"
+        : "linear-gradient(90deg, #475569, #64748b, #94a3b8)",
+      dot: watering > 0 ? "#60a5fa" : "#6b7280",
+      pulse: watering > 0,
     },
     {
       Icon: AlertTriangle,
       label: "Alertas Activas",
+      sublabel: alerts > 0 ? `⚠️ ${alerts} crítica${alerts > 1 ? "s" : ""}` : "✅ todo bien",
       value: alerts, unit: "",
       gradient: alerts > 0
         ? "linear-gradient(135deg, #dc2626, #ef4444)"
         : "linear-gradient(135deg, #059669, #34d399)",
-      color: isDark
-        ? (alerts > 0 ? "#f87171" : "#34d399")
-        : (alerts > 0 ? "#dc2626" : "#059669"),
-      darkBg:     alerts > 0 ? "rgba(248,113,113,0.09)" : "rgba(52,211,153,0.06)",
-      darkBorder: alerts > 0 ? "rgba(248,113,113,0.20)" : "rgba(52,211,153,0.14)",
-      lightBg:     alerts > 0
-        ? "linear-gradient(145deg, rgba(254,242,242,1) 0%, rgba(254,226,226,0.80) 100%)"
-        : "linear-gradient(145deg, rgba(236,253,245,1) 0%, rgba(209,250,229,0.80) 100%)",
-      lightBorder: alerts > 0 ? "rgba(220,38,38,0.22)" : "rgba(16,185,129,0.22)",
-      lightIcon:   alerts > 0 ? "rgba(220,38,38,0.12)" : "rgba(16,185,129,0.12)",
-      glow: alerts > 0 ? "rgba(239,68,68,0.09)" : "rgba(52,211,153,0.08)",
+      color: alerts > 0 ? "#f87171" : "#34d399",
+      bg: alerts > 0 ? "rgba(248,113,113,0.07)" : "rgba(52,211,153,0.06)",
+      border: alerts > 0 ? "rgba(248,113,113,0.22)" : "rgba(52,211,153,0.16)",
+      borderHover: alerts > 0 ? "rgba(248,113,113,0.55)" : "rgba(52,211,153,0.45)",
+      glow: alerts > 0 ? "rgba(239,68,68,0.20)" : "rgba(52,211,153,0.12)",
+      iconBg: alerts > 0 ? "rgba(239,68,68,0.12)" : "rgba(52,211,153,0.12)",
+      topLine: alerts > 0
+        ? "linear-gradient(90deg, #dc2626, #ef4444, #fca5a5)"
+        : "linear-gradient(90deg, #059669, #34d399, #6ee7b7)",
+      dot: alerts > 0 ? "#f87171" : "#34d399",
+      pulse: alerts > 0,
+      urgent: alerts > 0,
     },
     {
       Icon: BarChart2,
       label: "Humedad Promedio",
+      sublabel: avgHum < 30 ? "🔴 crítica" : avgHum < 50 ? "🟡 baja" : avgHum < 75 ? "🟢 óptima" : "🔵 alta",
       value: avgHum, unit: "%",
       gradient: getHumGradient(avgHum),
-      color: isDark
-        ? (avgHum < 30 ? "#f87171" : avgHum < 50 ? "#fbbf24" : "#34d399")
-        : (avgHum < 30 ? "#dc2626" : avgHum < 50 ? "#d97706" : "#059669"),
-      darkBg:     "rgba(52,211,153,0.07)",
-      darkBorder: "rgba(52,211,153,0.16)",
-      lightBg:    avgHum < 30
-        ? "linear-gradient(145deg, rgba(254,242,242,1) 0%, rgba(254,226,226,0.80) 100%)"
-        : avgHum < 50
-        ? "linear-gradient(145deg, rgba(255,251,235,1) 0%, rgba(254,243,199,0.80) 100%)"
-        : "linear-gradient(145deg, rgba(236,253,245,1) 0%, rgba(209,250,229,0.80) 100%)",
-      lightBorder: avgHum < 30 ? "rgba(220,38,38,0.20)" : avgHum < 50 ? "rgba(217,119,6,0.22)" : "rgba(16,185,129,0.22)",
-      lightIcon:   avgHum < 30 ? "rgba(220,38,38,0.12)" : avgHum < 50 ? "rgba(217,119,6,0.12)" : "rgba(16,185,129,0.12)",
-      glow: "rgba(52,211,153,0.09)",
+      color: avgHum < 30 ? "#f87171" : avgHum < 50 ? "#fbbf24" : "#34d399",
+      bg: "rgba(52,211,153,0.06)",
+      border: "rgba(52,211,153,0.18)",
+      borderHover: "rgba(52,211,153,0.50)",
+      glow: "rgba(52,211,153,0.16)",
+      iconBg: "rgba(52,211,153,0.12)",
+      topLine: getHumGradient(avgHum),
+      dot: avgHum < 30 ? "#f87171" : avgHum < 50 ? "#fbbf24" : "#34d399",
+      pulse: false,
     },
   ];
 
   return (
     <div style={{ padding: "20px 0 0", width: "100%" }}>
-      {/* ── 4 stat cards ── */}
       <div className="quick-stats">
         {stats.map((s, i) => (
           <motion.div
             key={s.label}
-            className="stat-card"
-            initial={{ opacity: 0, y: 20, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0,  scale: 1    }}
-            transition={{ duration: 0.42, delay: i * 0.09, ease: [0.22, 1, 0.36, 1] }}
-            whileHover={{ y: -4, transition: { duration: 0.18 } }}
+            className={`stat-card ${s.urgent ? "qs-urgent" : ""}`}
+            onHoverStart={() => setHovered(i)}
+            onHoverEnd={() => setHovered(null)}
+            initial={{ opacity: 0, y: 28, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, delay: i * 0.09, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={{ y: -6, scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            style={{ cursor: "default" }}
           >
             <div
               className="stat-card-inner"
               style={{
-                background: isDark ? s.darkBg : s.lightBg,
-                border: `1px solid ${isDark ? s.darkBorder : s.lightBorder}`,
+                background: s.bg,
+                border: `1px solid ${hovered === i ? s.borderHover : s.border}`,
+                boxShadow: hovered === i
+                  ? `0 14px 40px rgba(0,0,0,0.5), 0 0 30px ${s.glow}, inset 0 1px 0 rgba(255,255,255,0.10)`
+                  : `0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                transition: "all 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+                padding: "18px 18px 16px",
               }}
             >
-              <div className="stat-card-line" style={{ background: s.gradient }} />
+              {/* Línea de color superior */}
+              <div style={{
+                position: "absolute", top: 0, left: 0, right: 0, height: 2,
+                background: s.topLine,
+                borderRadius: "16px 16px 0 0",
+                opacity: hovered === i ? 1 : 0.7,
+                transition: "opacity 0.3s ease",
+              }} />
 
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <div style={{
-                  width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: isDark ? "rgba(255,255,255,0.07)" : s.lightIcon,
-                  border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.60)"}`,
-                  boxShadow: isDark ? "none" : "0 1px 4px rgba(0,0,0,0.06)",
-                }}>
+              {/* Glow de fondo al hover */}
+              <motion.div
+                style={{
+                  position: "absolute", inset: 0,
+                  background: `radial-gradient(ellipse 70% 55% at 50% 100%, ${s.glow} 0%, transparent 70%)`,
+                  borderRadius: 16,
+                  pointerEvents: "none",
+                }}
+                animate={{ opacity: hovered === i ? 1 : 0 }}
+                transition={{ duration: 0.3 }}
+              />
+
+              {/* Header: icono + label */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10,
+                marginBottom: 10, position: "relative",
+              }}>
+                {/* Icono con fondo */}
+                <motion.div
+                  style={{
+                    width: 34, height: 34, borderRadius: 10,
+                    background: s.iconBg,
+                    border: `1px solid ${s.border}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                  animate={hovered === i ? { scale: 1.12, rotate: -5 } : { scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
                   <s.Icon size={16} color={s.color} strokeWidth={2.2} />
+                </motion.div>
+
+                {/* Label + sublabel */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                  <span style={{
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    letterSpacing: "0.5px",
+                    color: "#e2eaf0",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    lineHeight: 1.3,
+                  }}>
+                    {s.label}
+                  </span>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 500,
+                    color: "rgba(180,200,215,0.70)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    lineHeight: 1.2,
+                  }}>
+                    {s.sublabel}
+                  </span>
                 </div>
-                <span style={{
-                  fontSize: 10, fontWeight: 700,
-                  textTransform: "uppercase", letterSpacing: "0.9px",
-                  color: isDark ? "rgba(176,190,197,0.80)" : "rgba(40,60,50,0.65)",
-                }}>
-                  {s.label}
-                </span>
+
+                {/* Dot pulsante si hay actividad */}
+                {s.pulse && (
+                  <motion.div
+                    style={{
+                      position: "absolute", top: 0, right: 0,
+                      width: 8, height: 8, borderRadius: "50%",
+                      background: s.dot,
+                      boxShadow: `0 0 8px ${s.dot}`,
+                    }}
+                    animate={{ scale: [1, 1.6, 1], opacity: [1, 0.4, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                )}
               </div>
 
-              <AnimatedCounter to={s.value} unit={s.unit} gradient={s.gradient} delay={i * 0.09} />
+              {/* Valor numérico */}
+              <AnimatedCounter
+                to={s.value}
+                unit={s.unit}
+                gradient={s.gradient}
+                delay={i * 0.09}
+              />
 
-              <div className="stat-accent" style={{ background: s.gradient, opacity: isDark ? 0.35 : 0.50 }} />
+              {/* Barra de progreso — solo humedad */}
+              {s.unit === "%" && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{
+                    height: 3, borderRadius: 99,
+                    background: "rgba(255,255,255,0.07)",
+                    overflow: "hidden",
+                  }}>
+                    <motion.div
+                      style={{ height: "100%", borderRadius: 99, background: s.topLine }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(s.value, 100)}%` }}
+                      transition={{ duration: 1.4, delay: i * 0.09 + 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                  </div>
+                  <div style={{
+                    display: "flex", justifyContent: "space-between",
+                    marginTop: 4, fontSize: 9, fontWeight: 600,
+                    color: "rgba(180,200,215,0.55)",
+                  }}>
+                    <span>0%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+              )}
 
-              <div style={{
-                position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none",
-                background: `radial-gradient(ellipse 90% 70% at 10% 90%, ${s.glow} 0%, transparent 65%)`,
-              }} />
+              {/* Dots animados — solo cuando hay plantas regando */}
+              {s.label === "Regando Ahora" && watering > 0 && (
+                <div style={{ marginTop: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {Array.from({ length: Math.min(watering, 5) }).map((_, idx) => (
+                    <motion.div
+                      key={idx}
+                      style={{
+                        width: 6, height: 6, borderRadius: "50%",
+                        background: "#60a5fa",
+                        boxShadow: "0 0 6px rgba(96,165,250,0.6)",
+                      }}
+                      animate={{ opacity: [1, 0.3, 1], scale: [1, 0.7, 1] }}
+                      transition={{ duration: 1.2, repeat: Infinity, delay: idx * 0.2 }}
+                    />
+                  ))}
+                  {watering > 5 && (
+                    <span style={{ fontSize: 9, color: "#60a5fa", fontWeight: 700 }}>
+                      +{watering - 5}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         ))}
       </div>
-
-
     </div>
   );
 }

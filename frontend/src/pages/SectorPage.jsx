@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { motion, AnimatePresence, Reorder, useScroll, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, ArrowLeft, Plus, GripVertical } from "lucide-react";
+import { Search, SlidersHorizontal, ArrowLeft, Plus, GripVertical, Droplets, Thermometer, Zap } from "lucide-react";
 import api from "../api";
 import Navbar    from "../components/layout/Navbar";
 import PlantCard from "../components/plant/PlantCard";
@@ -13,6 +13,7 @@ import { useToast } from "../context/ToastProvider";
 import { useNotifications } from "../hooks/useNotifications";
 import { useSocket } from "../hooks/useSocket";
 
+// ── Opciones de filtro ─────────────────────────────────────
 const SORT_OPTIONS = [
   { value: "order",         label: "Personalizado" },
   { value: "name-asc",      label: "Nombre A–Z"    },
@@ -28,33 +29,144 @@ const STATUS_CHIPS = [
   { value: "alert",    label: "Alerta",    icon: "⚠"  },
 ];
 
+// ── Tema por sector ────────────────────────────────────────
 const SECTOR_THEME = {
   Superior: {
     gradient:     "linear-gradient(135deg, #064e3b 0%, #065f46 40%, #0f172a 100%)",
+    gradientHero: "linear-gradient(160deg, #022c22 0%, #064e3b 35%, #0a3d2e 65%, #050d0a 100%)",
     accent:       "#34d399",
     accentDim:    "rgba(52,211,153,0.15)",
     accentBorder: "rgba(52,211,153,0.30)",
     glow:         "rgba(52,211,153,0.20)",
+    glowStrong:   "rgba(52,211,153,0.45)",
+    orb1:         "rgba(52,211,153,0.18)",
+    orb2:         "rgba(16,185,129,0.12)",
+    orb3:         "rgba(5,150,105,0.10)",
+    particle:     "rgba(52,211,153,0.6)",
     icon:         "🌿",
     label:        "Patio Superior",
+    sublabel:     "Zona verde principal",
     img:          "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=1200&q=60",
   },
   Inferior: {
     gradient:     "linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #0f172a 100%)",
+    gradientHero: "linear-gradient(160deg, #0f0e1f 0%, #1e1b4b 35%, #252060 65%, #0a0918 100%)",
     accent:       "#818cf8",
     accentDim:    "rgba(129,140,248,0.15)",
     accentBorder: "rgba(129,140,248,0.30)",
     glow:         "rgba(129,140,248,0.20)",
+    glowStrong:   "rgba(129,140,248,0.45)",
+    orb1:         "rgba(129,140,248,0.18)",
+    orb2:         "rgba(99,102,241,0.12)",
+    orb3:         "rgba(167,139,250,0.10)",
+    particle:     "rgba(129,140,248,0.6)",
     icon:         "🌱",
     label:        "Patio Inferior",
+    sublabel:     "Zona de cultivo interior",
     img:          "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=1200&q=60",
   },
 };
 
+// ── Componente de partículas flotantes ─────────────────────
+function FloatingParticles({ color, count = 18 }) {
+  const particles = useMemo(() =>
+    Array.from({ length: count }, (_, i) => ({
+      id: i,
+      x:    Math.random() * 100,
+      y:    Math.random() * 100,
+      size: Math.random() * 4 + 1.5,
+      dur:  Math.random() * 8 + 6,
+      del:  Math.random() * 4,
+      dx:   (Math.random() - 0.5) * 60,
+      dy:   -(Math.random() * 80 + 40),
+    })),
+  [count]);
+
+  return (
+    <div className="sp-particles" aria-hidden>
+      {particles.map(p => (
+        <motion.div
+          key={p.id}
+          className="sp-particle"
+          style={{
+            left:   `${p.x}%`,
+            top:    `${p.y}%`,
+            width:  p.size,
+            height: p.size,
+            background: color,
+          }}
+          animate={{
+            x:       [0, p.dx, 0],
+            y:       [0, p.dy, 0],
+            opacity: [0, 0.8, 0],
+            scale:   [0.5, 1.2, 0.5],
+          }}
+          transition={{
+            duration: p.dur,
+            delay:    p.del,
+            repeat:   Infinity,
+            ease:     "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Orbs de fondo animados ─────────────────────────────────
+function BackgroundOrbs({ theme }) {
+  return (
+    <>
+      <motion.div
+        className="sp-orb sp-orb-1"
+        style={{ background: `radial-gradient(circle, ${theme.orb1} 0%, transparent 70%)` }}
+        animate={{ scale: [1, 1.15, 1], x: [0, 30, 0], y: [0, -20, 0] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="sp-orb sp-orb-2"
+        style={{ background: `radial-gradient(circle, ${theme.orb2} 0%, transparent 70%)` }}
+        animate={{ scale: [1, 1.2, 1], x: [0, -25, 0], y: [0, 30, 0] }}
+        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+      />
+      <motion.div
+        className="sp-orb sp-orb-3"
+        style={{ background: `radial-gradient(circle, ${theme.orb3} 0%, transparent 70%)` }}
+        animate={{ scale: [1, 1.1, 1], x: [0, 20, 0], y: [0, 20, 0] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 5 }}
+      />
+    </>
+  );
+}
+
+// ── Stat card del hero ─────────────────────────────────────
+function HeroStat({ label, value, color, icon: Icon, index }) {
+  return (
+    <motion.div
+      className="sp-hero-stat"
+      initial={{ opacity: 0, y: 20, scale: 0.85 }}
+      animate={{ opacity: 1, y: 0,  scale: 1 }}
+      transition={{ delay: 0.35 + index * 0.08, ease: [0.34, 1.56, 0.64, 1] }}
+      style={{ "--stat-color": color }}
+      whileHover={{ y: -4, scale: 1.04 }}
+    >
+      {Icon && (
+        <div className="sp-hero-stat-icon">
+          <Icon size={14} strokeWidth={2} />
+        </div>
+      )}
+      <span className="sp-hero-stat-val">{value}</span>
+      <span className="sp-hero-stat-lbl">{label}</span>
+    </motion.div>
+  );
+}
+
+// ── Componente principal ───────────────────────────────────
 function SectorPage({ sector }) {
   const toast    = useToast();
   const navigate = useNavigate();
   const theme    = SECTOR_THEME[sector] || SECTOR_THEME.Superior;
+  const heroRef  = useRef(null);
   const { requestPermission, checkPlants } = useNotifications();
 
   const [plants,        setPlants]        = useState([]);
@@ -68,9 +180,13 @@ function SectorPage({ sector }) {
   const [dragEnabled,   setDragEnabled]   = useState(false);
   const [orderedPlants, setOrderedPlants] = useState([]);
 
+  // Parallax del hero
+  const { scrollY } = useScroll();
+  const heroY       = useTransform(scrollY, [0, 300], [0, 60]);
+  const heroOpacity = useTransform(scrollY, [0, 200], [1, 0.6]);
+
   useEffect(() => { requestPermission(); }, [requestPermission]);
 
-  // ── Fetch plantas ─────────────────────────────────────────
   const fetchPlants = useCallback(async () => {
     try {
       const res = await api.get("/api/plants");
@@ -86,49 +202,44 @@ function SectorPage({ sector }) {
     return () => clearInterval(interval);
   }, [fetchPlants]);
 
-  // ── Socket.io tiempo real ─────────────────────────────────
   useSocket({
-    // ✅ CORREGIDO: spread para no perder campos con actualización optimista
     onPlantUpdate: useCallback((data) => {
       if (data.sector !== sector) return;
-      setPlants(prev => prev.map(p =>
-        p._id === data._id ? { ...p, ...data } : p
-      ));
+      setPlants(prev => prev.map(p => p._id === data._id ? { ...p, ...data } : p));
     }, [sector]),
-
     onPlantDeleted: useCallback((data) => {
       setPlants(prev => prev.filter(p => p._id !== data._id));
     }, []),
-
     onAlert: useCallback((data) => {
       if (data.sector !== sector) return;
       toast(`⚠️ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
     }, [sector, toast]),
-
     onScheduleTriggered: useCallback((data) => {
       if (data.sector !== sector) return;
       toast(`⏰ Riego automático — ${data.name}`, "info");
     }, [sector, toast]),
   });
 
-  // ── Plantas del sector memoizadas ─────────────────────────
-  const sectorPlants = useMemo(
-    () => plants.filter(p => p.sector === sector),
-    [plants, sector]
-  );
+  const sectorPlants = useMemo(() => plants.filter(p => p.sector === sector), [plants, sector]);
 
-  // ── Orden de plantas — solo actualizar si cambian IDs u order
   useEffect(() => {
-    setOrderedPlants(prev => {
-      const sorted = [...sectorPlants].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      const prevKey = prev.map(p => p._id + p.order + p.valveStatus).join(",");
-      const nextKey = sorted.map(p => p._id + p.order + p.valveStatus).join(",");
-      if (prevKey === nextKey) return prev;
-      return sorted;
-    });
-  }, [sectorPlants]);
+  setOrderedPlants(prev => {
+    const sorted  = [...sectorPlants].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+ 
+    // ✅ FIX: incluir currentHumidity en la comparación
+    // Sin esto el grid no re-renderiza cuando llega nueva lectura del sensor
+    const prevKey = prev.map(p =>
+      `${p._id}|${p.order}|${p.valveStatus}|${p.currentHumidity ?? 0}`
+    ).join(",");
+    const nextKey = sorted.map(p =>
+      `${p._id}|${p.order}|${p.valveStatus}|${p.currentHumidity ?? 0}`
+    ).join(",");
+ 
+    if (prevKey === nextKey) return prev;
+    return sorted;
+  });
+}, [sectorPlants]);
 
-  // ── Guardar / editar planta ───────────────────────────────
   const handleSave = async (data) => {
     try {
       if (editingPlant) {
@@ -147,80 +258,52 @@ function SectorPage({ sector }) {
     setEditingPlant(null);
   };
 
-  // ── Eliminar planta ───────────────────────────────────────
   const handleDelete = async (id) => {
     try {
       await api.delete(`/api/plants/${id}`);
       setPlants(prev => prev.filter(p => p._id !== id));
-    } catch {
-      toast("Error al eliminar", "error");
-    }
+    } catch { toast("Error al eliminar", "error"); }
   };
 
-  // ── Toggle válvula ✅ actualiza plants Y orderedPlants al instante
   const handleToggleValve = async (plant) => {
     const newStatus = plant.valveStatus === "OPEN" ? "CLOSED" : "OPEN";
-
-    // ✅ Actualizar AMBOS estados — orderedPlants es el que renderiza el grid
-    const applyUpdate = prev => prev.map(p =>
-      p._id === plant._id ? { ...p, valveStatus: newStatus } : p
-    );
+    const applyUpdate = prev => prev.map(p => p._id === plant._id ? { ...p, valveStatus: newStatus } : p);
     setPlants(applyUpdate);
     setOrderedPlants(applyUpdate);
-
     try {
       const res = await api.put(`/api/plants/${plant._id}`, { valveStatus: newStatus });
-      // Sincronizar con la respuesta real del servidor
-      const applySync = prev => prev.map(p =>
-        p._id === plant._id ? { ...p, ...res.data } : p
-      );
+      const applySync = prev => prev.map(p => p._id === plant._id ? { ...p, ...res.data } : p);
       setPlants(applySync);
       setOrderedPlants(applySync);
       toast(
-        newStatus === "OPEN"
-          ? `💧 Riego iniciado — ${plant.name}`
-          : `⏹ Riego detenido — ${plant.name}`,
+        newStatus === "OPEN" ? `💧 Riego iniciado — ${plant.name}` : `⏹ Riego detenido — ${plant.name}`,
         newStatus === "OPEN" ? "info" : "warning"
       );
     } catch {
-      // Revertir ambos si falla
-      const applyRevert = prev => prev.map(p =>
-        p._id === plant._id ? { ...p, valveStatus: plant.valveStatus } : p
-      );
+      const applyRevert = prev => prev.map(p => p._id === plant._id ? { ...p, valveStatus: plant.valveStatus } : p);
       setPlants(applyRevert);
       setOrderedPlants(applyRevert);
       toast("Error al controlar la válvula", "error");
     }
   };
 
-  // ── Reordenar plantas con drag ────────────────────────────
   const handleReorderEnd = useCallback(async (newOrder) => {
     setOrderedPlants(newOrder);
     try {
-      await Promise.all(
-        newOrder.map((p, i) =>
-          p.order !== i
-            ? api.put(`/api/plants/${p._id}`, { order: i })
-            : Promise.resolve()
-        )
-      );
+      await Promise.all(newOrder.map((p, i) =>
+        p.order !== i ? api.put(`/api/plants/${p._id}`, { order: i }) : Promise.resolve()
+      ));
       setPlants(prev => prev.map(p => {
         const idx = newOrder.findIndex(o => o._id === p._id);
         return idx !== -1 ? { ...p, order: idx } : p;
       }));
-    } catch {
-      toast("Error al guardar orden", "error");
-    }
+    } catch { toast("Error al guardar orden", "error"); }
   }, [toast]);
 
-  // ── Stats del hero ────────────────────────────────────────
-  const avgHum        = sectorPlants.length
-    ? Math.round(sectorPlants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / sectorPlants.length)
-    : 0;
+  const avgHum        = sectorPlants.length ? Math.round(sectorPlants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / sectorPlants.length) : 0;
   const alertCount    = sectorPlants.filter(p => (p.currentHumidity ?? 0) < p.minHumidity).length;
   const wateringCount = sectorPlants.filter(p => p.valveStatus === "OPEN").length;
 
-  // ── Filtros y ordenamiento ────────────────────────────────
   const filteredPlants = [...orderedPlants]
     .filter(p => {
       const q = search.toLowerCase();
@@ -246,164 +329,214 @@ function SectorPage({ sector }) {
   const isDragging = dragEnabled && sort === "order" && !hasFilters;
 
   return (
-    <div className="sp-page">
+    <div
+      className="sp-page"
+      style={{
+        "--sp-accent":        theme.accent,
+        "--sp-accent-dim":    theme.accentDim,
+        "--sp-accent-border": theme.accentBorder,
+        "--sp-glow":          theme.glow,
+        "--sp-glow-strong":   theme.glowStrong,
+        "--sp-particle":      theme.particle,
+      }}
+    >
       <Navbar plants={plants} />
 
-      {/* ── Hero ── */}
-      <motion.div className="sp-hero"
-        initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        style={{ "--sector-accent": theme.accent, "--sector-glow": theme.glow }}
-      >
-        <div className="sp-hero-bg">
-          <img src={theme.img} alt="" className="sp-hero-img" />
-          <div className="sp-hero-overlay" style={{ background: theme.gradient }} />
-        </div>
-        <div className="sp-hero-content">
-          <motion.button className="sp-back-btn" onClick={() => navigate("/")}
-            whileHover={{ x: -3 }} whileTap={{ scale: 0.95 }}
-            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
-          >
-            <ArrowLeft size={15} /> Dashboard
-          </motion.button>
+      {/* ══════════════════════════════════════════
+          HERO — glassmorphism + partículas + orbs
+      ══════════════════════════════════════════ */}
+      <div className="sp-hero-wrapper" ref={heroRef}>
+        <motion.div
+          className="sp-hero"
+          style={{ y: heroY, opacity: heroOpacity }}
+        >
+          {/* Imagen de fondo con parallax */}
+          <div className="sp-hero-bg">
+            <img src={theme.img} alt="" className="sp-hero-img" />
+            <div className="sp-hero-overlay" style={{ background: theme.gradientHero }} />
+          </div>
 
-          <motion.div className="sp-hero-title-wrap"
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <span className="sp-hero-icon">{theme.icon}</span>
-            <div>
-              <h1 className="sp-hero-title" style={{
-                backgroundImage: `linear-gradient(135deg, #fff 30%, ${theme.accent})`,
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-              }}>{theme.label}</h1>
-              <p className="sp-hero-sub">{sectorPlants.length} plantas · Sistema de Riego IoT</p>
-            </div>
-          </motion.div>
+          {/* Orbs flotantes */}
+          <BackgroundOrbs theme={theme} />
 
-          <motion.div className="sp-stats-bar"
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.32, duration: 0.45 }}
-          >
-            {[
-              { label: "Total",    value: sectorPlants.length, color: theme.accent },
-              { label: "Regando",  value: wateringCount,       color: "#60a5fa"    },
-              { label: "Alertas",  value: alertCount,          color: alertCount > 0 ? "#f87171" : theme.accent },
-              { label: "Hum. Avg", value: `${avgHum}%`,        color: theme.accent },
-            ].map((s, i) => (
-              <motion.div key={s.label} className="sp-stat"
-                initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.35 + i * 0.07, ease: [0.34, 1.56, 0.64, 1] }}
+          {/* Partículas */}
+          <FloatingParticles color={theme.particle} count={20} />
+
+          {/* Línea de brillo superior */}
+          <div className="sp-hero-topline" style={{ background: `linear-gradient(90deg, transparent, ${theme.accent}, transparent)` }} />
+
+          {/* Contenido del hero */}
+          <div className="sp-hero-content">
+
+            {/* Breadcrumb */}
+            <motion.button
+              className="sp-back-btn"
+              onClick={() => navigate("/")}
+              whileHover={{ x: -4, scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <ArrowLeft size={14} />
+              <span>Dashboard</span>
+            </motion.button>
+
+            {/* Título principal */}
+            <motion.div
+              className="sp-hero-title-row"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {/* Icono con glow pulsante */}
+              <motion.div
+                className="sp-hero-icon-wrap"
+                animate={{ scale: [1, 1.08, 1], filter: [`drop-shadow(0 0 12px ${theme.accent}99)`, `drop-shadow(0 0 28px ${theme.accent})`, `drop-shadow(0 0 12px ${theme.accent}99)`] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               >
-                <span className="sp-stat-val" style={{ color: s.color }}>{s.value}</span>
-                <span className="sp-stat-lbl">{s.label}</span>
+                <span className="sp-hero-icon">{theme.icon}</span>
               </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </motion.div>
 
-      {/* ── Filtros ── */}
-      <motion.div className="sp-filters"
-        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-        style={{
-          "--sector-accent":        theme.accent,
-          "--sector-accent-dim":    theme.accentDim,
-          "--sector-accent-border": theme.accentBorder,
-        }}
+              <div className="sp-hero-text">
+                <h1
+                  className="sp-hero-title"
+                  style={{
+                    backgroundImage: `linear-gradient(135deg, #ffffff 20%, ${theme.accent} 60%, ${theme.accent}cc 100%)`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
+                  {theme.label}
+                </h1>
+                <p className="sp-hero-sub">
+                  <span className="sp-hero-sub-dot" style={{ background: theme.accent }} />
+                  {theme.sublabel} · {sectorPlants.length} plantas
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Stats bar */}
+            <motion.div
+              className="sp-stats-bar"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.30, duration: 0.45 }}
+            >
+              <HeroStat label="Total"      value={sectorPlants.length}                                           color={theme.accent}                                    icon={Zap}         index={0} />
+              <HeroStat label="Regando"    value={wateringCount}                                                  color="#60a5fa"                                         icon={Droplets}    index={1} />
+              <HeroStat label="Alertas"    value={alertCount}                                                     color={alertCount > 0 ? "#f87171" : theme.accent}       icon={Thermometer} index={2} />
+              <HeroStat label="Hum. Prom." value={`${avgHum}%`}                                                   color={theme.accent}                                    icon={null}        index={3} />
+            </motion.div>
+
+          </div>
+
+          {/* Línea de brillo inferior */}
+          <div className="sp-hero-bottomline" style={{ background: `linear-gradient(90deg, transparent, ${theme.accentBorder}, transparent)` }} />
+        </motion.div>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          FILTROS — glassmorphism flotante
+      ══════════════════════════════════════════ */}
+      <motion.div
+        className="sp-filters"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
       >
+        {/* Search */}
         <div className="sp-search-wrap">
-          <Search size={15} className="sp-search-icon" />
+          <Search size={14} className="sp-search-icon" />
           <input
             className="sp-search"
             placeholder="Buscar planta..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+          {search && (
+            <button className="sp-search-clear" onClick={() => setSearch("")}>✕</button>
+          )}
         </div>
 
+        {/* Sort */}
         <div className="sp-sort-wrap">
-          <SlidersHorizontal size={14} className="sp-sort-icon" />
+          <SlidersHorizontal size={13} className="sp-sort-icon" />
           <select className="sp-sort" value={sort} onChange={e => setSort(e.target.value)}>
             {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
 
+        {/* Chips de estado */}
         <div className="sp-chips">
           {STATUS_CHIPS.map(chip => (
-            <button
+            <motion.button
               key={chip.value}
               className={`sp-chip ${status === chip.value ? "active" : ""}`}
               onClick={() => setStatus(chip.value)}
+              whileTap={{ scale: 0.94 }}
             >
-              {chip.icon && <span>{chip.icon}</span>}{chip.label}
+              {chip.icon && <span>{chip.icon}</span>}
+              {chip.label}
               {chip.value !== "all" && (
                 <span className="sp-chip-count">
                   {chip.value === "active"   ? wateringCount :
                    chip.value === "alert"    ? alertCount    :
-                   sectorPlants.filter(p =>
-                     p.valveStatus !== "OPEN" && (p.currentHumidity ?? 0) >= p.minHumidity
-                   ).length}
+                   sectorPlants.filter(p => p.valveStatus !== "OPEN" && (p.currentHumidity ?? 0) >= p.minHumidity).length}
                 </span>
               )}
-            </button>
+            </motion.button>
           ))}
         </div>
 
+        {/* Botón ordenar */}
         {sectorPlants.length > 1 && (
-          <button
+          <motion.button
+            className={`sp-drag-btn ${dragEnabled ? "active" : ""}`}
             onClick={() => setDragEnabled(d => !d)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 700,
-              cursor: "pointer", transition: "all 0.2s",
-              background:  dragEnabled ? theme.accentDim : "rgba(255,255,255,0.05)",
-              color:        dragEnabled ? theme.accent    : "#78909c",
-              border:       dragEnabled
-                ? `1px solid ${theme.accentBorder}`
-                : "1px solid rgba(255,255,255,0.08)",
-            }}
+            whileTap={{ scale: 0.94 }}
           >
             <GripVertical size={13} />
             {dragEnabled ? "Listo" : "Ordenar"}
-          </button>
+          </motion.button>
         )}
 
-        <span className="sp-count">{filteredPlants.length} / {sectorPlants.length} plantas</span>
+        {/* Contador */}
+        <span className="sp-count">
+          {filteredPlants.length} / {sectorPlants.length}
+        </span>
       </motion.div>
 
-      {/* ── Grid ── */}
+      {/* ══════════════════════════════════════════
+          GRID DE PLANTAS
+      ══════════════════════════════════════════ */}
       <div className="sp-grid-wrap">
+
+        {/* Banner modo drag */}
         <AnimatePresence>
           {isDragging && (
             <motion.div
-              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-              style={{
-                margin: "0 0 12px", padding: "10px 16px", borderRadius: 12,
-                background: theme.accentDim, border: `1px solid ${theme.accentBorder}`,
-                fontSize: 12, color: theme.accent, display: "flex", alignItems: "center", gap: 8,
-              }}
+              className="sp-drag-banner"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
             >
               <GripVertical size={14} />
-              Arrastra las tarjetas para reorganizar el orden.
+              Arrastra las tarjetas para reorganizar el orden
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* Contenido del grid */}
         {loading ? (
           <div className="plant-grid"><PlantGridSkeleton count={4} /></div>
 
         ) : sectorPlants.length === 0 ? (
-          <EmptyPlants
-            sector={sector}
-            onAdd={() => { setEditingPlant(null); setShowModal(true); }}
-          />
+          <EmptyPlants sector={sector} onAdd={() => { setEditingPlant(null); setShowModal(true); }} />
 
         ) : filteredPlants.length === 0 ? (
-          <motion.div
-            className="sp-empty"
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          >
+          <motion.div className="sp-empty" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
             <span className="sp-empty-icon">🔍</span>
             <p>No hay plantas con esos filtros</p>
             {hasFilters && (
@@ -415,34 +548,21 @@ function SectorPage({ sector }) {
 
         ) : isDragging ? (
           <Reorder.Group
-            axis="x"
-            values={orderedPlants}
-            onReorder={setOrderedPlants}
-            className="plant-grid"
-            style={{ listStyle: "none", padding: 0, margin: 0 }}
-            as="div"
+            axis="x" values={orderedPlants} onReorder={setOrderedPlants}
+            className="plant-grid" style={{ listStyle: "none", padding: 0, margin: 0 }} as="div"
           >
             {orderedPlants.map((plant, i) => (
               <Reorder.Item
-                key={plant._id}
-                value={plant}
+                key={plant._id} value={plant}
                 onDragEnd={() => handleReorderEnd(orderedPlants)}
                 style={{ cursor: "grab" }}
-                whileDrag={{ scale: 1.04, zIndex: 50 }}
+                whileDrag={{ scale: 1.04, zIndex: 50, boxShadow: `0 20px 60px ${theme.glow}` }}
               >
                 <div style={{ position: "relative" }}>
-                  <div style={{
-                    position: "absolute", top: 8, left: 8, zIndex: 10,
-                    width: 24, height: 24, borderRadius: 6,
-                    background: theme.accentDim,
-                    border: `1px solid ${theme.accentBorder}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: theme.accent,
-                  }}>
+                  <div className="sp-drag-handle" style={{ background: theme.accentDim, border: `1px solid ${theme.accentBorder}`, color: theme.accent }}>
                     <GripVertical size={12} />
                   </div>
-                  <PlantCard
-                    plant={plant} index={i}
+                  <PlantCard plant={plant} index={i}
                     onEdit={p => { setEditingPlant(p); setShowModal(true); }}
                     onDelete={handleDelete}
                     onToggleValve={handleToggleValve}
@@ -457,35 +577,44 @@ function SectorPage({ sector }) {
           <AnimatePresence mode="popLayout">
             <div className="plant-grid">
               {filteredPlants.map((plant, i) => (
-                <PlantCard
-                  key={plant._id} plant={plant} index={i}
-                  onEdit={p => { setEditingPlant(p); setShowModal(true); }}
-                  onDelete={handleDelete}
-                  onToggleValve={handleToggleValve}
-                  onShowAlerts={p => setAlertPlant(p)}
-                />
+                <motion.div
+                  key={plant._id}
+                  initial={{ opacity: 0, y: 24, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0,  scale: 1 }}
+                  exit={{ opacity: 0, y: -16, scale: 0.95 }}
+                  transition={{ delay: i * 0.06, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <PlantCard plant={plant} index={i}
+                    onEdit={p => { setEditingPlant(p); setShowModal(true); }}
+                    onDelete={handleDelete}
+                    onToggleValve={handleToggleValve}
+                    onShowAlerts={p => setAlertPlant(p)}
+                  />
+                </motion.div>
               ))}
             </div>
           </AnimatePresence>
         )}
       </div>
 
-      {/* ── FAB agregar planta ── */}
+      {/* ── FAB ── */}
       <motion.button
         className="sp-fab"
         onClick={() => { setEditingPlant(null); setShowModal(true); }}
         style={{
-          background:  `linear-gradient(135deg, ${theme.accent}, ${theme.accent}aa)`,
-          boxShadow:   `0 8px 32px ${theme.glow}`,
+          background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}bb)`,
+          boxShadow:  `0 8px 32px ${theme.glow}, 0 0 0 1px ${theme.accentBorder}`,
         }}
-        whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}
-        initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.6, type: "spring", bounce: 0.4 }}
+        whileHover={{ scale: 1.12, boxShadow: `0 12px 40px ${theme.glowStrong}` }}
+        whileTap={{ scale: 0.92 }}
+        initial={{ opacity: 0, scale: 0, rotate: -180 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        transition={{ delay: 0.65, type: "spring", bounce: 0.5 }}
       >
         <Plus size={22} color="#000" strokeWidth={2.5} />
       </motion.button>
 
-      {/* ── Modal planta ── */}
+      {/* ── Modales ── */}
       <PlantModal
         isOpen={showModal}
         onClose={() => { setShowModal(false); setEditingPlant(null); }}
@@ -493,12 +622,8 @@ function SectorPage({ sector }) {
         plant={editingPlant}
         defaultSector={sector}
       />
-
-      {/* ── Modal alertas ── */}
       <AnimatePresence>
-        {alertPlant && (
-          <AlertHistoryModal plant={alertPlant} onClose={() => setAlertPlant(null)} />
-        )}
+        {alertPlant && <AlertHistoryModal plant={alertPlant} onClose={() => setAlertPlant(null)} />}
       </AnimatePresence>
     </div>
   );
