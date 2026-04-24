@@ -2,6 +2,9 @@
 const express   = require("express");
 const router    = express.Router();
 const simulator = require("../mqtt/simulator");
+const { protect } = require("../middleware/auth");
+
+router.use(protect);
 
 router.get("/status", (req, res) => {
   res.json(simulator.getStatus());

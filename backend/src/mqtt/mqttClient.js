@@ -7,6 +7,9 @@ function startMqttClient(io) {
   const MQTT_URL  = process.env.MQTT_URL;
   const MQTT_USER = process.env.MQTT_USER;
   const MQTT_PASS = process.env.MQTT_PASSWORD;
+  const allowSelfSigned =
+    process.env.NODE_ENV !== "production" ||
+    process.env.MQTT_ALLOW_SELF_SIGNED === "true";
 
   if (!MQTT_URL) {
     console.warn("⚠️  MQTT_URL no definido — cliente MQTT del backend desactivado");
@@ -17,7 +20,7 @@ function startMqttClient(io) {
     username:           MQTT_USER,
     password:           MQTT_PASS,
     protocol:           "mqtts",
-    rejectUnauthorized: false,
+    rejectUnauthorized: !allowSelfSigned,
     reconnectPeriod:    5000,
     connectTimeout:     10000,
   });

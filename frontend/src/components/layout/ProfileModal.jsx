@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useState } from "react";
-import { X, Camera, Save, Calendar, Droplets, Award } from "lucide-react";
+import { X, Camera, Save, Calendar, Droplets, Award, Mail, UserRound } from "lucide-react";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
 
@@ -70,12 +70,12 @@ export default function ProfileModal({ onClose, onUpdate }) {
   };
 
   const stats = [
-    { icon: <Calendar size={16} color="#60a5fa" />, label: "DÃ­as en el sistema", value: daysSince || "â€”", color: "#60a5fa" },
+    { icon: <Calendar size={16} color="#60a5fa" />, label: "Días en el sistema", value: daysSince || "-", color: "#60a5fa" },
     { icon: <Droplets size={16} color="#38bdf8" />, label: "Riegos realizados", value: totalIrrig, color: "#38bdf8" },
     {
       icon: <Award size={16} color="#fbbf24" />,
       label: "Nivel",
-      value: totalIrrig > 50 ? "ðŸŒ³ Experto" : totalIrrig > 10 ? "ðŸŒ¿ Intermedio" : "ðŸŒ± Iniciante",
+      value: totalIrrig > 50 ? "Experto" : totalIrrig > 10 ? "Intermedio" : "Inicial",
       color: "#fbbf24",
     },
   ];
@@ -106,7 +106,7 @@ export default function ProfileModal({ onClose, onUpdate }) {
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           style={{
             width: "100%",
-            maxWidth: 420,
+            maxWidth: 440,
             background: "rgba(8,14,10,0.97)",
             border: "1px solid rgba(52,211,153,0.18)",
             borderRadius: 24,
@@ -117,7 +117,7 @@ export default function ProfileModal({ onClose, onUpdate }) {
           <div style={{ height: 2, background: "linear-gradient(90deg,transparent,#34d399,#60a5fa,transparent)" }} />
 
           <div style={{ padding: "24px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#f0f6fc", fontFamily: "'Syne',sans-serif" }}>Mi Perfil</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#f0f6fc", fontFamily: "'Syne',sans-serif" }}>Mi perfil</div>
             <button
               onClick={onClose}
               style={{
@@ -189,10 +189,10 @@ export default function ProfileModal({ onClose, onUpdate }) {
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileChange} />
               </div>
-              <div style={{ fontSize: 13, color: "#4d7a5e" }}>Toca el Ã­cono de cÃ¡mara para cambiar tu foto</div>
+              <div style={{ fontSize: 13, color: "#4d7a5e" }}>Toca el icono de cámara para cambiar tu foto</div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 16 }}>
               <label
                 style={{
                   display: "block",
@@ -224,7 +224,30 @@ export default function ProfileModal({ onClose, onUpdate }) {
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 20 }}>
+            <div
+              style={{
+                padding: "14px 16px",
+                borderRadius: 14,
+                marginBottom: 16,
+                background: "rgba(52,211,153,0.04)",
+                border: "1px solid rgba(52,211,153,0.10)",
+              }}
+            >
+              {[
+                { icon: <UserRound size={14} color="#34d399" />, label: "Usuario", value: session.username || "-" },
+                { icon: <Mail size={14} color="#60a5fa" />, label: "Correo", value: session.email || "-" },
+              ].map((row, index) => (
+                <div key={row.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: index === 0 ? 8 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#8fb3a0", fontSize: 12 }}>
+                    {row.icon}
+                    <span>{row.label}</span>
+                  </div>
+                  <span style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 600, textAlign: "right" }}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
               {stats.map((s, i) => (
                 <motion.div
                   key={s.label}
@@ -258,14 +281,14 @@ export default function ProfileModal({ onClose, onUpdate }) {
               }}
             >
               <div style={{ fontSize: 11, color: "#78909c", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 700 }}>
-                InformaciÃ³n de cuenta
+                Información de cuenta
               </div>
               {[
-                { label: "Usuario", value: session.username || "â€”" },
                 {
                   label: "Miembro desde",
-                  value: joinDate ? new Date(joinDate).toLocaleDateString("es-MX", { year: "numeric", month: "long" }) : "â€”",
+                  value: joinDate ? new Date(joinDate).toLocaleDateString("es-MX", { year: "numeric", month: "long" }) : "-",
                 },
+                { label: "Rol", value: session.role || "admin" },
               ].map((row) => (
                 <div key={row.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span style={{ fontSize: 12, color: "#78909c" }}>{row.label}</span>
@@ -297,7 +320,7 @@ export default function ProfileModal({ onClose, onUpdate }) {
                 opacity: saving ? 0.7 : 1,
               }}
             >
-              {saved ? "âœ“ Guardado" : <><Save size={16} /> Guardar cambios</>}
+              {saved ? "✓ Guardado" : <><Save size={16} /> Guardar cambios</>}
             </motion.button>
           </div>
         </motion.div>

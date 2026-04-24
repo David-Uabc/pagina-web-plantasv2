@@ -2,7 +2,7 @@
 // Modal de personalización: tema, modo compacto y tamaño de fuente
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme, THEMES } from "../context/ThemeContext";
+import { useTheme, THEMES } from "../../context/ThemeContext";
 
 export default function ThemeSelector({ isOpen, onClose }) {
   const { themeId, changeTheme, compact, toggleCompact, fontSize, changeFontSize } = useTheme();

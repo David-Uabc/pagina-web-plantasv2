@@ -3,105 +3,167 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { getGreeting } from "../../App";
 
-/**
- * WelcomeToast — aparece al entrar al dashboard, se cierra solo después de 4s
- * Uso: <WelcomeToast />  (dentro de Dashboard)
- */
 function WelcomeToast() {
   const [visible, setVisible] = useState(false);
   const { user } = useAuth();
   const userName = user?.name || user?.username || "";
   const greeting = getGreeting(userName);
+  const subtitle = userName
+    ? "Todo listo para seguir cuidando tus plantas"
+    : "Bienvenido de vuelta al sistema";
 
-  // Mostrar una vez por período del día (mañana / tarde / noche)
   useEffect(() => {
     const h = new Date().getHours();
     const period = h < 12 ? "morning" : h < 18 ? "afternoon" : "night";
-    const today  = new Date().toISOString().slice(0, 10); // "2026-02-26"
-    const key    = `welcome_${today}_${period}`;
+    const today = new Date().toISOString().slice(0, 10);
+    const key = `welcome_${today}_${period}`;
 
-    const shown = localStorage.getItem(key);
-    if (!shown) {
+    if (!localStorage.getItem(key)) {
       const t = setTimeout(() => setVisible(true), 600);
       return () => clearTimeout(t);
     }
   }, []);
 
   useEffect(() => {
-    if (visible) {
-      const h      = new Date().getHours();
-      const period = h < 12 ? "morning" : h < 18 ? "afternoon" : "night";
-      const today  = new Date().toISOString().slice(0, 10);
-      const key    = `welcome_${today}_${period}`;
-      localStorage.setItem(key, "1");
-      const t = setTimeout(() => setVisible(false), 4000);
-      return () => clearTimeout(t);
-    }
+    if (!visible) return undefined;
+
+    const h = new Date().getHours();
+    const period = h < 12 ? "morning" : h < 18 ? "afternoon" : "night";
+    const today = new Date().toISOString().slice(0, 10);
+    const key = `welcome_${today}_${period}`;
+
+    localStorage.setItem(key, "1");
+    const t = setTimeout(() => setVisible(false), 4200);
+    return () => clearTimeout(t);
   }, [visible]);
 
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: 60, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0,  scale: 1   }}
-          exit={{    opacity: 0, y: 40, scale: 0.95 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 60, scale: 0.92 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 30, scale: 0.96 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           style={{
             position: "fixed",
-            bottom: 28, left: "50%",
+            bottom: 28,
+            left: "50%",
             transform: "translateX(-50%)",
             zIndex: 99999,
-            pointerEvents: "none",
           }}
         >
-          <div style={{
-            display: "flex", alignItems: "center", gap: 14,
-            padding: "14px 20px",
-            background: "rgba(8,14,10,0.97)",
-            border: "1px solid rgba(52,211,153,0.25)",
-            borderRadius: 18,
-            boxShadow: "0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(52,211,153,0.08)",
-            backdropFilter: "blur(20px)",
-            minWidth: 260, maxWidth: 360,
-            position: "relative", overflow: "hidden",
-          }}>
-            {/* Accent top */}
-            <div style={{
-              position: "absolute", top: 0, left: 0, right: 0, height: 2,
-              background: "linear-gradient(90deg, transparent, #34d399, #60a5fa, transparent)",
-            }} />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              minWidth: 300,
+              maxWidth: 400,
+              padding: "16px 18px 18px",
+              background: "rgba(8,14,10,0.97)",
+              border: "1px solid rgba(52,211,153,0.24)",
+              borderRadius: 20,
+              boxShadow: "0 18px 46px rgba(0,0,0,0.70), 0 0 0 1px rgba(52,211,153,0.08)",
+              backdropFilter: "blur(20px)",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 2,
+                background: "linear-gradient(90deg, transparent, #34d399, #60a5fa, transparent)",
+              }}
+            />
 
-            {/* Avatar */}
-            <div style={{
-              width: 42, height: 42, borderRadius: 12, flexShrink: 0,
-              background: "linear-gradient(135deg, rgba(52,211,153,0.25), rgba(96,165,250,0.20))",
-              border: "1px solid rgba(52,211,153,0.30)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 20,
-            }}>
+            <div
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: 14,
+                flexShrink: 0,
+                background: "linear-gradient(135deg, rgba(52,211,153,0.25), rgba(96,165,250,0.20))",
+                border: "1px solid rgba(52,211,153,0.30)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 22,
+              }}
+            >
               {getTimeEmoji()}
             </div>
 
-            {/* Texto */}
-            <div>
-              <div style={{
-                fontFamily: "'Syne', sans-serif",
-                fontSize: 15, fontWeight: 800, color: "#f0f6fc",
-                marginBottom: 2,
-              }}>{greeting}</div>
-              <div style={{ fontSize: 12, color: "#78909c" }}>
-                Bienvenido al sistema de riego 🌱
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  marginBottom: 4,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "#6ee7b7",
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    fontWeight: 800,
+                  }}
+                >
+                  Sesión activa
+                </div>
+                <button
+                  onClick={() => setVisible(false)}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "#9fb0ba",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div
+                style={{
+                  fontFamily: "'Syne', sans-serif",
+                  fontSize: 16,
+                  fontWeight: 800,
+                  color: "#f0f6fc",
+                  marginBottom: 4,
+                }}
+              >
+                {greeting}
+              </div>
+
+              <div style={{ fontSize: 12, color: "#9aa9b3", lineHeight: 1.5 }}>
+                {subtitle}
               </div>
             </div>
 
-            {/* Barra de progreso que se vacía en 4s */}
             <motion.div
               initial={{ scaleX: 1 }}
               animate={{ scaleX: 0 }}
-              transition={{ duration: 3.8, ease: "linear" }}
+              transition={{ duration: 4, ease: "linear" }}
               style={{
-                position: "absolute", bottom: 0, left: 0, right: 0, height: 3,
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 3,
                 background: "linear-gradient(90deg, #34d399, #60a5fa)",
                 transformOrigin: "left",
                 borderRadius: "0 0 18px 18px",

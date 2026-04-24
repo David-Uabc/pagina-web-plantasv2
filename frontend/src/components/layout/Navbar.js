@@ -1,25 +1,28 @@
-import { Bell, ChevronDown, LogOut, User, Settings, GitCompare } from "lucide-react";
+import { Bell, ChevronDown, LogOut, User, Settings, GitCompare, Palette } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "../../i18n";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import ProfileModal from "./ProfileModal";
 import SettingsModal from "./SettingsModal";
 import GlobalSearch from "./GlobalSearch";
+import ThemeSelector from "../plant/ThemeSelector";
 import { getGreeting } from "../../App";
 
 function Navbar({ plants = [], onCompare }) {
   const { t } = useI18n();
   const { logout, updateUser, user } = useAuth();
-  const [lightMode, setLightMode] = useState(false);
+  const { themeId, changeTheme } = useTheme();
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
   const notifRef = useRef(null);
   const userRef = useRef(null);
 
@@ -28,14 +31,6 @@ function Navbar({ plants = [], onCompare }) {
   const userInitial = userName.charAt(0).toUpperCase();
   const greeting = getGreeting(userName);
   const alerts = plants.filter((p) => (p.currentHumidity ?? 0) < p.minHumidity);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "light") {
-      document.body.classList.add("light-mode");
-      setLightMode(true);
-    }
-  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -53,10 +48,7 @@ function Navbar({ plants = [], onCompare }) {
   }, []);
 
   const toggleTheme = () => {
-    const next = !lightMode;
-    setLightMode(next);
-    document.body.classList.toggle("light-mode", next);
-    localStorage.setItem("theme", next ? "light" : "dark");
+    changeTheme(themeId === "light" ? "dark" : "light");
   };
 
   const navLinks = [
@@ -154,7 +146,7 @@ function Navbar({ plants = [], onCompare }) {
                     </div>
                     {alerts.length === 0 ? (
                       <div className="nav-dd-empty">
-                        <span>âœ…</span> {t("nav.noAlerts")}
+                        <span>✓</span> {t("nav.noAlerts")}
                       </div>
                     ) : (
                       alerts.map((p) => (
@@ -162,7 +154,7 @@ function Navbar({ plants = [], onCompare }) {
                           <span className="nav-dd-item-icon">⚠</span>
                           <div>
                             <span className="nav-dd-item-title">{p.name}</span>
-                            <span className="nav-dd-item-sub">Humedad cri­tica: {p.currentHumidity ?? 0}%</span>
+                            <span className="nav-dd-item-sub">Humedad crítica: {p.currentHumidity ?? 0}%</span>
                           </div>
                         </div>
                       ))
@@ -173,13 +165,13 @@ function Navbar({ plants = [], onCompare }) {
             </div>
 
             <div
-              className={`theme-toggle ${lightMode ? "light" : ""}`}
+              className={`theme-toggle ${themeId === "light" ? "light" : ""}`}
               onClick={toggleTheme}
-              title={lightMode ? "Cambiar a modo oscuro" : "Cambiar a modo dÃ­a"}
+              title={themeId === "light" ? "Cambiar a modo oscuro" : "Cambiar a modo claro"}
             >
               <motion.div
                 className="theme-toggle-thumb"
-                animate={{ x: lightMode ? 24 : 0 }}
+                animate={{ x: themeId === "light" ? 24 : 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 32 }}
               />
             </div>
@@ -216,6 +208,9 @@ function Navbar({ plants = [], onCompare }) {
                     <button className="ud-item" onClick={() => { setShowSettings(true); setUserOpen(false); }}>
                       <Settings size={14} /> {t("nav.settings")}
                     </button>
+                    <button className="ud-item" onClick={() => { setShowThemeSelector(true); setUserOpen(false); }}>
+                      <Palette size={14} /> Apariencia
+                    </button>
                     <div className="nav-dd-divider" />
                     <button className="ud-item logout" onClick={logout}>
                       <LogOut size={14} /> {t("nav.logout")}
@@ -225,7 +220,7 @@ function Navbar({ plants = [], onCompare }) {
               </AnimatePresence>
             </div>
 
-            <div className="nav-hamburger" onClick={() => setMobileOpen((o) => !o)} aria-label="MenÃº">
+            <div className="nav-hamburger" onClick={() => setMobileOpen((o) => !o)} aria-label="Menú">
               <span style={mobileOpen ? { transform: "rotate(45deg) translateY(7px)" } : {}} />
               <span style={mobileOpen ? { opacity: 0, transform: "scaleX(0)" } : {}} />
               <span style={mobileOpen ? { transform: "rotate(-45deg) translateY(-7px)" } : {}} />
@@ -252,6 +247,7 @@ function Navbar({ plants = [], onCompare }) {
         <AnimatePresence>
           {showProfile && <ProfileModal onClose={() => setShowProfile(false)} onUpdate={updateUser} />}
           {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+          {showThemeSelector && <ThemeSelector isOpen={showThemeSelector} onClose={() => setShowThemeSelector(false)} />}
         </AnimatePresence>,
         document.body
       )}

@@ -96,6 +96,12 @@ function Dashboard() {
     } catch {}
   };
 
+  const handleMaintenanceUpdate = useCallback((updatedPlant) => {
+    setPlants((prev) => prev.map((plant) => (
+      plant._id === updatedPlant._id ? { ...plant, ...updatedPlant } : plant
+    )));
+  }, []);
+
   const allSup  = plants.filter(p => p.sector === "Superior");
   const allInf  = plants.filter(p => p.sector === "Inferior");
   const prevSup = allSup.slice(0, 2);
@@ -130,11 +136,12 @@ function Dashboard() {
             {loading ? <PlantGridSkeleton count={2} /> :
              prevSup.length === 0 ? <SectorEmpty sector="Superior" onGo={() => navigate("/superior")} /> :
              prevSup.map((plant, i) => (
-               <PlantCard key={plant._id} plant={plant} index={i}
-                 onEdit={() => navigate("/superior")}
-                 onDelete={handleDelete}
-                 onToggleValve={handleToggleValve}
-               />
+                <PlantCard key={plant._id} plant={plant} index={i}
+                  onEdit={() => navigate("/superior")}
+                  onDelete={handleDelete}
+                  onToggleValve={handleToggleValve}
+                  onMaintenanceUpdate={handleMaintenanceUpdate}
+                />
              ))}
           </div>
         </div>
@@ -152,11 +159,12 @@ function Dashboard() {
             {loading ? <PlantGridSkeleton count={2} /> :
              prevInf.length === 0 ? <SectorEmpty sector="Inferior" onGo={() => navigate("/inferior")} /> :
              prevInf.map((plant, i) => (
-               <PlantCard key={plant._id} plant={plant} index={i}
-                 onEdit={() => navigate("/inferior")}
-                 onDelete={handleDelete}
-                 onToggleValve={handleToggleValve}
-               />
+                <PlantCard key={plant._id} plant={plant} index={i}
+                  onEdit={() => navigate("/inferior")}
+                  onDelete={handleDelete}
+                  onToggleValve={handleToggleValve}
+                  onMaintenanceUpdate={handleMaintenanceUpdate}
+                />
              ))}
           </div>
         </div>

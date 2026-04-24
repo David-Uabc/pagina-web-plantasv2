@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ToastProvider } from "./context/ToastProvider";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import ParticleBackground from "./components/ParticleBackground";
 import SplashScreen from "./components/SplashScreen";
 import OfflineBanner from "./components/OfflineBanner";
@@ -164,9 +165,11 @@ function AppShell() {
 function App() {
   return (
     <I18nProvider>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
+      </ThemeProvider>
     </I18nProvider>
   );
 }

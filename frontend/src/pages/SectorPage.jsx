@@ -287,6 +287,14 @@ function SectorPage({ sector }) {
     }
   };
 
+  const handleMaintenanceUpdate = useCallback((updatedPlant) => {
+    const syncPlant = (prev) => prev.map((plant) => (
+      plant._id === updatedPlant._id ? { ...plant, ...updatedPlant } : plant
+    ));
+    setPlants(syncPlant);
+    setOrderedPlants(syncPlant);
+  }, []);
+
   const handleReorderEnd = useCallback(async (newOrder) => {
     setOrderedPlants(newOrder);
     try {
@@ -430,6 +438,41 @@ function SectorPage({ sector }) {
               <HeroStat label="Hum. Prom." value={`${avgHum}%`}                                                   color={theme.accent}                                    icon={null}        index={3} />
             </motion.div>
 
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.38, duration: 0.4 }}
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 10,
+                marginTop: 16,
+              }}
+            >
+              {[
+                { label: "Plantas visibles", value: filteredPlants.length },
+                { label: "En mantenimiento", value: sectorPlants.filter((plant) => plant.maintenanceMode).length },
+                { label: "Sin alertas", value: Math.max(sectorPlants.length - alertCount, 0) },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 14,
+                    background: "rgba(6,18,14,0.34)",
+                    border: `1px solid ${theme.accentBorder}`,
+                    backdropFilter: "blur(14px)",
+                    minWidth: 132,
+                  }}
+                >
+                  <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(240,246,252,0.68)", marginBottom: 4 }}>
+                    {item.label}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f6fc" }}>{item.value}</div>
+                </div>
+              ))}
+            </motion.div>
+
           </div>
 
           {/* Línea de brillo inferior */}
@@ -508,6 +551,46 @@ function SectorPage({ sector }) {
         </span>
       </motion.div>
 
+      <div
+        style={{
+          padding: "0 clamp(12px, 3vw, 40px)",
+          marginTop: 14,
+          marginBottom: 18,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 10,
+            padding: "12px 14px",
+            borderRadius: 16,
+            background: "rgba(255,255,255,0.035)",
+            border: `1px solid ${theme.accentBorder}`,
+          }}
+        >
+          <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
+            Vista actual:
+          </span>
+          <span style={{ fontSize: 12, color: "var(--text-1)" }}>
+            {status === "all" ? "Todas las plantas" : `Filtro: ${STATUS_CHIPS.find((chip) => chip.value === status)?.label || status}`}
+          </span>
+          <span style={{ fontSize: 12, color: "var(--text-2)" }}>•</span>
+          <span style={{ fontSize: 12, color: "var(--text-1)" }}>
+            Orden: {SORT_OPTIONS.find((option) => option.value === sort)?.label || sort}
+          </span>
+          {search && (
+            <>
+              <span style={{ fontSize: 12, color: "var(--text-2)" }}>•</span>
+              <span style={{ fontSize: 12, color: "var(--text-1)" }}>
+                Buscando: "{search}"
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* ══════════════════════════════════════════
           GRID DE PLANTAS
       ══════════════════════════════════════════ */}
@@ -567,6 +650,7 @@ function SectorPage({ sector }) {
                     onDelete={handleDelete}
                     onToggleValve={handleToggleValve}
                     onShowAlerts={p => setAlertPlant(p)}
+                    onMaintenanceUpdate={handleMaintenanceUpdate}
                   />
                 </div>
               </Reorder.Item>
@@ -589,6 +673,7 @@ function SectorPage({ sector }) {
                     onDelete={handleDelete}
                     onToggleValve={handleToggleValve}
                     onShowAlerts={p => setAlertPlant(p)}
+                    onMaintenanceUpdate={handleMaintenanceUpdate}
                   />
                 </motion.div>
               ))}
@@ -630,3 +715,5 @@ function SectorPage({ sector }) {
 }
 
 export default SectorPage;
+
+

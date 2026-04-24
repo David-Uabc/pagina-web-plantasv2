@@ -12,6 +12,7 @@ import ConfirmModal from "./ConfirmModal";
 import ConfirmIrrigationModal from "./ConfirmIrrigationModal";
 import AlertHistoryModal from "./AlertHistoryModal";
 import RainEffect from "./RainEffect";
+import MaintenanceToggle from "./MaintenanceToggle";
 import { exportCSV, exportPDF } from "../../utils/exportHistory";
 
 ChartJS.register(LineElement, BarElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend);
@@ -243,7 +244,7 @@ export const cardVariants = {
   visible: { opacity: 1, y: 0,  scale: 1    },
 };
 
-function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, index = 0 }) {
+function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMaintenanceUpdate, index = 0 }) {
   const toast    = useToast();
   const humidity = plant.currentHumidity ?? 0;
   const hs       = getHumState(humidity, plant.minHumidity, plant.maxHumidity);
@@ -375,7 +376,14 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, index
           )}
 
           {/* Botón regar */}
-          <div style={{ position: "relative" }}>
+          <div style={{ padding: "0 16px", marginTop: 10 }}>
+            <MaintenanceToggle
+              plant={plant}
+              onUpdate={(updatedPlant) => onMaintenanceUpdate?.(updatedPlant)}
+            />
+          </div>
+
+          <div style={{ position: "relative", marginTop: 10 }}>
             {isOn && (
               <motion.div
                 animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
@@ -436,3 +444,4 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, index
 }
 
 export default PlantCard;
+

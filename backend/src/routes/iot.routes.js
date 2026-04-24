@@ -76,9 +76,16 @@ router.post("/report", iotAuth, async (req, res) => {
         : [];
 
     if (list.length === 0) {
+      const massHumidity = Number(humidity);
+      if (isNaN(massHumidity) || massHumidity < 0 || massHumidity > 100) {
+        return res.status(400).json({
+          error: "humidity debe ser un número entre 0 y 100 cuando no envías readings ni plantId",
+        });
+      }
+
       const plants = await Plant.find({ sector });
       for (const p of plants) {
-        await processReading(p, Number(humidity) ?? 0, req.deviceId, io);
+        await processReading(p, massHumidity, req.deviceId, io);
       }
     } else {
       const limitedList = list.slice(0, 10);
