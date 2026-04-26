@@ -74,17 +74,7 @@ function Navbar({ plants = [], onCompare }) {
               onClick={() => setMobileOpen(false)}
             >
               <div className="logo">💧</div>
-              <span className="nav-title">
-                {t("nav.title").split(" ").map((w, i) =>
-                  i === 2 ? (
-                    <span key={i} style={{ color: "var(--blue)" }}>
-                      {w}{" "}
-                    </span>
-                  ) : (
-                    <span key={i}>{w} </span>
-                  )
-                )}
-              </span>
+              <span className="nav-title">RiegoIQ</span>
             </NavLink>
           </div>
 

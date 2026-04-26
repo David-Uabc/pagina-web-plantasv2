@@ -24,7 +24,7 @@ function DeviceRow({ device, label }) {
     ? new Date(device.lastSeen || device.lastConnection).toLocaleTimeString("es-MX", {
       hour: "2-digit", minute: "2-digit", second: "2-digit",
     })
-    : "\u2014";
+    : "—";
 
   return (
     <div className={`status-row ${online ? "status-ok" : "status-error"}`}>
@@ -35,7 +35,7 @@ function DeviceRow({ device, label }) {
       <div className="status-text">
         <span className="status-label">{label}</span>
         <span className={`status-value ${online ? "val-green" : "val-red"}`}>
-          {online ? `Online \u00B7 ${lastStr}` : "Sin se\u00F1al"}
+          {online ? `Online · ${lastStr}` : "Sin señal"}
         </span>
       </div>
       <div className={`status-dot ${online ? "dot-green" : "dot-red"}`} />
@@ -147,8 +147,8 @@ function SystemStatus({ devices = {} }) {
           <div className="status-dot dot-blue" />
         </div>
 
-        <DeviceRow device={esp32Sup} label="ESP32  Patio Superior" />
-        <DeviceRow device={esp32Inf} label="ESP32  Patio Inferior" />
+        <DeviceRow device={esp32Sup} label="ESP32 Patio Superior" />
+        <DeviceRow device={esp32Inf} label="ESP32 Patio Inferior" />
       </div>
 
       {!anyEsp32 && (
@@ -167,7 +167,7 @@ function SystemStatus({ devices = {} }) {
           }}
         >
           <Activity size={12} />
-          Esperando conexion ESP32...
+          Esperando conexión ESP32...
         </div>
       )}
     </div>

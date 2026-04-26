@@ -148,7 +148,7 @@ function AverageHumidity({ plants = [] }) {
             initial={prefersReducedMotion ? false : { opacity: 0, x: -6 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, x: 0 }}
           >
-            {trend > 0 ? "\u2191" : "\u2193"} {Math.abs(trend)}%
+            {trend > 0 ? "↑" : "↓"} {Math.abs(trend)}%
           </motion.span>
         )}
       </div>

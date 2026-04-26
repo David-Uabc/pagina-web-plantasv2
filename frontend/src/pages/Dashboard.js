@@ -29,12 +29,12 @@ function SectorEmpty({ sector, onGo }) {
         borderRadius: 16,
       }}
     >
-      <div style={{ fontSize: 40, marginBottom: 10 }}>{"\uD83C\uDF31"}</div>
+      <div style={{ fontSize: 40, marginBottom: 10 }}>🌱</div>
       <p style={{ color: "#78909c", fontSize: 14, marginBottom: 14 }}>
-        No hay plantas en este sector todav\u00EDa
+        No hay plantas en este sector todavía
       </p>
       <button className="btn-see-all" onClick={onGo} style={{ fontSize: 13 }}>
-        Ir a Sector {sector} para agregar {"\u2192"}
+        Ir a Sector {sector} para agregar →
       </button>
     </motion.div>
   );
@@ -80,14 +80,14 @@ function Dashboard() {
       setPlants((prev) => prev.filter((p) => p._id !== data._id));
     }, []),
     onAlert: useCallback((data) => {
-      toast(`\u26A0\uFE0F ${data.name} \u2014 humedad cr\u00EDtica: ${data.humidity}%`, "error");
+      toast(`⚠️ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
       checkPlants([data]);
     }, [checkPlants, toast]),
     onDeviceHeartbeat: useCallback((data) => {
       setDevices((prev) => ({ ...prev, [data.deviceId]: { ...data, lastSeen: new Date() } }));
     }, []),
     onScheduleTriggered: useCallback((data) => {
-      toast(`\u23F0 Riego programado iniciado \u2014 ${data.name}`, "info");
+      toast(`⏰ Riego programado iniciado — ${data.name}`, "info");
     }, [toast]),
   });
 
@@ -137,10 +137,10 @@ function Dashboard() {
       <div className="sectors-wrapper">
         <div className="sector-column">
           <div className="section-header">
-            <h2 className="section-title">{"\uD83C\uDF3F"} Patio Superior</h2>
+            <h2 className="section-title">🌿 Patio Superior</h2>
             {allSup.length > 0 && (
               <button className="btn-see-all" onClick={goSuperior}>
-                {allSup.length > 2 ? `${t("dash.seeAll")} (${allSup.length}) \u2192` : t("dash.goSector")}
+                {allSup.length > 2 ? `${t("dash.seeAll")} (${allSup.length}) →` : t("dash.goSector")}
               </button>
             )}
           </div>
@@ -163,10 +163,10 @@ function Dashboard() {
 
         <div className="sector-column">
           <div className="section-header">
-            <h2 className="section-title">{"\uD83C\uDF31"} Patio Inferior</h2>
+            <h2 className="section-title">🌱 Patio Inferior</h2>
             {allInf.length > 0 && (
               <button className="btn-see-all" onClick={goInferior}>
-                {allInf.length > 2 ? `${t("dash.seeAll")} (${allInf.length}) \u2192` : t("dash.goSector")}
+                {allInf.length > 2 ? `${t("dash.seeAll")} (${allInf.length}) →` : t("dash.goSector")}
               </button>
             )}
           </div>

@@ -103,7 +103,7 @@ function QuickStats({ plants }) {
     {
       Icon: Droplets,
       label: "Regando Ahora",
-      sublabel: watering > 0 ? "\uD83D\uDCA7 activo" : "sin riego activo",
+      sublabel: watering > 0 ? "💧 activo" : "sin riego activo",
       value: watering,
       unit: "",
       gradient: watering > 0
@@ -124,7 +124,7 @@ function QuickStats({ plants }) {
     {
       Icon: AlertTriangle,
       label: "Alertas Activas",
-      sublabel: alerts > 0 ? `\u26A0\uFE0F ${alerts} cr\u00EDtica${alerts > 1 ? "s" : ""}` : "\u2705 todo bien",
+      sublabel: alerts > 0 ? `⚠️ ${alerts} crítica${alerts > 1 ? "s" : ""}` : "✅ todo bien",
       value: alerts,
       unit: "",
       gradient: alerts > 0
@@ -146,7 +146,7 @@ function QuickStats({ plants }) {
     {
       Icon: BarChart2,
       label: "Humedad Promedio",
-      sublabel: avgHum < 30 ? "\uD83D\uDD34 cr\u00EDtica" : avgHum < 50 ? "\uD83D\uDFE1 baja" : avgHum < 75 ? "\uD83D\uDFE2 \u00F3ptima" : "\uD83D\uDD35 alta",
+      sublabel: avgHum < 30 ? "🔴 crítica" : avgHum < 50 ? "🟡 baja" : avgHum < 75 ? "🟢 óptima" : "🔵 alta",
       value: avgHum,
       unit: "%",
       gradient: getHumGradient(avgHum),
