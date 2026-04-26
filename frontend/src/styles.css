@@ -1,12 +1,12 @@
-/* =====================================================
-   Ã°Å¸Å’Â¿ RIEGOIQ Ã¢â‚¬â€ styles.css
+/* 
+    RIEGOIQ  styles.css
    Fuente ÃƒÂºnica: Plus Jakarta Sans + DM Mono
    Sin duplicados, sin conflictos, legible al 100%
 ===================================================== */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@0,300;0,400;0,500&display=swap');
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¨ VARIABLES Ã¢â‚¬â€ DARK MODE (default)
+    VARIABLES  DARK MODE (default)
 ===================================================== */
 :root {
   --bg-base:        #080a0e;
@@ -55,7 +55,7 @@
 }
 
 /* =====================================================
-   Ã¢Ëœâ‚¬Ã¯Â¸Â LIGHT MODE
+    LIGHT MODE
 ===================================================== */
 body.light-mode {
   --bg-base:        #0f0e17;
@@ -91,7 +91,7 @@ body.light-mode {
 }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã…â€™Ã…â€™ RESET & BASE
+    RESET & BASE
 ===================================================== */
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;
@@ -150,7 +150,7 @@ html { scroll-behavior: smooth; }
   }
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ TIPOGRAFÃƒÆ’Ã‚ÂA BASE Ã¢â‚¬â€ Una sola fuente, todo el sitio ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* TIPOGRAFIA BASE Una sola fuente, todo el sitio  */
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   font-size: 15px;
@@ -181,7 +181,7 @@ h1, h2, h3, h4 {
   color: var(--text-1);
 }
 
-/* Monospace para datos numÃƒÂ©ricos */
+/* Monospace para datos numericos */
 .font-mono,
 .qs-value,
 .hstat-value,
@@ -192,7 +192,7 @@ pre, code, kbd {
   font-family: 'DM Mono', 'Fira Code', monospace;
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Gradiente de fondo ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* Gradiente de fondo  */
 body::before {
   content: "";
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -208,7 +208,7 @@ body.light-mode::before {
     radial-gradient(ellipse 60% 50% at 50% 50%, rgba(129,140,248,0.04) 0%, transparent 50%);
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Dot grid ambient ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/*  Dot grid ambient  */
 body::after {
   content: "";
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -221,7 +221,7 @@ body::after {
 .dashboard-full > *, .lp-page > *, .notfound-page > * { position: relative; }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã‚Â§Ã‚Â± LAYOUT
+  LAYOUT
 ===================================================== */
 .dashboard-full,
 .dashboard-container {
@@ -231,7 +231,7 @@ body::after {
 }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã‚Â§Ã‚Â­ NAVBAR
+   NAVBAR
 ===================================================== */
 .nav-wrapper {
   position: sticky;
@@ -615,7 +615,7 @@ body::after {
   transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
 }
 
-/* LÃƒÂ­nea de luz animada en borde superior */
+/* Linea de luz animada en borde superior */
 .card::before {
   content: "";
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
@@ -634,7 +634,7 @@ body::after {
   opacity: 0.7;
 }
 
-/* LÃƒÂ­nea sutil en borde inferior */
+/* Linea sutil en borde inferior */
 .card::after {
   content: "";
   position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
@@ -673,7 +673,7 @@ body::after {
 .sector-column:nth-child(2) .card { animation-delay: 0.42s; }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…â€™ SECTION TITLE
+    SECTION TITLE
 ===================================================== */
 .section-title {
   margin: clamp(24px, 3vw, 36px) 0 clamp(12px, 1.5vw, 18px);
@@ -699,7 +699,7 @@ body::after {
 .section-header .section-title { margin-bottom: 0; }
 
 /* =====================================================
-   Ã°Å¸â€œÂ¡ SYSTEM STATUS
+   SYSTEM STATUS
 ===================================================== */
 .status-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -802,7 +802,7 @@ body::after {
 }
 
 /* =====================================================
-   Ã°Å¸â€™Â§ HUMIDITY CARD
+    HUMIDITY CARD
 ===================================================== */
 .humidity-main { display: flex; flex-direction: column; gap: 16px; }
 .humidity-info { width: 100%; }
@@ -846,7 +846,7 @@ body::after {
 .time-tabs span.active::before { width: 100%; }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â FILTER BAR
+   FILTER BAR
 ===================================================== */
 .filter-bar {
   display: flex; align-items: center;
@@ -896,7 +896,7 @@ body::after {
 .filter-count { font-size: 12px; color: var(--text-3); margin-left: auto; white-space: nowrap; }
 
 /* =====================================================
-   Ã°Å¸Å’Â± PLANT GRID
+   PLANT GRID
 ===================================================== */
 .plant-grid {
   display: grid;
@@ -920,7 +920,7 @@ body::after {
 .plant-grid-empty span { display: block; font-size: 36px; margin-bottom: 10px; }
 
 /* =====================================================
-   Ã°Å¸Å’Â¿ PLANTCARD V2
+    PLANTCARD V2
 ===================================================== */
 .plant-card {
   background: var(--bg-card);
@@ -1222,7 +1222,7 @@ body::after {
 }
 
 /* =====================================================
-   Ã°Å¸â€œË† HISTORY PANEL
+    HISTORY PANEL
 ===================================================== */
 .pc-history-panel { overflow: hidden; border-top: 1px solid var(--border); }
 .pc-hist-inner {
@@ -1287,7 +1287,7 @@ body::after {
 }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  QUICK STATS Ã¢â‚¬â€ QS GRID
+     QUICK STATS  QS GRID
 ===================================================== */
 .qs-grid {
   display: grid;
@@ -1458,7 +1458,7 @@ body::after {
 .stat-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 24px var(--card-glow, rgba(52,211,153,0.1)); }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‹Å“ BUTTONS
+   BUTTONS
 ===================================================== */
 .btn-primary {
   width: 100%; padding: 13px; border-radius: var(--r-sm); border: none;
@@ -1521,7 +1521,7 @@ body::after {
 .add-button-container { margin-top: 36px; display: flex; justify-content: center; }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã‚ÂªÃ…Â¸ MODAL
+   MODAL
 ===================================================== */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -1570,7 +1570,7 @@ body::after {
 }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â LOGIN Ã¢â‚¬â€ SPLIT 50/50
+    LOGIN SPLIT 50/50
 ===================================================== */
 .lp-page {
   display: flex; flex-direction: row;
@@ -1889,14 +1889,14 @@ body::after {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã‚ÂÃ¢â‚¬â€ SECTORS WRAPPER
+   SECTORS WRAPPER
 ===================================================== */
 .sectors-wrapper { display: flex; gap: clamp(16px, 2.5vw, 28px); align-items: flex-start; }
 .sector-column { flex: 1; min-width: 0; content-visibility: auto; contain-intrinsic-size: 720px; }
 .sector-column .plant-grid { grid-template-columns: repeat(2, 1fr) !important; }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã¢â€šÂ¬ SKELETON
+    SKELETON
 ===================================================== */
 @keyframes shimmer {
   0%   { background-position: -400px 0; }
@@ -1932,7 +1932,7 @@ body::after {
 .skeleton-badge { width: 64px; height: 22px; border-radius: 99px; }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬â€Ã¢â‚¬Ëœ CONFIRM MODAL
+    CONFIRM MODAL
 ===================================================== */
 @keyframes wobble { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-8deg)} 75%{transform:rotate(8deg)} }
 
@@ -1963,7 +1963,7 @@ body::after {
 .btn-cancel:hover { background: var(--green-dim); border-color: var(--border-hover); }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã‚ÂÃ…Â¾ TOAST
+   TOAST
 ===================================================== */
 .toast-container {
   position: fixed; bottom: 24px; right: 24px;
@@ -1985,7 +1985,7 @@ body::after {
 .toast.info    { border-color: rgba(56,189,248,0.3); }
 
 /* =====================================================
-   Ã°Å¸Å’Â± EMPTY STATES
+   EMPTY STATES
 ===================================================== */
 .empty-state {
   grid-column: 1 / -1;
@@ -2007,7 +2007,7 @@ body::after {
 .dashboard-sector-empty p { font-size: 13px; color: var(--text-2); margin: 0; }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â« 404
+    404
 ===================================================== */
 .notfound-page {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -2053,7 +2053,7 @@ body::after {
 .nf-btn-sec:hover { background: var(--green-dim); border-color: var(--border-hover); }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¤ PROFILE MODAL
+   PROFILE MODAL
 ===================================================== */
 .pm-modal {
   background: var(--bg-card-solid); border: 1px solid var(--border);
@@ -2150,7 +2150,7 @@ body::after {
 .pm-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* =====================================================
-   ÃƒÂ¢Ã…Â¡Ã¢â€žÂ¢ÃƒÂ¯Ã‚Â¸Ã‚Â SETTINGS MODAL
+    SETTINGS MODAL
 ===================================================== */
 .sm-modal {
   background: var(--bg-card-solid); border: 1px solid var(--border);
@@ -2253,7 +2253,7 @@ body.compact-mode .stat-card-inner { min-height: 100px; padding: 14px 16px 12px;
 body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
 
 /* =====================================================
-   Ã°Å¸â€™Â§ HUMIDITY CARD V2 & AVERAGE HUMIDITY
+   HUMIDITY CARD V2 & AVERAGE HUMIDITY
 ===================================================== */
 .humidity-card-v2 { display: flex; flex-direction: column; height: 100%; }
 .hv2-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
@@ -2327,25 +2327,25 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
 .hstat-value { font-size: 16px; font-weight: 800; color: var(--text-1); }
 
 /* =====================================================
-   Ã°Å¸Å’Â¿ SECTOR PAGE
+    SECTOR PAGE
 ===================================================== */
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Wrapper principal ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/*  Wrapper principal */
 .sp-page {
   min-height: 100vh;
   position: relative; z-index: 1;
   padding-bottom: 120px;
 }
 
-/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
-   HERO WRAPPER Ã¢â‚¬â€ permite parallax sin overflow
-ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */
+/*
+   HERO WRAPPER permite parallax sin overflow
+ */
 .sp-hero-wrapper {
   margin: 0 clamp(12px, 3vw, 40px) 28px;
   position: relative;
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Hero principal ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/*  Hero principal */
 .sp-hero {
   position: relative;
   min-height: clamp(260px, 32vw, 360px);
@@ -2377,7 +2377,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   opacity: 0.94;
 }
 
-/* LÃƒÂ­neas de brillo */
+/* Lineas de brillo */
 .sp-hero-topline {
   position: absolute; top: 0; left: 0; right: 0;
   height: 1.5px;
@@ -2389,7 +2389,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   opacity: 0.4;
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Orbs flotantes ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/*  Orbs flotantes  */
 .sp-orb {
   position: absolute;
   border-radius: 50%;
@@ -2401,7 +2401,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
 .sp-orb-2 { width: 340px; height: 340px; bottom: -60px; right: -40px; }
 .sp-orb-3 { width: 260px; height: 260px; top: 40%;    left: 45%;    }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ PartÃƒÂ­culas ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/*  Particulas  */
 .sp-particles {
   position: absolute; inset: 0;
   z-index: 0; pointer-events: none; overflow: hidden;
@@ -2416,7 +2416,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   backface-visibility: hidden;
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Contenido del hero ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/*  Contenido del hero  */
 .sp-hero-content {
   position: relative; z-index: 2;
   padding: clamp(24px, 3.5vw, 40px);
@@ -2487,7 +2487,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   color: #fff;
 }
 
-/* TÃƒÂ­tulo row */
+/* Ti­tulo row */
 .sp-hero-title-row {
   display: flex; align-items: center; gap: 20px;
 }
@@ -2527,9 +2527,9 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   animation: dotBlink 2s ease-in-out infinite;
 }
 
-/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
-   STAT CARDS DEL HERO Ã¢â‚¬â€ glassmorphism
-ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */
+/* 
+   STAT CARDS DEL HERO  glassmorphism
+ */
 .sp-stats-bar {
   display: flex; gap: 12px; flex-wrap: wrap;
   max-width: 760px;
@@ -2552,7 +2552,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   position: relative; overflow: hidden;
 }
 
-/* LÃƒÂ­nea de color izquierda */
+/* Li­nea de color izquierda */
 .sp-hero-stat::before {
   content: "";
   position: absolute; left: 0; top: 0; bottom: 0;
@@ -2592,9 +2592,9 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   white-space: nowrap;
 }
 
-/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
-   FILTROS Ã¢â‚¬â€ glassmorphism flotante sticky
-ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */
+/* 
+   FILTROS  glassmorphism flotante sticky
+ */
 .sp-filters {
   display: flex;
   align-items: center;
@@ -2720,9 +2720,9 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   white-space: nowrap;
 }
 
-/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
+/* 
    GRID WRAP
-ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */
+ */
 .sp-grid-wrap {
   padding: 0 clamp(12px, 3vw, 40px);
 }
@@ -2783,7 +2783,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   z-index: 100;
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Responsive ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/*  Responsive  */
 @media (max-width: 768px) {
   .sp-hero { min-height: 200px; }
   .sp-hero-title { font-size: 26px; letter-spacing: -0.8px; }
@@ -2840,7 +2840,7 @@ body.light-mode .sp-sort {
 }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¨ STATUS BADGE MEJORADO
+    STATUS BADGE MEJORADO
 ===================================================== */
 .status-badge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -2867,7 +2867,7 @@ body.light-mode .sp-sort {
 }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã…â€™Ã¢â‚¬Å“ CONTRAST GUARANTEES
+    CONTRAST GUARANTEES
 ===================================================== */
 .stat-label, .status-label, .hstat-label, .pc2-irr-type,
 .pc-hs-lbl, .lp-stat-lbl, .ah-label, .ah-stat-lbl,
@@ -2889,7 +2889,7 @@ body.light-mode .sp-sort {
 }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬Â Ã¢â‚¬Â¢ DRAG & DROP / EXTRAS
+    DRAG & DROP / EXTRAS
 ===================================================== */
 .plant-grid [data-projection-id] { list-style: none; }
 .plant-grid [data-projection-id]:active { z-index: 50; }
@@ -2902,7 +2902,7 @@ body.light-mode .sp-sort {
 .plant-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); padding: 4px 0; }
 
 /* =====================================================
-   Ã¢Ëœâ‚¬Ã¯Â¸Â LIGHT MODE Ã¢â‚¬â€ COMPONENT OVERRIDES
+    LIGHT MODE  COMPONENT OVERRIDES
 ===================================================== */
 body.light-mode .navbar {
   background: rgba(22,21,44,0.95) !important;
@@ -3012,7 +3012,7 @@ body.light-mode .qs-card { background: var(--qs-bg), rgba(20, 30, 26, 0.82); }
 body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â± RESPONSIVE
+    RESPONSIVE
 ===================================================== */
 @media (max-width: 1100px) {
   .top-section { grid-template-columns: 1fr 1fr; }
@@ -3107,7 +3107,7 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
 }
 
 /* =====================================================
-   Ã°Å¸Å’Â¿ PAGE ENTRANCE ANIMATIONS
+    PAGE ENTRANCE ANIMATIONS
 ===================================================== */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
@@ -3126,7 +3126,7 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
 .quick-stats .stat-card:nth-child(4) { animation-delay: 0.29s; }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã‚ÂÃ¢â‚¬â€ SECTOR COLUMN Ã¢â‚¬â€ espaciado entre header y cards
+    SECTOR COLUMN  espaciado entre header y cards
 ===================================================== */
 .sector-column .section-header {
   margin-bottom: 16px;
@@ -3137,12 +3137,12 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
 }
 
 .sectors-wrapper {
-  gap: clamp(20px, 3vw, 36px);    /* ÃƒÂ¢Ã¢â‚¬Â Ã‚Â aumenta si estÃƒÂ¡ muy junto */
-  margin-top: clamp(24px, 3vw, 40px);  /* ÃƒÂ¢Ã¢â‚¬Â Ã‚Â espacio desde la secciÃƒÂ³n anterior */
+  gap: clamp(20px, 3vw, 36px);    /*  aumenta si estaba¡ muy junto */
+  margin-top: clamp(24px, 3vw, 40px);  /*  espacio desde la seccion anterior */
 }
 
 .sector-column {
   display: flex;
   flex-direction: column;
-  gap: 16px;   /* ÃƒÂ¢Ã¢â‚¬Â Ã‚Â espacio entre header y grid */
+  gap: 16px;   /*  espacio entre header y grid */
 }
