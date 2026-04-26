@@ -367,7 +367,7 @@ function Login() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
-            Sistema de<br />Riego IoT
+            Sistema de<br />RiegoIQ
           </motion.h1>
 
           {/* Subtítulo */}

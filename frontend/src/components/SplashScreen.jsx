@@ -84,7 +84,7 @@ function SplashScreen({ onDone }) {
               backgroundImage: "linear-gradient(135deg, #f0f6fc, #34d399)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
               backgroundClip: "text", marginBottom: 6,
-            }}>Sistema de Riego IoT</div>
+            }}>Sistema de RiegoIQ</div>
             <div style={{ fontSize: 13, color: "#78909c" }}>
               Cargando tu sistema...
             </div>

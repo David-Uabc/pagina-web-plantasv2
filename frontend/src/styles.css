@@ -1,12 +1,12 @@
 /* =====================================================
-   🌿 RIEGOIQ — styles.css
-   Fuente única: Plus Jakarta Sans + DM Mono
+   Ã°Å¸Å’Â¿ RIEGOIQ Ã¢â‚¬â€ styles.css
+   Fuente ÃƒÂºnica: Plus Jakarta Sans + DM Mono
    Sin duplicados, sin conflictos, legible al 100%
 ===================================================== */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@0,300;0,400;0,500&display=swap');
 
 /* =====================================================
-   🎨 VARIABLES — DARK MODE (default)
+   ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¨ VARIABLES Ã¢â‚¬â€ DARK MODE (default)
 ===================================================== */
 :root {
   --bg-base:        #080a0e;
@@ -55,7 +55,7 @@
 }
 
 /* =====================================================
-   ☀️ LIGHT MODE
+   Ã¢Ëœâ‚¬Ã¯Â¸Â LIGHT MODE
 ===================================================== */
 body.light-mode {
   --bg-base:        #0f0e17;
@@ -91,7 +91,7 @@ body.light-mode {
 }
 
 /* =====================================================
-   🌌 RESET & BASE
+   ÃƒÂ°Ã…Â¸Ã…â€™Ã…â€™ RESET & BASE
 ===================================================== */
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;
@@ -99,13 +99,10 @@ body.light-mode {
 
 * {
   transition:
-    background-color 0.3s ease,
-    color 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease,
-    transform 0.2s ease,
-    opacity 0.2s ease;
-  scroll-behavior: smooth;
+    background-color 0.24s ease,
+    color 0.24s ease,
+    border-color 0.24s ease,
+    box-shadow 0.24s ease;
   scrollbar-width: thin;
   scrollbar-color: var(--green) transparent;
 }
@@ -134,7 +131,26 @@ body.light-mode {
 
 html { scroll-behavior: smooth; }
 
-/* ── TIPOGRAFÍA BASE — Una sola fuente, todo el sitio ── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .dashboard-full > *,
+  .quick-stats .stat-card,
+  .top-section .card,
+  .section-header,
+  .btn-see-all,
+  .stat-card,
+  .stat-card-inner {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ TIPOGRAFÃƒÆ’Ã‚ÂA BASE Ã¢â‚¬â€ Una sola fuente, todo el sitio ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   font-size: 15px;
@@ -147,6 +163,8 @@ body {
   color: var(--text-1);
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* Todo hereda Plus Jakarta Sans */
@@ -163,7 +181,7 @@ h1, h2, h3, h4 {
   color: var(--text-1);
 }
 
-/* Monospace para datos numéricos */
+/* Monospace para datos numÃƒÂ©ricos */
 .font-mono,
 .qs-value,
 .hstat-value,
@@ -174,7 +192,7 @@ pre, code, kbd {
   font-family: 'DM Mono', 'Fira Code', monospace;
 }
 
-/* ── Gradiente de fondo ── */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Gradiente de fondo ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 body::before {
   content: "";
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -190,7 +208,7 @@ body.light-mode::before {
     radial-gradient(ellipse 60% 50% at 50% 50%, rgba(129,140,248,0.04) 0%, transparent 50%);
 }
 
-/* ── Dot grid ambient ── */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Dot grid ambient ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 body::after {
   content: "";
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -203,17 +221,17 @@ body::after {
 .dashboard-full > *, .lp-page > *, .notfound-page > * { position: relative; }
 
 /* =====================================================
-   🧱 LAYOUT
+   ÃƒÂ°Ã…Â¸Ã‚Â§Ã‚Â± LAYOUT
 ===================================================== */
 .dashboard-full,
 .dashboard-container {
   position: relative; z-index: 1;
   width: 100%; min-height: 100vh;
-  padding: 28px clamp(16px, 5vw, 60px) 64px;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) clamp(16px, 5vw, 60px) calc(64px + env(safe-area-inset-bottom, 0px));
 }
 
 /* =====================================================
-   🧭 NAVBAR
+   ÃƒÂ°Ã…Â¸Ã‚Â§Ã‚Â­ NAVBAR
 ===================================================== */
 .nav-wrapper {
   position: sticky;
@@ -419,12 +437,12 @@ body::after {
 }
 .theme-toggle:hover { border-color: var(--green); box-shadow: 0 0 12px rgba(52,211,153,0.20); }
 .theme-toggle::before {
-  content: "🌙";
+  content: "\1F319";
   position: absolute; right: 7px; top: 50%;
   transform: translateY(-50%);
   font-size: 12px; pointer-events: none;
 }
-.theme-toggle.light::before { content: "☀️"; right: auto; left: 7px; }
+.theme-toggle.light::before { content: "\2600"; right: auto; left: 7px; }
 .theme-toggle-thumb {
   position: absolute;
   top: 3px; left: 3px;
@@ -551,7 +569,7 @@ body::after {
 .ud-item.logout:hover { background: var(--red-dim); color: var(--red); }
 
 /* =====================================================
-   📊 TOP SECTION
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  TOP SECTION
 ===================================================== */
 .top-section {
   display: grid;
@@ -559,9 +577,13 @@ body::after {
   gap: clamp(14px, 2vw, 24px);
   margin-bottom: clamp(24px, 3vw, 40px);
 }
+.top-section > * {
+  content-visibility: auto;
+  contain-intrinsic-size: 280px;
+}
 
 /* =====================================================
-   📦 CARD BASE
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¦ CARD BASE
 ===================================================== */
 @keyframes borderSweep {
   0%   { background-position: 0% 50%; }
@@ -593,7 +615,7 @@ body::after {
   transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
 }
 
-/* Línea de luz animada en borde superior */
+/* LÃƒÂ­nea de luz animada en borde superior */
 .card::before {
   content: "";
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
@@ -612,7 +634,7 @@ body::after {
   opacity: 0.7;
 }
 
-/* Línea sutil en borde inferior */
+/* LÃƒÂ­nea sutil en borde inferior */
 .card::after {
   content: "";
   position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
@@ -651,7 +673,7 @@ body::after {
 .sector-column:nth-child(2) .card { animation-delay: 0.42s; }
 
 /* =====================================================
-   📌 SECTION TITLE
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…â€™ SECTION TITLE
 ===================================================== */
 .section-title {
   margin: clamp(24px, 3vw, 36px) 0 clamp(12px, 1.5vw, 18px);
@@ -677,7 +699,7 @@ body::after {
 .section-header .section-title { margin-bottom: 0; }
 
 /* =====================================================
-   📡 SYSTEM STATUS
+   Ã°Å¸â€œÂ¡ SYSTEM STATUS
 ===================================================== */
 .status-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -780,7 +802,7 @@ body::after {
 }
 
 /* =====================================================
-   💧 HUMIDITY CARD
+   Ã°Å¸â€™Â§ HUMIDITY CARD
 ===================================================== */
 .humidity-main { display: flex; flex-direction: column; gap: 16px; }
 .humidity-info { width: 100%; }
@@ -824,7 +846,7 @@ body::after {
 .time-tabs span.active::before { width: 100%; }
 
 /* =====================================================
-   🔍 FILTER BAR
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â FILTER BAR
 ===================================================== */
 .filter-bar {
   display: flex; align-items: center;
@@ -874,7 +896,7 @@ body::after {
 .filter-count { font-size: 12px; color: var(--text-3); margin-left: auto; white-space: nowrap; }
 
 /* =====================================================
-   🌱 PLANT GRID
+   Ã°Å¸Å’Â± PLANT GRID
 ===================================================== */
 .plant-grid {
   display: grid;
@@ -898,7 +920,7 @@ body::after {
 .plant-grid-empty span { display: block; font-size: 36px; margin-bottom: 10px; }
 
 /* =====================================================
-   🌿 PLANTCARD V2
+   Ã°Å¸Å’Â¿ PLANTCARD V2
 ===================================================== */
 .plant-card {
   background: var(--bg-card);
@@ -983,15 +1005,30 @@ body::after {
 .pc2 {
   border-radius: var(--r-lg);
   overflow: hidden;
-  background: var(--bg-card);
+  background:
+    radial-gradient(circle at top right, rgba(52,211,153,0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+    var(--bg-card);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-md);
   display: flex; flex-direction: column;
   position: relative;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   will-change: transform;
 }
-.pc2:hover { border-color: var(--border-hover); box-shadow: var(--shadow-lg), var(--glow-green); }
+.pc2::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), transparent 28%, transparent 72%, rgba(255,255,255,0.04));
+  pointer-events: none;
+  opacity: 0.7;
+}
+.pc2:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg), var(--glow-green);
+  transform: translateY(-4px);
+}
 .pc2-active { border-color: rgba(34,197,94,0.45) !important; }
 .pc2-alert  { border-color: rgba(248,113,113,0.45) !important; animation: alertPulse 2s infinite; }
 
@@ -999,6 +1036,7 @@ body::after {
   position: relative;
   height: clamp(130px, 16vw, 190px);
   overflow: hidden; flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .pc2-img {
   width: 100%; height: 100%; object-fit: cover; display: block;
@@ -1009,7 +1047,9 @@ body::after {
 .pc2:hover .pc2-img { transform: scale(1.06); }
 .pc2-img-gradient {
   position: absolute; inset: 0;
-  background: linear-gradient(to bottom, rgba(5,14,10,0.08) 0%, rgba(5,14,10,0.30) 40%, rgba(5,14,10,0.82) 100%);
+  background:
+    linear-gradient(to bottom, rgba(5,14,10,0.02) 0%, rgba(5,14,10,0.18) 26%, rgba(5,14,10,0.84) 100%),
+    radial-gradient(circle at top right, rgba(255,255,255,0.16), transparent 32%);
 }
 .pc2-top-badges {
   position: absolute; top: 10px; left: 10px; right: 10px;
@@ -1041,16 +1081,43 @@ body::after {
   letter-spacing: 0.8px; text-shadow: 0 1px 6px rgba(0,0,0,0.5);
 }
 
-.pc2-body { padding: clamp(12px, 1.8vw, 16px); display: flex; flex-direction: column; gap: 9px; flex: 1; }
+.pc2-body { padding: clamp(14px, 1.9vw, 18px); display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .pc2-name-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .pc2-name {
-  font-size: 15px; font-weight: 700;
+  font-size: 16px; font-weight: 800;
   color: var(--text-1); letter-spacing: -0.2px;
   flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .pc2-irr-type {
   font-size: 11px; font-weight: 700; color: var(--text-2);
   text-transform: uppercase; letter-spacing: 0.6px; flex-shrink: 0;
+}
+
+.pc2-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pc2-state-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.pc2-state-pill.maintenance {
+  color: #fbbf24;
+  background: rgba(251,191,36,0.10);
+  border-color: rgba(251,191,36,0.24);
 }
 
 .pc2-progress { display: flex; flex-direction: column; gap: 5px; }
@@ -1078,20 +1145,21 @@ body::after {
 .pc2-alert-strip {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 14px;
-  background: rgba(248,113,113,0.08);
-  border: 1px solid rgba(248,113,113,0.25);
-  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(248,113,113,0.14), rgba(248,113,113,0.05));
+  border: 1px solid rgba(248,113,113,0.22);
+  border-radius: 12px;
   font-size: 13px; font-weight: 700; color: #f87171;
-  box-shadow: 0 0 16px rgba(248,113,113,0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 22px rgba(248,113,113,0.08);
 }
-.pc2-alert-strip::before { content: "⚠"; font-size: 14px; }
+.pc2-alert-strip::before { content: "\26A0"; font-size: 14px; }
 
 .pc2-water-btn {
   width: 100%; padding: 12px; border-radius: var(--r-sm); border: none;
   font-size: 15px; font-weight: 700; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 7px;
   min-height: 46px;
-  transition: box-shadow 0.2s, transform 0.15s;
+  letter-spacing: -0.01em;
+  transition: box-shadow 0.2s, transform 0.15s, filter 0.2s;
 }
 .pc2-water-btn.go {
   background: linear-gradient(135deg, #0ea5e9, #2563eb);
@@ -1104,10 +1172,10 @@ body::after {
 }
 .pc2-water-btn.stop:hover { box-shadow: 0 6px 20px rgba(239,68,68,0.42); }
 
-.pc2-actions { display: flex; gap: 6px; }
+.pc2-actions { display: flex; gap: 8px; margin-top: 2px; }
 .pc2-act {
-  flex: 1; padding: 8px 6px; border-radius: var(--r-xs);
-  border: 1px solid var(--border); font-size: 12px; font-weight: 600;
+  flex: 1; padding: 9px 8px; border-radius: 12px;
+  border: 1px solid var(--border); font-size: 12px; font-weight: 700;
   cursor: pointer; background: var(--bg-chip); color: var(--text-3);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   min-height: 36px; display: flex; align-items: center; justify-content: center;
@@ -1154,7 +1222,7 @@ body::after {
 }
 
 /* =====================================================
-   📈 HISTORY PANEL
+   Ã°Å¸â€œË† HISTORY PANEL
 ===================================================== */
 .pc-history-panel { overflow: hidden; border-top: 1px solid var(--border); }
 .pc-hist-inner {
@@ -1219,7 +1287,7 @@ body::after {
 }
 
 /* =====================================================
-   📊 QUICK STATS — QS GRID
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  QUICK STATS Ã¢â‚¬â€ QS GRID
 ===================================================== */
 .qs-grid {
   display: grid;
@@ -1390,7 +1458,7 @@ body::after {
 .stat-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 24px var(--card-glow, rgba(52,211,153,0.1)); }
 
 /* =====================================================
-   🔘 BUTTONS
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‹Å“ BUTTONS
 ===================================================== */
 .btn-primary {
   width: 100%; padding: 13px; border-radius: var(--r-sm); border: none;
@@ -1453,7 +1521,7 @@ body::after {
 .add-button-container { margin-top: 36px; display: flex; justify-content: center; }
 
 /* =====================================================
-   🪟 MODAL
+   ÃƒÂ°Ã…Â¸Ã‚ÂªÃ…Â¸ MODAL
 ===================================================== */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -1502,7 +1570,7 @@ body::after {
 }
 
 /* =====================================================
-   🔐 LOGIN — SPLIT 50/50
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â LOGIN Ã¢â‚¬â€ SPLIT 50/50
 ===================================================== */
 .lp-page {
   display: flex; flex-direction: row;
@@ -1821,14 +1889,14 @@ body::after {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* =====================================================
-   🏗 SECTORS WRAPPER
+   ÃƒÂ°Ã…Â¸Ã‚ÂÃ¢â‚¬â€ SECTORS WRAPPER
 ===================================================== */
 .sectors-wrapper { display: flex; gap: clamp(16px, 2.5vw, 28px); align-items: flex-start; }
-.sector-column { flex: 1; min-width: 0; }
+.sector-column { flex: 1; min-width: 0; content-visibility: auto; contain-intrinsic-size: 720px; }
 .sector-column .plant-grid { grid-template-columns: repeat(2, 1fr) !important; }
 
 /* =====================================================
-   💀 SKELETON
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã¢â€šÂ¬ SKELETON
 ===================================================== */
 @keyframes shimmer {
   0%   { background-position: -400px 0; }
@@ -1864,7 +1932,7 @@ body::after {
 .skeleton-badge { width: 64px; height: 22px; border-radius: 99px; }
 
 /* =====================================================
-   🗑 CONFIRM MODAL
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬â€Ã¢â‚¬Ëœ CONFIRM MODAL
 ===================================================== */
 @keyframes wobble { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-8deg)} 75%{transform:rotate(8deg)} }
 
@@ -1895,7 +1963,7 @@ body::after {
 .btn-cancel:hover { background: var(--green-dim); border-color: var(--border-hover); }
 
 /* =====================================================
-   🍞 TOAST
+   ÃƒÂ°Ã…Â¸Ã‚ÂÃ…Â¾ TOAST
 ===================================================== */
 .toast-container {
   position: fixed; bottom: 24px; right: 24px;
@@ -1917,7 +1985,7 @@ body::after {
 .toast.info    { border-color: rgba(56,189,248,0.3); }
 
 /* =====================================================
-   🌱 EMPTY STATES
+   Ã°Å¸Å’Â± EMPTY STATES
 ===================================================== */
 .empty-state {
   grid-column: 1 / -1;
@@ -1939,7 +2007,7 @@ body::after {
 .dashboard-sector-empty p { font-size: 13px; color: var(--text-2); margin: 0; }
 
 /* =====================================================
-   🚫 404
+   ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â« 404
 ===================================================== */
 .notfound-page {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -1985,7 +2053,7 @@ body::after {
 .nf-btn-sec:hover { background: var(--green-dim); border-color: var(--border-hover); }
 
 /* =====================================================
-   👤 PROFILE MODAL
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¤ PROFILE MODAL
 ===================================================== */
 .pm-modal {
   background: var(--bg-card-solid); border: 1px solid var(--border);
@@ -2082,7 +2150,7 @@ body::after {
 .pm-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* =====================================================
-   ⚙️ SETTINGS MODAL
+   ÃƒÂ¢Ã…Â¡Ã¢â€žÂ¢ÃƒÂ¯Ã‚Â¸Ã‚Â SETTINGS MODAL
 ===================================================== */
 .sm-modal {
   background: var(--bg-card-solid); border: 1px solid var(--border);
@@ -2185,7 +2253,7 @@ body.compact-mode .stat-card-inner { min-height: 100px; padding: 14px 16px 12px;
 body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
 
 /* =====================================================
-   💧 HUMIDITY CARD V2 & AVERAGE HUMIDITY
+   Ã°Å¸â€™Â§ HUMIDITY CARD V2 & AVERAGE HUMIDITY
 ===================================================== */
 .humidity-card-v2 { display: flex; flex-direction: column; height: 100%; }
 .hv2-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
@@ -2259,31 +2327,31 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
 .hstat-value { font-size: 16px; font-weight: 800; color: var(--text-1); }
 
 /* =====================================================
-   🌿 SECTOR PAGE
+   Ã°Å¸Å’Â¿ SECTOR PAGE
 ===================================================== */
 
-/* ── Wrapper principal ── */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Wrapper principal ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 .sp-page {
   min-height: 100vh;
   position: relative; z-index: 1;
   padding-bottom: 120px;
 }
 
-/* ══════════════════════════════════════════════════
-   HERO WRAPPER — permite parallax sin overflow
-══════════════════════════════════════════════════ */
+/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
+   HERO WRAPPER Ã¢â‚¬â€ permite parallax sin overflow
+ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */
 .sp-hero-wrapper {
   margin: 0 clamp(12px, 3vw, 40px) 28px;
   position: relative;
-  will-change: transform;
 }
 
-/* ── Hero principal ── */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Hero principal ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 .sp-hero {
   position: relative;
   min-height: clamp(260px, 32vw, 360px);
   border-radius: 24px;
   overflow: hidden;
+  isolation: isolate;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 24px 64px rgba(0, 0, 0, 0.6),
@@ -2309,7 +2377,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   opacity: 0.94;
 }
 
-/* Líneas de brillo */
+/* LÃƒÂ­neas de brillo */
 .sp-hero-topline {
   position: absolute; top: 0; left: 0; right: 0;
   height: 1.5px;
@@ -2321,7 +2389,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   opacity: 0.4;
 }
 
-/* ── Orbs flotantes ── */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Orbs flotantes ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 .sp-orb {
   position: absolute;
   border-radius: 50%;
@@ -2333,23 +2401,71 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
 .sp-orb-2 { width: 340px; height: 340px; bottom: -60px; right: -40px; }
 .sp-orb-3 { width: 260px; height: 260px; top: 40%;    left: 45%;    }
 
-/* ── Partículas ── */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ PartÃƒÂ­culas ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 .sp-particles {
   position: absolute; inset: 0;
   z-index: 0; pointer-events: none; overflow: hidden;
+  contain: layout paint;
+  transform: translateZ(0);
 }
 .sp-particle {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
-/* ── Contenido del hero ── */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Contenido del hero ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 .sp-hero-content {
   position: relative; z-index: 2;
   padding: clamp(24px, 3.5vw, 40px);
   display: flex; flex-direction: column;
-  gap: 20px; height: 100%;
+  gap: 22px; height: 100%;
+}
+
+.sp-hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.sp-hero-sidecards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(118px, 1fr));
+  gap: 10px;
+  width: min(100%, 420px);
+  align-self: flex-start;
+}
+
+.sp-side-stat {
+  padding: 12px 14px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02)),
+    rgba(3, 10, 8, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 18px 34px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.sp-side-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(240, 246, 252, 0.64);
+  margin-bottom: 6px;
+}
+
+.sp-side-stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #f0f6fc;
 }
 
 /* Breadcrumb */
@@ -2371,7 +2487,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   color: #fff;
 }
 
-/* Título row */
+/* TÃƒÂ­tulo row */
 .sp-hero-title-row {
   display: flex; align-items: center; gap: 20px;
 }
@@ -2411,18 +2527,21 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   animation: dotBlink 2s ease-in-out infinite;
 }
 
-/* ══════════════════════════════════════════════════
-   STAT CARDS DEL HERO — glassmorphism
-══════════════════════════════════════════════════ */
+/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
+   STAT CARDS DEL HERO Ã¢â‚¬â€ glassmorphism
+ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */
 .sp-stats-bar {
-  display: flex; gap: 10px; flex-wrap: wrap;
+  display: flex; gap: 12px; flex-wrap: wrap;
+  max-width: 760px;
 }
 
 .sp-hero-stat {
   display: flex; flex-direction: column; align-items: flex-start;
   gap: 4px;
   padding: 14px 18px;
-  background: rgba(0, 0, 0, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02)),
+    rgba(0, 0, 0, 0.26);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -2433,7 +2552,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   position: relative; overflow: hidden;
 }
 
-/* Línea de color izquierda */
+/* LÃƒÂ­nea de color izquierda */
 .sp-hero-stat::before {
   content: "";
   position: absolute; left: 0; top: 0; bottom: 0;
@@ -2473,9 +2592,9 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   white-space: nowrap;
 }
 
-/* ══════════════════════════════════════════════════
-   FILTROS — glassmorphism flotante sticky
-══════════════════════════════════════════════════ */
+/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
+   FILTROS Ã¢â‚¬â€ glassmorphism flotante sticky
+ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */
 .sp-filters {
   display: flex;
   align-items: center;
@@ -2488,14 +2607,14 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   -webkit-backdrop-filter: blur(28px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.05);
-  position: sticky;
-  top: calc(var(--nav-h, 62px) + 16px);
-  z-index: 40;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255,255,255,0.05);
+  position: relative;
+  top: auto;
+  z-index: 1;
   transition: box-shadow 0.3s;
 }
 .sp-filters:hover {
-  box-shadow: 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px var(--sp-accent-border), inset 0 1px 0 rgba(255,255,255,0.06);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.34), 0 0 0 1px var(--sp-accent-border), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 /* Search */
@@ -2601,9 +2720,9 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   white-space: nowrap;
 }
 
-/* ══════════════════════════════════════════════════
+/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
    GRID WRAP
-══════════════════════════════════════════════════ */
+ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */
 .sp-grid-wrap {
   padding: 0 clamp(12px, 3vw, 40px);
 }
@@ -2664,18 +2783,22 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   z-index: 100;
 }
 
-/* ── Responsive ── */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Responsive ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 @media (max-width: 768px) {
   .sp-hero { min-height: 200px; }
   .sp-hero-title { font-size: 26px; letter-spacing: -0.8px; }
   .sp-hero-icon  { font-size: 32px; }
   .sp-hero-icon-wrap { width: 56px; height: 56px; }
+  .sp-hero-head { flex-direction: column; align-items: stretch; }
+  .sp-hero-sidecards { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sp-stats-bar  { gap: 8px; }
   .sp-hero-stat  { padding: 10px 14px; min-width: 72px; }
   .sp-hero-stat-val { font-size: 20px; }
   .sp-filters { flex-direction: column; align-items: stretch; top: auto; position: relative; }
   .sp-count { margin-left: 0; }
   .sp-fab   { bottom: 22px; right: 22px; width: 50px; height: 50px; }
+  .sp-orb { filter: blur(60px); opacity: 0.75; }
+  .sp-hero-img { opacity: 0.14; }
 }
 
 @media (max-width: 900px) {
@@ -2688,8 +2811,10 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   .sp-grid-wrap .plant-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .sp-grid-wrap .pc2 { max-width: 100%; }
   .sp-hero-title-row { gap: 12px; }
+  .sp-hero-sidecards { grid-template-columns: 1fr; }
   .sp-orb-1 { width: 280px; height: 280px; }
   .sp-orb-2 { width: 220px; height: 220px; }
+  .sp-orb { filter: blur(44px); opacity: 0.62; }
 }
 @media (max-width: 420px) {
   .sp-grid-wrap .plant-grid { grid-template-columns: 1fr !important; }
@@ -2697,7 +2822,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   .sp-stats-bar { gap: 6px; }
 }
 
-/* ── Light mode fixes ── */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Light mode fixes ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 body.light-mode .sp-filters {
   background: rgba(22, 21, 44, 0.80) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
@@ -2715,7 +2840,7 @@ body.light-mode .sp-sort {
 }
 
 /* =====================================================
-   🎨 STATUS BADGE MEJORADO
+   ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¨ STATUS BADGE MEJORADO
 ===================================================== */
 .status-badge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -2742,7 +2867,7 @@ body.light-mode .sp-sort {
 }
 
 /* =====================================================
-   🌓 CONTRAST GUARANTEES
+   ÃƒÂ°Ã…Â¸Ã…â€™Ã¢â‚¬Å“ CONTRAST GUARANTEES
 ===================================================== */
 .stat-label, .status-label, .hstat-label, .pc2-irr-type,
 .pc-hs-lbl, .lp-stat-lbl, .ah-label, .ah-stat-lbl,
@@ -2764,7 +2889,7 @@ body.light-mode .sp-sort {
 }
 
 /* =====================================================
-   🆕 DRAG & DROP / EXTRAS
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬Â Ã¢â‚¬Â¢ DRAG & DROP / EXTRAS
 ===================================================== */
 .plant-grid [data-projection-id] { list-style: none; }
 .plant-grid [data-projection-id]:active { z-index: 50; }
@@ -2777,7 +2902,7 @@ body.light-mode .sp-sort {
 .plant-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); padding: 4px 0; }
 
 /* =====================================================
-   ☀️ LIGHT MODE — COMPONENT OVERRIDES
+   Ã¢Ëœâ‚¬Ã¯Â¸Â LIGHT MODE Ã¢â‚¬â€ COMPONENT OVERRIDES
 ===================================================== */
 body.light-mode .navbar {
   background: rgba(22,21,44,0.95) !important;
@@ -2887,7 +3012,7 @@ body.light-mode .qs-card { background: var(--qs-bg), rgba(20, 30, 26, 0.82); }
 body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
 
 /* =====================================================
-   📱 RESPONSIVE
+   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â± RESPONSIVE
 ===================================================== */
 @media (max-width: 1100px) {
   .top-section { grid-template-columns: 1fr 1fr; }
@@ -2942,7 +3067,7 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
 }
 
 @media (max-width: 600px) {
-  .dashboard-full { padding: 16px; }
+  .dashboard-full { padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(22px + env(safe-area-inset-bottom, 0px)); }
   .plant-grid     { grid-template-columns: 1fr 1fr; }
   .pc-hist-stats  { grid-template-columns: repeat(2, 1fr); }
   .filter-bar     { flex-direction: column; align-items: stretch; }
@@ -2952,15 +3077,24 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
   .nav-icon-btn, .theme-toggle, .notification { width: 34px; height: 34px; }
   .sp-grid-wrap .plant-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .sp-grid-wrap .pc2 { max-width: 100%; }
+  .dashboard-full > * { animation: none !important; }
+  .stat-card, .stat-card-inner, .btn-see-all { transform: none !important; }
+  .btn-see-all:hover { transform: none; }
 }
 
 @media (max-width: 480px) {
   .plant-grid { grid-template-columns: 1fr; }
-  .dashboard-full, .dashboard-container { padding: 12px 12px 50px; }
+  .dashboard-full, .dashboard-container { padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(50px + env(safe-area-inset-bottom, 0px)); }
   .navbar { border-radius: var(--r-md); margin-bottom: 16px; padding: 0 12px; }
   .modal-card { border-radius: var(--r-lg); }
   .quick-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
   .qs-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+}
+
+@media (max-width: 520px) {
+  .quick-stats { grid-template-columns: 1fr; }
+  .section-header { align-items: flex-start; }
+  .section-header .btn-see-all { width: 100%; justify-content: center; }
 }
 
 @media (max-width: 420px) {
@@ -2973,7 +3107,7 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
 }
 
 /* =====================================================
-   🌿 PAGE ENTRANCE ANIMATIONS
+   Ã°Å¸Å’Â¿ PAGE ENTRANCE ANIMATIONS
 ===================================================== */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
@@ -2992,7 +3126,7 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
 .quick-stats .stat-card:nth-child(4) { animation-delay: 0.29s; }
 
 /* =====================================================
-   🏗 SECTOR COLUMN — espaciado entre header y cards
+   ÃƒÂ°Ã…Â¸Ã‚ÂÃ¢â‚¬â€ SECTOR COLUMN Ã¢â‚¬â€ espaciado entre header y cards
 ===================================================== */
 .sector-column .section-header {
   margin-bottom: 16px;
@@ -3003,12 +3137,12 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
 }
 
 .sectors-wrapper {
-  gap: clamp(20px, 3vw, 36px);    /* ← aumenta si está muy junto */
-  margin-top: clamp(24px, 3vw, 40px);  /* ← espacio desde la sección anterior */
+  gap: clamp(20px, 3vw, 36px);    /* ÃƒÂ¢Ã¢â‚¬Â Ã‚Â aumenta si estÃƒÂ¡ muy junto */
+  margin-top: clamp(24px, 3vw, 40px);  /* ÃƒÂ¢Ã¢â‚¬Â Ã‚Â espacio desde la secciÃƒÂ³n anterior */
 }
 
 .sector-column {
   display: flex;
   flex-direction: column;
-  gap: 16px;   /* ← espacio entre header y grid */
+  gap: 16px;   /* ÃƒÂ¢Ã¢â‚¬Â Ã‚Â espacio entre header y grid */
 }

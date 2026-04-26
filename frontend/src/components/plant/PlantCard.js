@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import HumidityGauge from "./HumidityGauge";
-import { useState, useEffect, useCallback } from "react";
+import { memo, useState, useEffect, useCallback } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import { Download, FileText, AlertTriangle, Clock } from "lucide-react";
 import {
@@ -40,13 +40,13 @@ function getImage(plant) {
 }
 
 function getHumState(h, min, max) {
-  if (h < min)      return { color: "#f87171", label: "Crítica",  bar: "linear-gradient(90deg,#ef4444,#f87171)" };
+  if (h < min)      return { color: "#f87171", label: "Cr\u00EDtica",  bar: "linear-gradient(90deg,#ef4444,#f87171)" };
   if (h < min + 10) return { color: "#fbbf24", label: "Baja",     bar: "linear-gradient(90deg,#f59e0b,#fbbf24)" };
   if (h > max)      return { color: "#38bdf8", label: "Alta",     bar: "linear-gradient(90deg,#0ea5e9,#38bdf8)" };
-  return              { color: "#22c55e", label: "Óptima",  bar: "linear-gradient(90deg,#16a34a,#22c55e)" };
+  return              { color: "#22c55e", label: "\u00D3ptima",  bar: "linear-gradient(90deg,#16a34a,#22c55e)" };
 }
 
-// generateHistory solo se usa como fallback si la API no tiene datos aún
+// generateHistory solo se usa como fallback si la API no tiene datos aÃƒÆ’Ã‚Âºn
 function generateHistory(plant, days = 14) {
   const now = Date.now(); const DAY = 86400000;
   const humidity = []; const irrigations = [];
@@ -69,15 +69,15 @@ function fmt(ts) {
   return new Date(ts).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
 }
 
-const DAYS_SHORT = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+const DAYS_SHORT = ["Dom","Lun","Mar","Mi\u00E9","Jue","Vie","S\u00E1b"];
 
 function ScheduleBadge({ schedule }) {
   if (!schedule?.enabled || !schedule.days?.length) return null;
   const daysLabel = schedule.days.map(d => DAYS_SHORT[d]).join(", ");
   return (
-    <div className="schedule-badge" title={`Riego automático: ${daysLabel} a las ${schedule.time}`}>
+    <div className="schedule-badge" title={`Riego autom\u00E1tico: ${daysLabel} a las ${schedule.time}`}>
       <Clock size={9} />
-      {schedule.time} · {daysLabel}
+      {schedule.time} {"\u00B7"} {daysLabel}
     </div>
   );
 }
@@ -99,7 +99,7 @@ function HistoryPanel({ plant, range, onRangeChange }) {
         const { default: api } = await import("../../api");
         const res = await api.get(`/api/plants/${plant._id}/history?days=${range}`);
         if (!cancelled && res.data && res.data.length > 3) {
-          // Convertir formato DB → formato gráfica
+          // Convertir formato DB \u2192 formato gr\u00E1fica
           const humidity = res.data.map(h => ({ ts: new Date(h.date).getTime(), value: h.humidity }));
           setRealHistory({ humidity, irrigations: [] });
           setUsingReal(true);
@@ -156,7 +156,7 @@ function HistoryPanel({ plant, range, onRangeChange }) {
   const irrData = {
     labels: irrigations.map(r => fmt(r.ts)),
     datasets: [
-      { label: "Duración (min)", data: irrigations.map(r => r.duration), backgroundColor: "rgba(56,189,248,0.6)", borderColor: "#38bdf8", borderWidth: 1.5, borderRadius: 5 },
+      { label: "Duraci\u00F3n (min)", data: irrigations.map(r => r.duration), backgroundColor: "rgba(56,189,248,0.6)", borderColor: "#38bdf8", borderWidth: 1.5, borderRadius: 5 },
       { label: "Humedad +%",    data: irrigations.map(r => r.raised),   backgroundColor: "rgba(34,197,94,0.55)",  borderColor: "#22c55e", borderWidth: 1.5, borderRadius: 5 },
     ],
   };
@@ -172,12 +172,12 @@ function HistoryPanel({ plant, range, onRangeChange }) {
           <div className="pc-hist-tabs">
             {HISTORY_TABS.map(t => (
               <button key={t} className={`pc-hist-tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
-                {t === "Humedad" ? "📈" : "💧"} {t}
+                {t === "Humedad" ? "\uD83D\uDCC8" : "\uD83D\uDCA7"} {t}
               </button>
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {/* ✅ Badge datos reales vs simulados */}
+            {/* ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Badge datos reales vs simulados */}
             {realHistory && (
               <span style={{
                 fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
@@ -185,7 +185,7 @@ function HistoryPanel({ plant, range, onRangeChange }) {
                 border: usingReal ? "1px solid rgba(52,211,153,0.30)" : "1px solid rgba(251,191,36,0.25)",
                 color: usingReal ? "#34d399" : "#fbbf24",
               }}>
-                {usingReal ? "📡 Datos reales" : "🔄 Simulado"}
+                {usingReal ? "\uD83D\uDCE1 Datos reales" : "\uD83D\uDD04 Simulado"}
               </span>
             )}
             <div className="pc-hist-range">
@@ -212,8 +212,8 @@ function HistoryPanel({ plant, range, onRangeChange }) {
 
         <div className="pc-hist-stats">
           <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#22c55e" }}>{avg}%</span><span className="pc-hs-lbl">Promedio</span></div>
-          <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#f87171" }}>{Math.min(...humValues)}%</span><span className="pc-hs-lbl">Mínimo</span></div>
-          <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#38bdf8" }}>{Math.max(...humValues)}%</span><span className="pc-hs-lbl">Máximo</span></div>
+          <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#f87171" }}>{Math.min(...humValues)}%</span><span className="pc-hs-lbl">M\u00EDnimo</span></div>
+          <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#38bdf8" }}>{Math.max(...humValues)}%</span><span className="pc-hs-lbl">M\u00E1ximo</span></div>
           <div className="pc-hs-item"><span className="pc-hs-val" style={{ color: "#10b981" }}>{irrigations.length}</span><span className="pc-hs-lbl">Riegos</span></div>
         </div>
 
@@ -225,12 +225,12 @@ function HistoryPanel({ plant, range, onRangeChange }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", gap: 8, color: "#4d7a5e", fontSize: 12 }}>
                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   style={{ width: 14, height: 14, border: "2px solid #34d399", borderTopColor: "transparent", borderRadius: "50%" }} />
-                Cargando historial…
+                Cargando historial...
               </div>
             ) : tab === "Humedad"
               ? <Line data={humData} options={humOptions} />
               : irrigations.length === 0
-                ? <div className="pc-hist-empty">Sin riegos en este período 🌵</div>
+                ? <div className="pc-hist-empty">Sin riegos en este per\u00EDodo \uD83C\uDF35</div>
                 : <Bar data={irrData} options={irrOptions} />}
           </motion.div>
         </AnimatePresence>
@@ -284,16 +284,18 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
         whileHover={!historyOpen ? { y: -4, transition: { duration: 0.2 } } : {}}
         layout
       >
-        {/* ── Imagen con lluvia ── */}
+        {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Imagen con lluvia ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
         <div className="pc2-img-wrap">
           <img src={getImage(plant)} alt={plant.name}
             className={`pc2-img ${imgLoaded ? "loaded" : ""}`}
+            loading="lazy"
+            decoding="async"
             onLoad={() => setImgLoaded(true)}
             onError={e => { e.target.src = FALLBACK; setImgLoaded(true); }}
           />
           <div className="pc2-img-gradient" />
 
-          {/* ✅ Lluvia cuando válvula abierta */}
+          {/* ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Lluvia cuando vÃƒÆ’Ã‚Â¡lvula abierta */}
           <RainEffect active={isOn} />
 
           <div className="pc2-top-badges">
@@ -302,7 +304,7 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
               <motion.span className="pc2-watering"
                 initial={{ scale: 0 }} animate={{ scale: 1 }}
                 transition={{ type: "spring", bounce: 0.5 }}>
-                💧 Regando
+                {"\uD83D\uDCA7 Regando"}
               </motion.span>
             )}
           </div>
@@ -317,7 +319,23 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
             <span className="pc2-irr-type">{plant.irrigationType}</span>
           </div>
 
-          {/* ✅ Badges: horario + alertas */}
+          <div className="pc2-meta-row">
+            <span
+              className="pc2-state-pill"
+              style={{
+                color: hs.color,
+                borderColor: `${hs.color}44`,
+                background: `${hs.color}14`,
+              }}
+            >
+              {hs.label}
+            </span>
+            {plant.maintenanceMode && (
+              <span className="pc2-state-pill maintenance">Mantenimiento</span>
+            )}
+          </div>
+
+          {/* ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Badges: horario + alertas */}
           {(hasSchedule || alertCount > 0) && (
             <div style={{ display:"flex", alignItems:"center", gap:6, padding:"0 16px", marginBottom:8, flexWrap:"wrap" }}>
               {hasSchedule && <ScheduleBadge schedule={plant.schedule} />}
@@ -334,7 +352,7 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
             </div>
           )}
 
-          {/* ✅ Notas si existen */}
+          {/* ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Notas si existen */}
           {hasNotes && (
             <motion.div
               className="plant-notes"
@@ -375,7 +393,7 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
             </motion.div>
           )}
 
-          {/* Botón regar */}
+          {/* BotÃƒÆ’Ã‚Â³n regar */}
           <div style={{ padding: "0 16px", marginTop: 10 }}>
             <MaintenanceToggle
               plant={plant}
@@ -398,15 +416,15 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
               disabled={toggling}
               style={{ position: "relative" }}
             >
-              {toggling ? "⏳ Procesando..." : isOn ? "🛑 Detener Riego" : "💧 Regar Ahora"}
+              {toggling ? "Procesando..." : isOn ? "Detener riego" : "Regar ahora"}
             </motion.button>
           </div>
 
           <div className="pc2-actions">
             <button className={`pc2-act history ${historyOpen ? "active" : ""}`} onClick={() => setHistoryOpen(v => !v)}>
-              {historyOpen ? "▲ Ocultar" : "📈 Historial"}
+              {historyOpen ? "Ocultar" : "Historial"}
             </button>
-            <button className="pc2-act edit" onClick={() => onEdit(plant)}>✏ Editar</button>
+            <button className="pc2-act edit" onClick={() => onEdit(plant)}>Editar</button>
             <button className="pc2-act delete" onClick={() => setConfirmOpen(true)}>🗑</button>
           </div>
         </div>
@@ -430,7 +448,7 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
         onCancel={() => setIrrigConfirm(false)}
       />
 
-      {/* ✅ Modal historial de alertas */}
+      {/* ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Modal historial de alertas */}
       <AnimatePresence>
         {alertsOpen && (
           <AlertHistoryModal
@@ -443,5 +461,5 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
   );
 }
 
-export default PlantCard;
+export default memo(PlantCard);
 

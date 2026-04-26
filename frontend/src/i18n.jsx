@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 export const TRANSLATIONS = {
   es: {
     // Navbar
-    "nav.title":          "Sistema de Riego IoT",
+    "nav.title":          "RiegoIQ",
     "nav.home":           "Inicio",
     "nav.sectorSup":      "Sector Superior",
     "nav.sectorInf":      "Sector Inferior",

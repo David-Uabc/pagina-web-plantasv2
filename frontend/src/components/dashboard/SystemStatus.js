@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { memo, useState, useEffect } from "react";
 import { useI18n } from "../../i18n";
 import { Wifi, WifiOff, Database, DatabaseZap, Droplets, Activity, Cpu } from "lucide-react";
 import api from "../../api";
@@ -6,8 +6,8 @@ import api from "../../api";
 function timeAgo(date, t) {
   if (!date) return t("sys.noRecord");
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-  if (s < 60)    return `${s}${t("sys.secAgo")}`;
-  if (s < 3600)  return `${Math.floor(s / 60)} ${t("sys.minAgo")}`;
+  if (s < 60) return `${s}${t("sys.secAgo")}`;
+  if (s < 3600) return `${Math.floor(s / 60)} ${t("sys.minAgo")}`;
   if (s < 86400) return `${Math.floor(s / 3600)} ${t("sys.hAgo")}`;
   return `${Math.floor(s / 86400)} ${t("sys.daysAgo")}`;
 }
@@ -19,12 +19,12 @@ function isOnline(device) {
 }
 
 function DeviceRow({ device, label }) {
-  const online  = isOnline(device);
+  const online = isOnline(device);
   const lastStr = device?.lastSeen || device?.lastConnection
     ? new Date(device.lastSeen || device.lastConnection).toLocaleTimeString("es-MX", {
-        hour: "2-digit", minute: "2-digit", second: "2-digit"
-      })
-    : "—";
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    })
+    : "\u2014";
 
   return (
     <div className={`status-row ${online ? "status-ok" : "status-error"}`}>
@@ -35,7 +35,7 @@ function DeviceRow({ device, label }) {
       <div className="status-text">
         <span className="status-label">{label}</span>
         <span className={`status-value ${online ? "val-green" : "val-red"}`}>
-          {online ? `Online · ${lastStr}` : "Sin señal"}
+          {online ? `Online \u00B7 ${lastStr}` : "Sin se\u00F1al"}
         </span>
       </div>
       <div className={`status-dot ${online ? "dot-green" : "dot-red"}`} />
@@ -46,25 +46,23 @@ function DeviceRow({ device, label }) {
 function SystemStatus({ devices = {} }) {
   const { t } = useI18n();
 
-  const [mqtt,           setMqttState]  = useState(true);
-  const [db,             setDbState]    = useState(true);
-  const [lastIrrigation, setLastIrr]    = useState(null);
-  const [apiDevices,     setApiDevices] = useState({});
-  const [, setTick]                     = useState(0);
+  const [mqtt, setMqttState] = useState(true);
+  const [db, setDbState] = useState(true);
+  const [lastIrrigation, setLastIrr] = useState(null);
+  const [apiDevices, setApiDevices] = useState({});
+  const [, setTick] = useState(0);
 
-  // Tick cada segundo para actualizar el "hace X segundos"
   useEffect(() => {
-    const interval = setInterval(() => setTick(n => n + 1), 1000);
+    const interval = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ Polling de devices desde la API cada 15s
   useEffect(() => {
     const fetchDevices = async () => {
       try {
         const res = await api.get("/api/devices");
         const map = {};
-        res.data.forEach(d => { map[d.deviceId] = d; });
+        res.data.forEach((d) => { map[d.deviceId] = d; });
         setApiDevices(map);
       } catch {}
     };
@@ -73,15 +71,14 @@ function SystemStatus({ devices = {} }) {
     return () => clearInterval(i);
   }, []);
 
-  // Último riego
   useEffect(() => {
     const fetchLastIrr = async () => {
       try {
         const res = await api.get("/api/plants");
         const dates = res.data
-          .map(p => p.lastIrrigation)
+          .map((p) => p.lastIrrigation)
           .filter(Boolean)
-          .map(d => new Date(d));
+          .map((d) => new Date(d));
         if (dates.length) setLastIrr(new Date(Math.max(...dates)));
       } catch {}
     };
@@ -92,12 +89,10 @@ function SystemStatus({ devices = {} }) {
 
   useEffect(() => {
     window.setMqtt = setMqttState;
-    window.setDb   = setDbState;
+    window.setDb = setDbState;
   }, []);
 
   const allOk = mqtt && db;
-
-  // ✅ Merge: Socket.io (tiempo real) tiene prioridad sobre polling (API)
   const mergedDevices = { ...apiDevices, ...devices };
   const esp32Sup = mergedDevices["ESP32-SUP-01"] || null;
   const esp32Inf = mergedDevices["ESP32-INF-01"] || null;
@@ -113,7 +108,6 @@ function SystemStatus({ devices = {} }) {
       </div>
 
       <div className="status-grid">
-        {/* MQTT Broker */}
         <div className={`status-row ${mqtt ? "status-ok" : "status-error"}`}>
           <div className="status-icon-wrap">
             {mqtt ? <Wifi size={18} className="s-icon green" /> : <WifiOff size={18} className="s-icon red" />}
@@ -128,7 +122,6 @@ function SystemStatus({ devices = {} }) {
           <div className={`status-dot ${mqtt ? "dot-green" : "dot-red"}`} />
         </div>
 
-        {/* Base de datos */}
         <div className={`status-row ${db ? "status-ok" : "status-error"}`}>
           <div className="status-icon-wrap">
             {db ? <DatabaseZap size={18} className="s-icon green" /> : <Database size={18} className="s-icon red" />}
@@ -143,7 +136,6 @@ function SystemStatus({ devices = {} }) {
           <div className={`status-dot ${db ? "dot-green" : "dot-red"}`} />
         </div>
 
-        {/* Último riego */}
         <div className="status-row status-ok">
           <div className="status-icon-wrap">
             <Droplets size={18} className="s-icon blue" />
@@ -155,25 +147,31 @@ function SystemStatus({ devices = {} }) {
           <div className="status-dot dot-blue" />
         </div>
 
-        {/* ESP32 Superior */}
-        <DeviceRow device={esp32Sup} label="ESP32 · Patio Superior" />
-
-        {/* ESP32 Inferior */}
-        <DeviceRow device={esp32Inf} label="ESP32 · Patio Inferior" />
+        <DeviceRow device={esp32Sup} label="ESP32  Patio Superior" />
+        <DeviceRow device={esp32Inf} label="ESP32  Patio Inferior" />
       </div>
 
       {!anyEsp32 && (
-        <div style={{
-          marginTop: 10, padding: "8px 12px", borderRadius: 10, fontSize: 11,
-          background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.18)",
-          color: "#fbbf24", display: "flex", alignItems: "center", gap: 6,
-        }}>
+        <div
+          style={{
+            marginTop: 10,
+            padding: "8px 12px",
+            borderRadius: 10,
+            fontSize: 11,
+            background: "rgba(251,191,36,0.08)",
+            border: "1px solid rgba(251,191,36,0.18)",
+            color: "#fbbf24",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
           <Activity size={12} />
-          Esperando conexión de ESP32…
+          Esperando conexion ESP32...
         </div>
       )}
     </div>
   );
 }
 
-export default SystemStatus;
+export default memo(SystemStatus);

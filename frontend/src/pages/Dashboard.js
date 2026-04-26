@@ -1,34 +1,40 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useI18n } from "../i18n";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../api";
-import Navbar             from "../components/layout/Navbar";
-import SystemStatus       from "../components/dashboard/SystemStatus";
-import AverageHumidity    from "../components/dashboard/AverageHumidity";
-import PlantCard          from "../components/plant/PlantCard";
+import Navbar from "../components/layout/Navbar";
+import SystemStatus from "../components/dashboard/SystemStatus";
+import AverageHumidity from "../components/dashboard/AverageHumidity";
+import PlantCard from "../components/plant/PlantCard";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
-import QuickStats         from "../components/dashboard/QuickStats";
-import WelcomeToast       from "../components/dashboard/WelcomeToast";
+import QuickStats from "../components/dashboard/QuickStats";
+import WelcomeToast from "../components/dashboard/WelcomeToast";
 import ComparePlantsModal from "../components/plant/ComparePlantsModal";
 import { useNotifications } from "../hooks/useNotifications";
-import { useSocket }        from "../hooks/useSocket";
-import { useToast }         from "../context/ToastProvider";
+import { useSocket } from "../hooks/useSocket";
+import { useToast } from "../context/ToastProvider";
 
 function SectorEmpty({ sector, onGo }) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
       style={{
-        gridColumn: "1 / -1", textAlign: "center", padding: "32px 20px",
-        background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(52,211,153,0.15)",
+        gridColumn: "1 / -1",
+        textAlign: "center",
+        padding: "32px 20px",
+        background: "rgba(255,255,255,0.02)",
+        border: "1px dashed rgba(52,211,153,0.15)",
         borderRadius: 16,
       }}
     >
-      <div style={{ fontSize: 40, marginBottom: 10 }}>🌱</div>
-      <p style={{ color: "#78909c", fontSize: 14, marginBottom: 14 }}>No hay plantas en este sector todavía</p>
+      <div style={{ fontSize: 40, marginBottom: 10 }}>{"\uD83C\uDF31"}</div>
+      <p style={{ color: "#78909c", fontSize: 14, marginBottom: 14 }}>
+        No hay plantas en este sector todav\u00EDa
+      </p>
       <button className="btn-see-all" onClick={onGo} style={{ fontSize: 13 }}>
-        Ir a Sector {sector} para agregar →
+        Ir a Sector {sector} para agregar {"\u2192"}
       </button>
     </motion.div>
   );
@@ -36,14 +42,14 @@ function SectorEmpty({ sector, onGo }) {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { t }    = useI18n();
-  const toast    = useToast();
+  const { t } = useI18n();
+  const toast = useToast();
   const { checkPlants } = useNotifications();
 
-  const [plants,      setPlants]      = useState([]);
-  const [loading,     setLoading]     = useState(true);
+  const [plants, setPlants] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showCompare, setShowCompare] = useState(false);
-  const [devices,     setDevices]     = useState({});
+  const [devices, setDevices] = useState({});
 
   const fetchPlants = useCallback(async () => {
     try {
@@ -51,7 +57,9 @@ function Dashboard() {
       setPlants(res.data);
       checkPlants(res.data);
     } catch {}
-    finally { setLoading(false); }
+    finally {
+      setLoading(false);
+    }
   }, [checkPlants]);
 
   useEffect(() => {
@@ -62,39 +70,41 @@ function Dashboard() {
 
   useSocket({
     onPlantUpdate: useCallback((data) => {
-      setPlants(prev => {
-        const exists = prev.some(p => p._id === data._id);
-        if (exists) return prev.map(p => p._id === data._id ? { ...p, ...data } : p);
+      setPlants((prev) => {
+        const exists = prev.some((p) => p._id === data._id);
+        if (exists) return prev.map((p) => (p._id === data._id ? { ...p, ...data } : p));
         return prev;
       });
     }, []),
     onPlantDeleted: useCallback((data) => {
-      setPlants(prev => prev.filter(p => p._id !== data._id));
+      setPlants((prev) => prev.filter((p) => p._id !== data._id));
     }, []),
     onAlert: useCallback((data) => {
-      toast(`⚠️ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
+      toast(`\u26A0\uFE0F ${data.name} \u2014 humedad cr\u00EDtica: ${data.humidity}%`, "error");
       checkPlants([data]);
     }, [checkPlants, toast]),
     onDeviceHeartbeat: useCallback((data) => {
-      setDevices(prev => ({ ...prev, [data.deviceId]: { ...data, lastSeen: new Date() } }));
+      setDevices((prev) => ({ ...prev, [data.deviceId]: { ...data, lastSeen: new Date() } }));
     }, []),
     onScheduleTriggered: useCallback((data) => {
-      toast(`⏰ Riego programado iniciado — ${data.name}`, "info");
+      toast(`\u23F0 Riego programado iniciado \u2014 ${data.name}`, "info");
     }, [toast]),
   });
 
-  const handleDelete = async (id) => {
-    try { await api.delete(`/api/plants/${id}`); } catch {}
-    setPlants(prev => prev.filter(p => p._id !== id));
-  };
+  const handleDelete = useCallback(async (id) => {
+    try {
+      await api.delete(`/api/plants/${id}`);
+    } catch {}
+    setPlants((prev) => prev.filter((p) => p._id !== id));
+  }, []);
 
-  const handleToggleValve = async (plant) => {
+  const handleToggleValve = useCallback(async (plant) => {
     const newStatus = plant.valveStatus === "OPEN" ? "CLOSED" : "OPEN";
     try {
       const res = await api.put(`/api/plants/${plant._id}`, { valveStatus: newStatus });
-      setPlants(prev => prev.map(p => p._id === plant._id ? res.data : p));
+      setPlants((prev) => prev.map((p) => (p._id === plant._id ? res.data : p)));
     } catch {}
-  };
+  }, []);
 
   const handleMaintenanceUpdate = useCallback((updatedPlant) => {
     setPlants((prev) => prev.map((plant) => (
@@ -102,10 +112,12 @@ function Dashboard() {
     )));
   }, []);
 
-  const allSup  = plants.filter(p => p.sector === "Superior");
-  const allInf  = plants.filter(p => p.sector === "Inferior");
-  const prevSup = allSup.slice(0, 2);
-  const prevInf = allInf.slice(0, 2);
+  const allSup = useMemo(() => plants.filter((p) => p.sector === "Superior"), [plants]);
+  const allInf = useMemo(() => plants.filter((p) => p.sector === "Inferior"), [plants]);
+  const prevSup = useMemo(() => allSup.slice(0, 2), [allSup]);
+  const prevInf = useMemo(() => allInf.slice(0, 2), [allInf]);
+  const goSuperior = useCallback(() => navigate("/superior"), [navigate]);
+  const goInferior = useCallback(() => navigate("/inferior"), [navigate]);
 
   return (
     <div className="dashboard-full">
@@ -125,47 +137,53 @@ function Dashboard() {
       <div className="sectors-wrapper">
         <div className="sector-column">
           <div className="section-header">
-            <h2 className="section-title">🌿 Patio Superior</h2>
+            <h2 className="section-title">{"\uD83C\uDF3F"} Patio Superior</h2>
             {allSup.length > 0 && (
-              <button className="btn-see-all" onClick={() => navigate("/superior")}>
-                {allSup.length > 2 ? `${t("dash.seeAll")} (${allSup.length}) →` : t("dash.goSector")}
+              <button className="btn-see-all" onClick={goSuperior}>
+                {allSup.length > 2 ? `${t("dash.seeAll")} (${allSup.length}) \u2192` : t("dash.goSector")}
               </button>
             )}
           </div>
           <div className="plant-grid">
             {loading ? <PlantGridSkeleton count={2} /> :
-             prevSup.length === 0 ? <SectorEmpty sector="Superior" onGo={() => navigate("/superior")} /> :
-             prevSup.map((plant, i) => (
-                <PlantCard key={plant._id} plant={plant} index={i}
-                  onEdit={() => navigate("/superior")}
-                  onDelete={handleDelete}
-                  onToggleValve={handleToggleValve}
-                  onMaintenanceUpdate={handleMaintenanceUpdate}
-                />
-             ))}
+              prevSup.length === 0 ? <SectorEmpty sector="Superior" onGo={goSuperior} /> :
+                prevSup.map((plant, i) => (
+                  <PlantCard
+                    key={plant._id}
+                    plant={plant}
+                    index={i}
+                    onEdit={goSuperior}
+                    onDelete={handleDelete}
+                    onToggleValve={handleToggleValve}
+                    onMaintenanceUpdate={handleMaintenanceUpdate}
+                  />
+                ))}
           </div>
         </div>
 
         <div className="sector-column">
           <div className="section-header">
-            <h2 className="section-title">🌱 Patio Inferior</h2>
+            <h2 className="section-title">{"\uD83C\uDF31"} Patio Inferior</h2>
             {allInf.length > 0 && (
-              <button className="btn-see-all" onClick={() => navigate("/inferior")}>
-                {allInf.length > 2 ? `${t("dash.seeAll")} (${allInf.length}) →` : t("dash.goSector")}
+              <button className="btn-see-all" onClick={goInferior}>
+                {allInf.length > 2 ? `${t("dash.seeAll")} (${allInf.length}) \u2192` : t("dash.goSector")}
               </button>
             )}
           </div>
           <div className="plant-grid">
             {loading ? <PlantGridSkeleton count={2} /> :
-             prevInf.length === 0 ? <SectorEmpty sector="Inferior" onGo={() => navigate("/inferior")} /> :
-             prevInf.map((plant, i) => (
-                <PlantCard key={plant._id} plant={plant} index={i}
-                  onEdit={() => navigate("/inferior")}
-                  onDelete={handleDelete}
-                  onToggleValve={handleToggleValve}
-                  onMaintenanceUpdate={handleMaintenanceUpdate}
-                />
-             ))}
+              prevInf.length === 0 ? <SectorEmpty sector="Inferior" onGo={goInferior} /> :
+                prevInf.map((plant, i) => (
+                  <PlantCard
+                    key={plant._id}
+                    plant={plant}
+                    index={i}
+                    onEdit={goInferior}
+                    onDelete={handleDelete}
+                    onToggleValve={handleToggleValve}
+                    onMaintenanceUpdate={handleMaintenanceUpdate}
+                  />
+                ))}
           </div>
         </div>
       </div>
