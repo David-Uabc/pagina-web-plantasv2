@@ -33,7 +33,7 @@ export default function usePushNotifications() {
     }
 
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/Sw.js")
       .then(reg => {
         console.log("✅ Service Worker registrado:", reg.scope);
         setSwRegistrado(true);

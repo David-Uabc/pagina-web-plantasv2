@@ -1,5 +1,5 @@
 {
-  "name": "RiegoIQ — Sistema de Riego IoT",
+  "name": "RiegoIQ - Sistema de Riego IoT",
   "short_name": "RiegoIQ",
   "description": "Monitoreo y control inteligente de riego para tus plantas",
   "start_url": "/",
@@ -42,35 +42,19 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshots/dashboard.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Dashboard principal de RiegoIQ"
-    },
-    {
-      "src": "/screenshots/mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Vista móvil de RiegoIQ"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Sector Superior",
       "short_name": "Superior",
       "description": "Ver plantas del patio superior",
-      "url": "/sector/superior",
+      "url": "/superior",
       "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     },
     {
       "name": "Sector Inferior",
       "short_name": "Inferior",
       "description": "Ver plantas del patio inferior",
-      "url": "/sector/inferior",
+      "url": "/inferior",
       "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     }
   ]
