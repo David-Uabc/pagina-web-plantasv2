@@ -101,11 +101,22 @@ function SystemStatus({ devices = {}, plants = [] }) {
     const controller = new AbortController();
 
     fetchDevices(controller.signal);
-    const interval = setInterval(() => fetchDevices(), 45000);
+    const runFetch = () => {
+      if (document.hidden) return;
+      fetchDevices();
+    };
+    const interval = setInterval(runFetch, 45000);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchDevices();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       controller.abort();
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [fetchDevices]);
 

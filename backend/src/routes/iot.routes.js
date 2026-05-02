@@ -184,13 +184,14 @@ router.post("/heartbeat", iotAuth, async (req, res) => {
   const io = req.app.get("io");
   try {
     const sector = req.body.sector;
+    let ownerId = req.device?.owner || null;
 
     if (sector && !sectorValido(sector)) {
       return res.status(400).json({ error: "sector debe ser Superior o Inferior" });
     }
 
     if (sector) {
-      const ownerId = await requireDeviceOwner(req, res, sector);
+      ownerId = await requireDeviceOwner(req, res, sector);
       if (!ownerId) return;
     }
 

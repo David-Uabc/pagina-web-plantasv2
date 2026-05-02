@@ -19,6 +19,8 @@ const app    = express();
 const server = http.createServer(app);
 const isDev  = process.env.NODE_ENV !== "production";
 
+app.set("trust proxy", 1);
+
 const configuredOrigins = [
   process.env.FRONTEND_URL,
   process.env.FRONTEND_URLS,
@@ -88,14 +90,25 @@ app.use(helmet({
 // ✅ En desarrollo LOCAL se omite el rate limit para no
 //    bloquear las peticiones duplicadas del React StrictMode
 const skipInDev = () => isDev;
+const skipGeneralLimiter = (req) =>
+  isDev ||
+  req.method === "OPTIONS" ||
+  req.path.startsWith("/api/iot");
+
+const corsOptions = {
+  origin: ALLOWED_ORIGINS,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-device-id", "x-api-key"],
+};
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 180,
   message: { error: "Demasiadas peticiones. Por favor espera 15 minutos." },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: skipInDev, // ✅ en desarrollo no limita
+  skip: skipGeneralLimiter,
 });
 
 const authLimiter = rateLimit({
@@ -104,7 +117,7 @@ const authLimiter = rateLimit({
   message: { error: "Demasiados intentos de acceso. Por favor espera 15 minutos." },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: skipInDev, // ✅ en desarrollo no limita
+  skip: (req) => isDev || req.method === "OPTIONS",
 });
 
 const iotLimiter = rateLimit({
@@ -113,18 +126,13 @@ const iotLimiter = rateLimit({
   message: { error: "Límite de peticiones del dispositivo IoT alcanzado." },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: skipInDev,
+  skip: (req) => isDev || req.method === "OPTIONS",
 });
 
-app.use(generalLimiter);
-
 // ── Middlewares ───────────────────────────────────────
-app.use(cors({
-  origin: ALLOWED_ORIGINS,
-  credentials: true,            // ✅ necesario para cookies httpOnly
-  methods: ["GET","POST","PUT","DELETE","PATCH","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization","x-device-id","x-api-key"],
-}));
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+app.use(generalLimiter);
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cookieParser());
