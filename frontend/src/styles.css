@@ -748,6 +748,19 @@ body::after {
   box-shadow: none !important;
 }
 
+.btn-stop-sector {
+  border-color: rgba(248,113,113,0.28) !important;
+  background: rgba(248,113,113,0.10) !important;
+  color: #fda4af !important;
+}
+
+.btn-stop-sector.disabled,
+.btn-stop-sector:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
 .btn-maintenance-sector {
   border-color: rgba(251,191,36,0.26) !important;
   background: rgba(251,191,36,0.10) !important;
@@ -2791,6 +2804,12 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   border-color: rgba(96,165,250,0.24);
   background: rgba(96,165,250,0.12);
   color: #93c5fd;
+}
+
+.sp-bulk-stop {
+  border-color: rgba(248,113,113,0.24);
+  background: rgba(248,113,113,0.12);
+  color: #fda4af;
 }
 
 .sp-bulk-maint {

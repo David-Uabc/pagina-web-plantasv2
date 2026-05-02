@@ -53,6 +53,7 @@ function Dashboard() {
   const [showCompare, setShowCompare] = useState(false);
   const [devices, setDevices] = useState({});
   const [wateringSector, setWateringSector] = useState(null);
+  const [stoppingSector, setStoppingSector] = useState(null);
   const [maintenanceSector, setMaintenanceSector] = useState(null);
 
   const fetchPlants = useCallback(async (signal) => {
@@ -194,6 +195,30 @@ function Dashboard() {
     }
   }, [plants, toast]);
 
+  const handleStopSector = useCallback(async (sector) => {
+    const sectorPlants = plants.filter((plant) => plant.sector === sector);
+    const targets = sectorPlants.filter((plant) => plant.valveStatus === "OPEN");
+
+    if (targets.length === 0) {
+      toast(`No hay riego activo para detener en ${sector}`, "warning");
+      return;
+    }
+
+    setStoppingSector(sector);
+    try {
+      const results = await Promise.all(
+        targets.map((plant) => api.put(`/api/plants/${plant._id}`, { valveStatus: "CLOSED" }))
+      );
+      const updated = new Map(results.map((res) => [res.data._id, res.data]));
+      setPlants((prev) => prev.map((plant) => updated.get(plant._id) || plant));
+      toast(`⏹ Riego detenido en ${targets.length} planta${targets.length !== 1 ? "s" : ""} de ${sector}`, "success");
+    } catch (error) {
+      toast(error?.response?.data?.error || `No se pudo detener el riego en ${sector}`, "error");
+    } finally {
+      setStoppingSector(null);
+    }
+  }, [plants, toast]);
+
   const handleMaintenanceSector = useCallback(async (sector) => {
     const sectorPlants = plants.filter((plant) => plant.sector === sector);
     const activate = !sectorPlants.every((plant) => plant.maintenanceMode);
@@ -245,6 +270,8 @@ function Dashboard() {
   const closeCompare = useCallback(() => startTransition(() => setShowCompare(false)), []);
   const canWaterSuperior = allSup.some((plant) => !plant.maintenanceMode && plant.valveStatus !== "OPEN");
   const canWaterInferior = allInf.some((plant) => !plant.maintenanceMode && plant.valveStatus !== "OPEN");
+  const canStopSuperior = allSup.some((plant) => plant.valveStatus === "OPEN");
+  const canStopInferior = allInf.some((plant) => plant.valveStatus === "OPEN");
   const allMaintSuperior = allSup.length > 0 && allSup.every((plant) => plant.maintenanceMode);
   const allMaintInferior = allInf.length > 0 && allInf.every((plant) => plant.maintenanceMode);
 
@@ -276,6 +303,15 @@ function Dashboard() {
                     : allMaintSuperior
                       ? "✅ Quitar mantenimiento"
                       : "🔧 Mantenimiento total"}
+                </button>
+              )}
+              {allSup.length > 0 && (
+                <button
+                  className={`btn-see-all btn-stop-sector ${!canStopSuperior || stoppingSector === "Superior" ? "disabled" : ""}`}
+                  onClick={() => handleStopSector("Superior")}
+                  disabled={!canStopSuperior || stoppingSector === "Superior"}
+                >
+                  {stoppingSector === "Superior" ? "Deteniendo..." : "⏹ Detener todo"}
                 </button>
               )}
               {allSup.length > 0 && (
@@ -330,6 +366,15 @@ function Dashboard() {
                     : allMaintInferior
                       ? "✅ Quitar mantenimiento"
                       : "🔧 Mantenimiento total"}
+                </button>
+              )}
+              {allInf.length > 0 && (
+                <button
+                  className={`btn-see-all btn-stop-sector ${!canStopInferior || stoppingSector === "Inferior" ? "disabled" : ""}`}
+                  onClick={() => handleStopSector("Inferior")}
+                  disabled={!canStopInferior || stoppingSector === "Inferior"}
+                >
+                  {stoppingSector === "Inferior" ? "Deteniendo..." : "⏹ Detener todo"}
                 </button>
               )}
               {allInf.length > 0 && (

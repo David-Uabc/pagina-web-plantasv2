@@ -191,6 +191,7 @@ function SectorPage({ sector }) {
   const [editingPlant, setEditingPlant] = useState(null);
   const [alertPlant, setAlertPlant] = useState(null);
   const [wateringSector, setWateringSector] = useState(false);
+  const [stoppingSector, setStoppingSector] = useState(false);
   const [maintenanceSector, setMaintenanceSector] = useState(false);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("order");
@@ -344,6 +345,7 @@ function SectorPage({ sector }) {
   const hasFilters = search !== "" || status !== "all";
   const isDragging = dragEnabled && sort === "order" && !hasFilters;
   const canWaterAll = sectorPlants.some((plant) => !plant.maintenanceMode && plant.valveStatus !== "OPEN");
+  const canStopAll = sectorPlants.some((plant) => plant.valveStatus === "OPEN");
   const allInMaintenance = sectorPlants.length > 0 && sectorPlants.every((plant) => plant.maintenanceMode);
 
   const openCreateModal = useCallback(() => {
@@ -441,6 +443,31 @@ function SectorPage({ sector }) {
       toast(error?.response?.data?.error || `No se pudo regar ${theme.label}`, "error");
     } finally {
       setWateringSector(false);
+    }
+  }, [sectorPlants, theme.label, toast]);
+
+  const handleStopAll = useCallback(async () => {
+    const targets = sectorPlants.filter((plant) => plant.valveStatus === "OPEN");
+
+    if (targets.length === 0) {
+      toast(`No hay riego activo para detener en ${theme.label}`, "warning");
+      return;
+    }
+
+    setStoppingSector(true);
+    try {
+      const results = await Promise.all(
+        targets.map((plant) => api.put(`/api/plants/${plant._id}`, { valveStatus: "CLOSED" }))
+      );
+      const updated = new Map(results.map((res) => [res.data._id, res.data]));
+      const syncPlants = (prev) => prev.map((plant) => updated.get(plant._id) || plant);
+      setPlants(syncPlants);
+      setOrderedPlants(syncPlants);
+      toast(`⏹ Riego detenido en ${targets.length} planta${targets.length !== 1 ? "s" : ""} de ${theme.label}`, "success");
+    } catch (error) {
+      toast(error?.response?.data?.error || `No se pudo detener el riego en ${theme.label}`, "error");
+    } finally {
+      setStoppingSector(false);
     }
   }, [sectorPlants, theme.label, toast]);
 
@@ -681,6 +708,15 @@ function SectorPage({ sector }) {
               disabled={!canWaterAll || wateringSector}
             >
               {wateringSector ? "Regando..." : "💧 Regar todas"}
+            </motion.button>
+
+            <motion.button
+              className={`sp-bulk-btn sp-bulk-stop ${!canStopAll || stoppingSector ? "disabled" : ""}`}
+              onClick={handleStopAll}
+              whileTap={{ scale: 0.94 }}
+              disabled={!canStopAll || stoppingSector}
+            >
+              {stoppingSector ? "Deteniendo..." : "⏹ Detener todo"}
             </motion.button>
           </div>
         )}
