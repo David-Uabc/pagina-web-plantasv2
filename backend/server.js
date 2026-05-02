@@ -31,7 +31,6 @@ const configuredOrigins = [
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  "https://riego-iot-frontend.onrender.com",
   "https://riegoiq-frontend.onrender.com",
   ...configuredOrigins,
 ].filter((value, index, list) => list.indexOf(value) === index);
