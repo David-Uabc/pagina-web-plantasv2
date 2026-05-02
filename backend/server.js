@@ -2,6 +2,7 @@ const express       = require("express");
 const cors          = require("cors");
 const dotenv        = require("dotenv");
 const http          = require("http");
+const path          = require("path");
 const helmet        = require("helmet");
 const rateLimit     = require("express-rate-limit");
 const mongoSanitize = require("express-mongo-sanitize");
@@ -13,7 +14,8 @@ const simulator     = require("./src/mqtt/simulator");
 const scheduler     = require("./src/jobs/scheduleRunner");
 const { resolveSocketUser, roomForUser } = require("./src/utils/socketRooms");
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, ".env") });
+dotenv.config({ path: path.join(__dirname, ".env.local"), override: true });
 
 const app    = express();
 const server = http.createServer(app);

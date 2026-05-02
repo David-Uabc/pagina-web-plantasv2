@@ -19,10 +19,10 @@ const ComparePlantsModal = lazy(() => import("../components/plant/ComparePlantsM
 function SectorEmpty({ sector, onGo }) {
   return (
     <motion.div
+      className="dashboard-sector-empty"
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       style={{
-        gridColumn: "1 / -1",
         textAlign: "center",
         padding: "32px 20px",
         background: "rgba(255,255,255,0.02)",
@@ -52,6 +52,8 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showCompare, setShowCompare] = useState(false);
   const [devices, setDevices] = useState({});
+  const [wateringSector, setWateringSector] = useState(null);
+  const [maintenanceSector, setMaintenanceSector] = useState(null);
 
   const fetchPlants = useCallback(async (signal) => {
     try {
@@ -130,7 +132,7 @@ function Dashboard() {
       setPlants((prev) => prev.filter((plant) => plant._id !== data._id));
     }, []),
     onAlert: useCallback((data) => {
-      toast(`⚠️ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
+      toast(`⚠ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
       checkPlants([data]);
     }, [checkPlants, toast]),
     onDeviceHeartbeat: useCallback((data) => {
@@ -168,6 +170,70 @@ function Dashboard() {
     setPlants((prev) => prev.map((plant) => (plant._id === updatedPlant._id ? { ...plant, ...updatedPlant } : plant)));
   }, []);
 
+  const handleWaterSector = useCallback(async (sector) => {
+    const sectorPlants = plants.filter((plant) => plant.sector === sector);
+    const targets = sectorPlants.filter((plant) => !plant.maintenanceMode && plant.valveStatus !== "OPEN");
+
+    if (targets.length === 0) {
+      toast(`No hay plantas disponibles para regar en ${sector}`, "warning");
+      return;
+    }
+
+    setWateringSector(sector);
+    try {
+      const results = await Promise.all(
+        targets.map((plant) => api.put(`/api/plants/${plant._id}`, { valveStatus: "OPEN" }))
+      );
+      const updated = new Map(results.map((res) => [res.data._id, res.data]));
+      setPlants((prev) => prev.map((plant) => updated.get(plant._id) || plant));
+      toast(`💧 Riego activado en ${targets.length} planta${targets.length !== 1 ? "s" : ""} de ${sector}`, "success");
+    } catch (error) {
+      toast(error?.response?.data?.error || `No se pudo regar todo el sector ${sector}`, "error");
+    } finally {
+      setWateringSector(null);
+    }
+  }, [plants, toast]);
+
+  const handleMaintenanceSector = useCallback(async (sector) => {
+    const sectorPlants = plants.filter((plant) => plant.sector === sector);
+    const activate = !sectorPlants.every((plant) => plant.maintenanceMode);
+    const targets = sectorPlants.filter((plant) => plant.maintenanceMode !== activate);
+
+    if (targets.length === 0) {
+      toast(
+        activate
+          ? `Todas las plantas de ${sector} ya estaban en mantenimiento`
+          : `No hay plantas en mantenimiento para restaurar en ${sector}`,
+        "warning"
+      );
+      return;
+    }
+
+    setMaintenanceSector(sector);
+    try {
+      const results = await Promise.all(
+        targets.map((plant) =>
+          api.patch(`/api/plants/${plant._id}/maintenance`, {
+            active: activate,
+            note: activate ? "Mantenimiento por sector" : "",
+          })
+        )
+      );
+      const updated = new Map(results.map((res) => [res.data.plant._id, res.data.plant]));
+      setPlants((prev) => prev.map((plant) => updated.get(plant._id) || plant));
+      toast(
+        activate
+          ? `🔧 Mantenimiento activado en ${targets.length} planta${targets.length !== 1 ? "s" : ""} de ${sector}`
+          : `✅ Mantenimiento desactivado en ${targets.length} planta${targets.length !== 1 ? "s" : ""} de ${sector}`,
+        "success"
+      );
+    } catch (error) {
+      toast(error?.response?.data?.error || `No se pudo actualizar mantenimiento en ${sector}`, "error");
+    } finally {
+      setMaintenanceSector(null);
+    }
+  }, [plants, toast]);
+
   const allSup = useMemo(() => plants.filter((plant) => plant.sector === "Superior"), [plants]);
   const allInf = useMemo(() => plants.filter((plant) => plant.sector === "Inferior"), [plants]);
   const prevSup = useMemo(() => allSup.slice(0, 2), [allSup]);
@@ -177,6 +243,10 @@ function Dashboard() {
   const goInferior = useCallback(() => startTransition(() => navigate("/inferior")), [navigate]);
   const openCompare = useCallback(() => startTransition(() => setShowCompare(true)), []);
   const closeCompare = useCallback(() => startTransition(() => setShowCompare(false)), []);
+  const canWaterSuperior = allSup.some((plant) => !plant.maintenanceMode && plant.valveStatus !== "OPEN");
+  const canWaterInferior = allInf.some((plant) => !plant.maintenanceMode && plant.valveStatus !== "OPEN");
+  const allMaintSuperior = allSup.length > 0 && allSup.every((plant) => plant.maintenanceMode);
+  const allMaintInferior = allInf.length > 0 && allInf.every((plant) => plant.maintenanceMode);
 
   return (
     <div className="dashboard-full">
@@ -194,11 +264,35 @@ function Dashboard() {
         <div className="sector-column">
           <div className="section-header">
             <h2 className="section-title">🌿 Patio Superior</h2>
-            {allSup.length > 0 && (
-              <button className="btn-see-all" onClick={goSuperior}>
-                {allSup.length > 2 ? `${t("dash.seeAll")} (${allSup.length}) →` : t("dash.goSector")}
-              </button>
-            )}
+            <div className="sector-actions">
+              {allSup.length > 0 && (
+                <button
+                  className={`btn-see-all btn-maintenance-sector ${maintenanceSector === "Superior" ? "disabled" : ""}`}
+                  onClick={() => handleMaintenanceSector("Superior")}
+                  disabled={maintenanceSector === "Superior"}
+                >
+                  {maintenanceSector === "Superior"
+                    ? "Actualizando..."
+                    : allMaintSuperior
+                      ? "✅ Quitar mantenimiento"
+                      : "🔧 Mantenimiento total"}
+                </button>
+              )}
+              {allSup.length > 0 && (
+                <button
+                  className={`btn-see-all btn-water-sector ${!canWaterSuperior || wateringSector === "Superior" ? "disabled" : ""}`}
+                  onClick={() => handleWaterSector("Superior")}
+                  disabled={!canWaterSuperior || wateringSector === "Superior"}
+                >
+                  {wateringSector === "Superior" ? "Regando..." : "💧 Regar todas"}
+                </button>
+              )}
+              {allSup.length > 0 && (
+                <button className="btn-see-all" onClick={goSuperior}>
+                  {allSup.length > 2 ? `${t("dash.seeAll")} (${allSup.length}) →` : t("dash.goSector")}
+                </button>
+              )}
+            </div>
           </div>
           <div className="plant-grid">
             {loading ? (
@@ -224,11 +318,35 @@ function Dashboard() {
         <div className="sector-column">
           <div className="section-header">
             <h2 className="section-title">🌱 Patio Inferior</h2>
-            {allInf.length > 0 && (
-              <button className="btn-see-all" onClick={goInferior}>
-                {allInf.length > 2 ? `${t("dash.seeAll")} (${allInf.length}) →` : t("dash.goSector")}
-              </button>
-            )}
+            <div className="sector-actions">
+              {allInf.length > 0 && (
+                <button
+                  className={`btn-see-all btn-maintenance-sector ${maintenanceSector === "Inferior" ? "disabled" : ""}`}
+                  onClick={() => handleMaintenanceSector("Inferior")}
+                  disabled={maintenanceSector === "Inferior"}
+                >
+                  {maintenanceSector === "Inferior"
+                    ? "Actualizando..."
+                    : allMaintInferior
+                      ? "✅ Quitar mantenimiento"
+                      : "🔧 Mantenimiento total"}
+                </button>
+              )}
+              {allInf.length > 0 && (
+                <button
+                  className={`btn-see-all btn-water-sector ${!canWaterInferior || wateringSector === "Inferior" ? "disabled" : ""}`}
+                  onClick={() => handleWaterSector("Inferior")}
+                  disabled={!canWaterInferior || wateringSector === "Inferior"}
+                >
+                  {wateringSector === "Inferior" ? "Regando..." : "💧 Regar todas"}
+                </button>
+              )}
+              {allInf.length > 0 && (
+                <button className="btn-see-all" onClick={goInferior}>
+                  {allInf.length > 2 ? `${t("dash.seeAll")} (${allInf.length}) →` : t("dash.goSector")}
+                </button>
+              )}
+            </div>
           </div>
           <div className="plant-grid">
             {loading ? (

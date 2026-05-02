@@ -192,6 +192,9 @@ router.put("/:id", async (req, res) => {
     }
 
     if (datos.maintenanceMode !== undefined && datos.maintenanceMode !== plant.maintenanceMode) {
+      if (datos.maintenanceMode && plant.valveStatus === "OPEN") {
+        datos.valveStatus = "CLOSED";
+      }
       plant.alertHistory.push({
         type:     datos.maintenanceMode ? "maintenance_on" : "maintenance_off",
         message:  datos.maintenanceMode

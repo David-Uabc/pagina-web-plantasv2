@@ -237,6 +237,7 @@ async function processReading(plant, humidity, deviceId, io) {
 
   let irrigationExecuted = false;
 
+  if (!plant.maintenanceMode) {
   if (humidity < plant.minHumidity && plant.valveStatus !== "OPEN") {
     plant.valveStatus    = "OPEN";
     plant.lastIrrigation = new Date();
@@ -269,6 +270,7 @@ async function processReading(plant, humidity, deviceId, io) {
       !a.resolved && a.type === "low_humidity" ? { ...a.toObject(), resolved: true } : a
     );
   }
+  }
 
   await plant.save();
 
@@ -292,6 +294,7 @@ async function processReading(plant, humidity, deviceId, io) {
       minHumidity:     plant.minHumidity,
       maxHumidity:     plant.maxHumidity,
       alertHistory:    plant.alertHistory,
+      maintenanceMode: plant.maintenanceMode,
     });
 
     if (irrigationExecuted) {

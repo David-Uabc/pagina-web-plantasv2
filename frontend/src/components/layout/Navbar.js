@@ -135,10 +135,13 @@ function Navbar({ plants = [], onCompare }) {
           </div>
 
           <div className="nav-right">
-            <GlobalSearch plants={plants} />
+            <div className="nav-search-slot">
+              <GlobalSearch plants={plants} />
+            </div>
 
             {onCompare && plants.length >= 2 && (
               <button
+                className="nav-compare-btn"
                 onClick={() => startTransition(() => onCompare())}
                 title="Comparar plantas"
                 style={{
@@ -157,7 +160,7 @@ function Navbar({ plants = [], onCompare }) {
                 }}
               >
                 <GitCompare size={14} />
-                <span style={{ display: "none" }}>Comparar</span>
+                <span className="nav-compare-label">Comparar</span>
               </button>
             )}
 
@@ -208,6 +211,21 @@ function Navbar({ plants = [], onCompare }) {
         </div>
 
         <div className={`nav-mobile-menu ${mobileOpen ? "open" : ""}`}>
+          <div className="nav-mobile-search">
+            <GlobalSearch plants={plants} />
+            {onCompare && plants.length >= 2 && (
+              <button
+                className="nav-mobile-compare"
+                onClick={() => {
+                  startTransition(() => setMobileOpen(false));
+                  startTransition(() => onCompare());
+                }}
+              >
+                <GitCompare size={14} />
+                <span>Comparar plantas</span>
+              </button>
+            )}
+          </div>
           {navLinks.map((link) => (
             <NavLink
               key={link.to}

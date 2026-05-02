@@ -4,6 +4,11 @@ const { emitToUser } = require("../utils/socketRooms");
 let client    = null;
 let connected = false;
 
+function describeMqttError(err) {
+  if (!err) return "Error desconocido";
+  return err.message || err.code || err.name || "Error desconocido";
+}
+
 function startMqttClient(io) {
   const MQTT_URL  = process.env.MQTT_URL;
   const MQTT_USER = process.env.MQTT_USER;
@@ -13,22 +18,31 @@ function startMqttClient(io) {
     process.env.MQTT_ALLOW_SELF_SIGNED === "true";
 
   if (!MQTT_URL) {
-    console.warn("⚠️  MQTT_URL no definido — cliente MQTT del backend desactivado");
+    console.warn("⚠ MQTT_URL no definido — cliente MQTT del backend desactivado");
     return;
   }
 
+  let protocol = "mqtts";
+  let hostLabel = MQTT_URL;
+  try {
+    const parsed = new URL(MQTT_URL);
+    protocol = parsed.protocol.replace(":", "") || "mqtts";
+    hostLabel = parsed.host || MQTT_URL;
+  } catch (_) {
+  }
+
   client = mqtt.connect(MQTT_URL, {
-    username:           MQTT_USER,
-    password:           MQTT_PASS,
-    protocol:           "mqtts",
+    username: MQTT_USER,
+    password: MQTT_PASS,
+    protocol,
     rejectUnauthorized: !allowSelfSigned,
-    reconnectPeriod:    5000,
-    connectTimeout:     10000,
+    reconnectPeriod: 5000,
+    connectTimeout: 10000,
   });
 
   client.on("connect", () => {
     connected = true;
-    console.log("✅ [MQTT Backend] Conectado a HiveMQ Cloud");
+    console.log(`✅ [MQTT Backend] Conectado a ${hostLabel} (${protocol})`);
     client.subscribe("riegoiq/Superior/report");
     client.subscribe("riegoiq/Inferior/report");
     client.subscribe("riegoiq/Superior/heartbeat");
@@ -40,7 +54,6 @@ function startMqttClient(io) {
     try {
       const data = JSON.parse(payload.toString());
 
-      // ── Heartbeat ──────────────────────────────────────
       if (topic.includes("/heartbeat")) {
         const { deviceId, sector } = data;
         if (!deviceId) return;
@@ -50,9 +63,9 @@ function startMqttClient(io) {
         const device = await Device.findOneAndUpdate(
           { deviceId },
           {
-            status:         "Online",
+            status: "Online",
             lastConnection: new Date(),
-            lastSeen:       new Date(),
+            lastSeen: new Date(),
             ...(sector && { sector }),
           },
           { upsert: true, new: true }
@@ -64,16 +77,15 @@ function startMqttClient(io) {
         if (io) {
           emitToUser(io, device.owner, "device:heartbeat", {
             deviceId,
-            sector:         sector || null,
+            sector: sector || null,
             lastConnection: new Date(),
-            lastSeen:       new Date(),
-            status:         "Online",
+            lastSeen: new Date(),
+            status: "Online",
           });
         }
         return;
       }
 
-      // ── Reporte de humedad ─────────────────────────────
       if (topic.includes("/report")) {
         const { sector, deviceId, readings } = data;
         if (!readings || !sector || !deviceId) return;
@@ -84,9 +96,9 @@ function startMqttClient(io) {
         const device = await Device.findOneAndUpdate(
           { deviceId },
           {
-            status:         "Online",
+            status: "Online",
             lastConnection: new Date(),
-            lastSeen:       new Date(),
+            lastSeen: new Date(),
             sector,
           },
           { upsert: true, new: true }
@@ -106,13 +118,20 @@ function startMqttClient(io) {
       }
 
     } catch (err) {
-      console.error("[MQTT Backend] Error procesando mensaje:", err.message);
+      console.error("[MQTT Backend] Error procesando mensaje:", describeMqttError(err));
     }
   });
 
-  client.on("error",      (err) => console.error("[MQTT Backend] Error:", err.message));
-  client.on("disconnect", ()    => { connected = false; console.log("[MQTT Backend] Desconectado"); });
-  client.on("reconnect",  ()    => console.log("[MQTT Backend] Reconectando..."));
+  client.on("error", (err) => {
+    console.error(`[MQTT Backend] Error (${hostLabel}):`, describeMqttError(err));
+  });
+  client.on("disconnect", () => {
+    connected = false;
+    console.log("[MQTT Backend] Desconectado");
+  });
+  client.on("reconnect", () => {
+    console.log(`[MQTT Backend] Reconectando a ${hostLabel}...`);
+  });
 }
 
 function publishValveCommand(sector, valveNumber, command, plantId = null) {
@@ -121,17 +140,17 @@ function publishValveCommand(sector, valveNumber, command, plantId = null) {
     return false;
   }
 
-  const topic   = `riegoiq/${sector}/valve/command`;
+  const topic = `riegoiq/${sector}/valve/command`;
   const payload = JSON.stringify({
-    valve:       valveNumber,
-    valveNumber: valveNumber,
-    command:     command,
+    valve: valveNumber,
+    valveNumber,
+    command,
     ...(plantId && { plantId }),
   });
 
   client.publish(topic, payload, { qos: 1 }, (err) => {
     if (err) {
-      console.error(`[MQTT Backend] Error publicando en ${topic}:`, err.message);
+      console.error(`[MQTT Backend] Error publicando en ${topic}:`, describeMqttError(err));
     } else {
       console.log(`[MQTT Backend] ✅ Publicado → ${topic}: ${payload}`);
     }
@@ -140,6 +159,8 @@ function publishValveCommand(sector, valveNumber, command, plantId = null) {
   return true;
 }
 
-function isConnected() { return connected; }
+function isConnected() {
+  return connected;
+}
 
 module.exports = { startMqttClient, publishValveCommand, isConnected };
