@@ -138,8 +138,8 @@ export default function usePushNotifications() {
     navigator.serviceWorker.ready.then(reg => {
       reg.showNotification(title, {
         body,
-        icon:    "/icons/icon-192.png",
-        badge:   "/icons/badge-green.png",
+        icon:    "/logo192.png",
+        badge:   "/logo192.png",
         vibrate: type === "alert" ? [200, 100, 200] : [100],
         tag:     `riegoiq-local-${Date.now()}`,
         data:    { url },
