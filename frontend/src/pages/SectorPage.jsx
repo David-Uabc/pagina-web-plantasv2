@@ -190,6 +190,8 @@ function SectorPage({ sector }) {
   const [showModal, setShowModal] = useState(false);
   const [editingPlant, setEditingPlant] = useState(null);
   const [alertPlant, setAlertPlant] = useState(null);
+  const [wateringSector, setWateringSector] = useState(false);
+  const [maintenanceSector, setMaintenanceSector] = useState(false);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("order");
   const [status, setStatus] = useState("all");
@@ -341,6 +343,8 @@ function SectorPage({ sector }) {
 
   const hasFilters = search !== "" || status !== "all";
   const isDragging = dragEnabled && sort === "order" && !hasFilters;
+  const canWaterAll = sectorPlants.some((plant) => !plant.maintenanceMode && plant.valveStatus !== "OPEN");
+  const allInMaintenance = sectorPlants.length > 0 && sectorPlants.every((plant) => plant.maintenanceMode);
 
   const openCreateModal = useCallback(() => {
     setEditingPlant(null);
@@ -414,6 +418,72 @@ function SectorPage({ sector }) {
     setPlants(syncPlant);
     setOrderedPlants(syncPlant);
   }, []);
+
+  const handleWaterAll = useCallback(async () => {
+    const targets = sectorPlants.filter((plant) => !plant.maintenanceMode && plant.valveStatus !== "OPEN");
+
+    if (targets.length === 0) {
+      toast(`No hay plantas disponibles para regar en ${theme.label}`, "warning");
+      return;
+    }
+
+    setWateringSector(true);
+    try {
+      const results = await Promise.all(
+        targets.map((plant) => api.put(`/api/plants/${plant._id}`, { valveStatus: "OPEN" }))
+      );
+      const updated = new Map(results.map((res) => [res.data._id, res.data]));
+      const syncPlants = (prev) => prev.map((plant) => updated.get(plant._id) || plant);
+      setPlants(syncPlants);
+      setOrderedPlants(syncPlants);
+      toast(`💧 Riego activado en ${targets.length} planta${targets.length !== 1 ? "s" : ""} de ${theme.label}`, "success");
+    } catch (error) {
+      toast(error?.response?.data?.error || `No se pudo regar ${theme.label}`, "error");
+    } finally {
+      setWateringSector(false);
+    }
+  }, [sectorPlants, theme.label, toast]);
+
+  const handleMaintenanceAll = useCallback(async () => {
+    const activate = !sectorPlants.every((plant) => plant.maintenanceMode);
+    const targets = sectorPlants.filter((plant) => plant.maintenanceMode !== activate);
+
+    if (targets.length === 0) {
+      toast(
+        activate
+          ? `Todas las plantas de ${theme.label} ya estaban en mantenimiento`
+          : `No hay plantas en mantenimiento para restaurar en ${theme.label}`,
+        "warning"
+      );
+      return;
+    }
+
+    setMaintenanceSector(true);
+    try {
+      const results = await Promise.all(
+        targets.map((plant) =>
+          api.patch(`/api/plants/${plant._id}/maintenance`, {
+            active: activate,
+            note: activate ? "Mantenimiento por sector" : "",
+          })
+        )
+      );
+      const updated = new Map(results.map((res) => [res.data.plant._id, res.data.plant]));
+      const syncPlants = (prev) => prev.map((plant) => updated.get(plant._id) || plant);
+      setPlants(syncPlants);
+      setOrderedPlants(syncPlants);
+      toast(
+        activate
+          ? `🔧 Mantenimiento activado en ${targets.length} planta${targets.length !== 1 ? "s" : ""} de ${theme.label}`
+          : `✅ Mantenimiento desactivado en ${targets.length} planta${targets.length !== 1 ? "s" : ""} de ${theme.label}`,
+        "success"
+      );
+    } catch (error) {
+      toast(error?.response?.data?.error || `No se pudo actualizar mantenimiento en ${theme.label}`, "error");
+    } finally {
+      setMaintenanceSector(false);
+    }
+  }, [sectorPlants, theme.label, toast]);
 
   const handleReorderEnd = useCallback(
     async (newOrder) => {
@@ -588,6 +658,32 @@ function SectorPage({ sector }) {
             </motion.button>
           ))}
         </div>
+
+        {sectorPlants.length > 0 && (
+          <div className="sp-bulk-actions">
+            <motion.button
+              className={`sp-bulk-btn sp-bulk-maint ${maintenanceSector ? "disabled" : ""}`}
+              onClick={handleMaintenanceAll}
+              whileTap={{ scale: 0.94 }}
+              disabled={maintenanceSector}
+            >
+              {maintenanceSector
+                ? "Actualizando..."
+                : allInMaintenance
+                  ? "✅ Quitar mantenimiento"
+                  : "🔧 Mantenimiento total"}
+            </motion.button>
+
+            <motion.button
+              className={`sp-bulk-btn sp-bulk-water ${!canWaterAll || wateringSector ? "disabled" : ""}`}
+              onClick={handleWaterAll}
+              whileTap={{ scale: 0.94 }}
+              disabled={!canWaterAll || wateringSector}
+            >
+              {wateringSector ? "Regando..." : "💧 Regar todas"}
+            </motion.button>
+          </div>
+        )}
 
         {sectorPlants.length > 1 && (
           <motion.button className={`sp-drag-btn ${dragEnabled ? "active" : ""}`} onClick={() => setDragEnabled((prev) => !prev)} whileTap={{ scale: 0.94 }}>
