@@ -1,94 +1,77 @@
-import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 
-/**
- * HumidityGauge — medidor circular tipo velocímetro
- * Props: value (0-100), min, max, size (px), color
- */
-export default function HumidityGauge({ value = 0, min = 30, max = 70, size = 110, color = "#34d399" }) {
+export default function HumidityGauge({ value = 0, min = 30, max = 70, size = 110 }) {
   const clampedValue = Math.min(100, Math.max(0, value));
+  const sweep = 240;
+  const startDeg = 150;
+  const radius = 42;
+  const centerX = 56;
+  const centerY = 58;
+  const strokeWidth = 6;
 
-  // Arco: 240° de barrido (empieza en 150° = abajo-izquierda)
-  const SWEEP    = 240;
-  const START_DEG = 150;
-  const R  = 42;
-  const CX = 56;
-  const CY = 58;
-  const strokeW = 6;
+  const degToRad = (deg) => (deg * Math.PI) / 180;
 
-  const deg2rad = d => (d * Math.PI) / 180;
-
-  // Calcula punto en el arco
   const arcPoint = (deg) => {
-    const rad = deg2rad(deg);
+    const rad = degToRad(deg);
     return {
-      x: CX + R * Math.cos(rad),
-      y: CY + R * Math.sin(rad),
+      x: centerX + radius * Math.cos(rad),
+      y: centerY + radius * Math.sin(rad),
     };
   };
 
-  // Path del arco completo (background)
-  const describeArc = (startDeg, sweepDeg) => {
-    const endDeg  = startDeg + sweepDeg;
-    const start   = arcPoint(startDeg);
-    const end     = arcPoint(endDeg);
-    const large   = sweepDeg > 180 ? 1 : 0;
-    return `M ${start.x} ${start.y} A ${R} ${R} 0 ${large} 1 ${end.x} ${end.y}`;
+  const describeArc = (arcStart, arcSweep) => {
+    const arcEnd = arcStart + arcSweep;
+    const start = arcPoint(arcStart);
+    const end = arcPoint(arcEnd);
+    const largeArc = arcSweep > 180 ? 1 : 0;
+    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
   };
 
-  // Progreso actual
-  const progressSweep = (clampedValue / 100) * SWEEP;
+  const progressSweep = (clampedValue / 100) * sweep;
+  const needleDeg = startDeg + (clampedValue / 100) * sweep;
 
-  // Color dinámico según valor vs min/max
   const getColor = () => {
-    if (clampedValue < min)       return "#f87171"; // crítico
-    if (clampedValue < min + 10)  return "#fbbf24"; // bajo
-    if (clampedValue > max)       return "#60a5fa"; // alto
-    return "#34d399";                               // óptimo
+    if (clampedValue < min) return "#f87171";
+    if (clampedValue < min + 10) return "#fbbf24";
+    if (clampedValue > max) return "#60a5fa";
+    return "#34d399";
   };
-  const dynColor = getColor();
 
-  // Tick marks
-  const TICKS = 10;
-  const ticks = Array.from({ length: TICKS + 1 }, (_, i) => {
-    const pct     = i / TICKS;
-    const deg     = START_DEG + pct * SWEEP;
-    const rad     = deg2rad(deg);
-    const isMajor = i % 2 === 0;
-    const inner   = 33;
-    const outerR  = isMajor ? 43 : 40;
+  const dynColor = getColor();
+  const ticks = Array.from({ length: 11 }, (_, index) => {
+    const pct = index / 10;
+    const deg = startDeg + pct * sweep;
+    const rad = degToRad(deg);
+    const isMajor = index % 2 === 0;
+    const inner = 33;
+    const outer = isMajor ? 43 : 40;
+
     return {
-      x1: CX + inner * Math.cos(rad),
-      y1: CY + inner * Math.sin(rad),
-      x2: CX + outerR * Math.cos(rad),
-      y2: CY + outerR * Math.sin(rad),
+      x1: centerX + inner * Math.cos(rad),
+      y1: centerY + inner * Math.sin(rad),
+      x2: centerX + outer * Math.cos(rad),
+      y2: centerY + outer * Math.sin(rad),
       isMajor,
     };
   });
 
-  // Aguja: parte desde el centro, apunta al valor
-  const needleDeg = START_DEG + (clampedValue / 100) * SWEEP;
-  const needleRad = deg2rad(needleDeg);
-  const needleLen = 32;
-  const needleX   = CX + needleLen * Math.cos(needleRad);
-  const needleY   = CY + needleLen * Math.sin(needleRad);
+  const stateLabel = clampedValue < min
+    ? "Crítica"
+    : clampedValue < min + 10
+      ? "Baja"
+      : clampedValue > max
+        ? "Alta"
+        : "Óptima";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-      <svg
-        width={size}
-        height={size * 0.88}
-        viewBox="0 0 112 100"
-        style={{ overflow: "visible" }}
-      >
+      <svg width={size} height={size * 0.88} viewBox="0 0 112 100" style={{ overflow: "visible" }}>
         <defs>
-          {/* Gradiente del arco de progreso */}
           <linearGradient id={`gauge-grad-${value}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor={dynColor} stopOpacity="0.6" />
+            <stop offset="0%" stopColor={dynColor} stopOpacity="0.6" />
             <stop offset="100%" stopColor={dynColor} />
           </linearGradient>
 
-          {/* Glow filter */}
           <filter id="gauge-glow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="2" result="blur" />
             <feMerge>
@@ -97,7 +80,6 @@ export default function HumidityGauge({ value = 0, min = 30, max = 70, size = 11
             </feMerge>
           </filter>
 
-          {/* Glow para aguja */}
           <filter id="needle-glow">
             <feGaussianBlur stdDeviation="1.5" result="blur" />
             <feMerge>
@@ -107,34 +89,28 @@ export default function HumidityGauge({ value = 0, min = 30, max = 70, size = 11
           </filter>
         </defs>
 
-        {/* ── Track background ── */}
         <path
-          d={describeArc(START_DEG, SWEEP)}
+          d={describeArc(startDeg, sweep)}
           fill="none"
           stroke="rgba(255,255,255,0.07)"
-          strokeWidth={strokeW}
+          strokeWidth={strokeWidth}
           strokeLinecap="round"
         />
 
-        {/* ── Zona óptima (min-max) en el track ── */}
         <path
-          d={describeArc(
-            START_DEG + (min / 100) * SWEEP,
-            ((max - min) / 100) * SWEEP
-          )}
+          d={describeArc(startDeg + (min / 100) * sweep, ((max - min) / 100) * sweep)}
           fill="none"
           stroke="rgba(52,211,153,0.20)"
-          strokeWidth={strokeW + 2}
+          strokeWidth={strokeWidth + 2}
           strokeLinecap="round"
         />
 
-        {/* ── Arco de progreso animado ── */}
         {progressSweep > 0 && (
           <motion.path
-            d={describeArc(START_DEG, progressSweep)}
+            d={describeArc(startDeg, progressSweep)}
             fill="none"
             stroke={`url(#gauge-grad-${value})`}
-            strokeWidth={strokeW}
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
             filter="url(#gauge-glow)"
             initial={{ pathLength: 0, opacity: 0 }}
@@ -143,28 +119,30 @@ export default function HumidityGauge({ value = 0, min = 30, max = 70, size = 11
           />
         )}
 
-        {/* ── Tick marks ── */}
-        {ticks.map((t, i) => (
+        {ticks.map((tick, index) => (
           <line
-            key={i}
-            x1={t.x1} y1={t.y1}
-            x2={t.x2} y2={t.y2}
-            stroke={t.isMajor ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.09)"}
-            strokeWidth={t.isMajor ? 1.5 : 0.8}
+            key={index}
+            x1={tick.x1}
+            y1={tick.y1}
+            x2={tick.x2}
+            y2={tick.y2}
+            stroke={tick.isMajor ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.09)"}
+            strokeWidth={tick.isMajor ? 1.5 : 0.8}
             strokeLinecap="round"
           />
         ))}
 
-        {/* ── Aguja animada — rotate en grupo para evitar bug SVG ── */}
         <motion.g
-          initial={{ rotate: START_DEG + 90, originX: "56px", originY: "58px" }}
+          initial={{ rotate: startDeg + 90, originX: "56px", originY: "58px" }}
           animate={{ rotate: needleDeg + 90 }}
           transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-          style={{ transformOrigin: `${CX}px ${CY}px` }}
+          style={{ transformOrigin: `${centerX}px ${centerY}px` }}
         >
           <line
-            x1={CX} y1={CY}
-            x2={CX} y2={CY - 32}
+            x1={centerX}
+            y1={centerY}
+            x2={centerX}
+            y2={centerY - 32}
             stroke={dynColor}
             strokeWidth={2}
             strokeLinecap="round"
@@ -172,13 +150,12 @@ export default function HumidityGauge({ value = 0, min = 30, max = 70, size = 11
           />
         </motion.g>
 
-        {/* Pivote de la aguja */}
-        <circle cx={CX} cy={CY} r={4} fill={dynColor} opacity={0.9} />
-        <circle cx={CX} cy={CY} r={2} fill="rgba(255,255,255,0.8)" />
+        <circle cx={centerX} cy={centerY} r={4} fill={dynColor} opacity={0.9} />
+        <circle cx={centerX} cy={centerY} r={2} fill="rgba(255,255,255,0.8)" />
 
-        {/* ── Valor central ── */}
         <text
-          x={CX} y={CY - 6}
+          x={centerX}
+          y={centerY - 6}
           textAnchor="middle"
           fill={dynColor}
           fontSize="14"
@@ -189,18 +166,29 @@ export default function HumidityGauge({ value = 0, min = 30, max = 70, size = 11
           {clampedValue}%
         </text>
 
-        {/* Labels 0% y 100% */}
         {(() => {
-          const s = arcPoint(START_DEG);
-          const e = arcPoint(START_DEG + SWEEP);
+          const start = arcPoint(startDeg);
+          const end = arcPoint(startDeg + sweep);
           return (
             <>
-              <text x={s.x - 4} y={s.y + 10} textAnchor="middle"
-                fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="'DM Mono', monospace">
+              <text
+                x={start.x - 4}
+                y={start.y + 10}
+                textAnchor="middle"
+                fill="rgba(255,255,255,0.3)"
+                fontSize="7"
+                fontFamily="'DM Mono', monospace"
+              >
                 0
               </text>
-              <text x={e.x + 4} y={e.y + 10} textAnchor="middle"
-                fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="'DM Mono', monospace">
+              <text
+                x={end.x + 4}
+                y={end.y + 10}
+                textAnchor="middle"
+                fill="rgba(255,255,255,0.3)"
+                fontSize="7"
+                fontFamily="'DM Mono', monospace"
+              >
                 100
               </text>
             </>
@@ -208,19 +196,20 @@ export default function HumidityGauge({ value = 0, min = 30, max = 70, size = 11
         })()}
       </svg>
 
-      {/* Label de estado */}
-      <div style={{
-        fontSize: 10, fontWeight: 700,
-        color: dynColor,
-        textTransform: "uppercase", letterSpacing: "1px",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-        opacity: 0.9,
-        marginTop: -4,
-        textShadow: `0 0 10px ${dynColor}66`,
-      }}>
-        {clampedValue < min ? "Crítica" :
-         clampedValue < min + 10 ? "Baja" :
-         clampedValue > max ? "Alta" : "Óptima"}
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          color: dynColor,
+          textTransform: "uppercase",
+          letterSpacing: "1px",
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          opacity: 0.9,
+          marginTop: -4,
+          textShadow: `0 0 10px ${dynColor}66`,
+        }}
+      >
+        {stateLabel}
       </div>
     </div>
   );

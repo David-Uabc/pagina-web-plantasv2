@@ -4,7 +4,8 @@ const Plant    = require("../models/Plant");
 const Log      = require("../models/Log");
 const { protect }        = require("../middleware/auth");
 const { processReading } = require("./iot.routes");
-const { publishValveCommand, isConnected } = require("../mqtt/mqttClient");
+const { publishValveCommand } = require("../mqtt/mqttClient");
+const { emitToUser } = require("../utils/socketRooms");
 
 router.use(protect);
 
@@ -25,6 +26,73 @@ const filtrarCampos = (body) => {
   }
   return clean;
 };
+
+function normalizeSchedule(irrigationType, schedule = {}) {
+  const base = {
+    enabled: Boolean(schedule.enabled),
+    days: Array.isArray(schedule.days) ? schedule.days.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6) : [],
+    time: typeof schedule.time === "string" && /^\d{2}:\d{2}$/.test(schedule.time) ? schedule.time : "07:00",
+    duration: Math.max(1, Math.min(120, Number(schedule.duration) || 10)),
+    startDate: typeof schedule.startDate === "string" ? schedule.startDate : "",
+    dayOfMonth: Math.max(1, Math.min(31, Number(schedule.dayOfMonth) || 1)),
+  };
+
+  if (irrigationType === "Por humedad") {
+    return { ...base, enabled: false, days: [], startDate: "", dayOfMonth: 1 };
+  }
+
+  if (irrigationType === "Diario") {
+    return { ...base, days: [0, 1, 2, 3, 4, 5, 6], startDate: "", dayOfMonth: 1 };
+  }
+
+  if (irrigationType === "Semanal") {
+    return { ...base, startDate: "", dayOfMonth: 1 };
+  }
+
+  if (irrigationType === "Quincenal") {
+    return { ...base, days: [], dayOfMonth: 1 };
+  }
+
+  if (irrigationType === "Mensual") {
+    return { ...base, days: [], startDate: "" };
+  }
+
+  return base;
+}
+
+function validateSchedule(irrigationType, schedule) {
+  if (!schedule?.enabled || irrigationType === "Por humedad") return null;
+
+  if (irrigationType === "Semanal" && (!Array.isArray(schedule.days) || schedule.days.length === 0)) {
+    return "Selecciona al menos un día para el riego semanal";
+  }
+
+  if (irrigationType === "Quincenal" && !schedule.startDate) {
+    return "Selecciona la fecha base para el riego quincenal";
+  }
+
+  if (irrigationType === "Mensual" && (!schedule.dayOfMonth || schedule.dayOfMonth < 1 || schedule.dayOfMonth > 31)) {
+    return "Selecciona un día válido del mes para el riego mensual";
+  }
+
+  return null;
+}
+
+async function validarValveDisponible({ ownerId, sector, valveNumber, excludePlantId = null }) {
+  if (valveNumber === undefined || !sector) return null;
+
+  const query = { owner: ownerId, sector, valveNumber };
+  if (excludePlantId) {
+    query._id = { $ne: excludePlantId };
+  }
+
+  const existing = await Plant.findOne(query).select("_id name");
+  if (existing) {
+    return `La válvula V${valveNumber} del sector ${sector} ya está asignada a otra planta`;
+  }
+
+  return null;
+}
 
 // ════════════════════════════════════════
 // GET /api/plants
@@ -52,6 +120,7 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const datos = filtrarCampos(req.body);
+    datos.schedule = normalizeSchedule(datos.irrigationType, datos.schedule);
     if (!datos.name?.trim())
       return res.status(400).json({ error: "El nombre de la planta es requerido" });
     if (!["Superior", "Inferior"].includes(datos.sector))
@@ -60,6 +129,20 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Los umbrales de humedad son requeridos" });
     if (Number(datos.minHumidity) >= Number(datos.maxHumidity))
       return res.status(400).json({ error: "El umbral máximo debe ser mayor que el mínimo" });
+
+    const scheduleError = validateSchedule(datos.irrigationType, datos.schedule);
+    if (scheduleError) {
+      return res.status(400).json({ error: scheduleError });
+    }
+
+    const valveError = await validarValveDisponible({
+      ownerId: req.user._id,
+      sector: datos.sector,
+      valveNumber: datos.valveNumber,
+    });
+    if (valveError) {
+      return res.status(400).json({ error: valveError });
+    }
 
     const total = await Plant.countDocuments({ owner: req.user._id });
     if (total >= 50)
@@ -83,9 +166,29 @@ router.put("/:id", async (req, res) => {
     if (!plant) return res.status(404).json({ error: "Planta no encontrada" });
 
     const datos = filtrarCampos(req.body);
-    if (datos.minHumidity !== undefined && datos.maxHumidity !== undefined) {
-      if (Number(datos.minHumidity) >= Number(datos.maxHumidity))
-        return res.status(400).json({ error: "El umbral máximo debe ser mayor que el mínimo" });
+    const nextIrrigationType = datos.irrigationType !== undefined ? datos.irrigationType : plant.irrigationType;
+    datos.schedule = normalizeSchedule(nextIrrigationType, datos.schedule !== undefined ? { ...plant.schedule?.toObject?.(), ...datos.schedule } : plant.schedule);
+    const nextMin = datos.minHumidity !== undefined ? Number(datos.minHumidity) : Number(plant.minHumidity);
+    const nextMax = datos.maxHumidity !== undefined ? Number(datos.maxHumidity) : Number(plant.maxHumidity);
+    if (isNaN(nextMin) || isNaN(nextMax) || nextMin >= nextMax) {
+      return res.status(400).json({ error: "El umbral máximo debe ser mayor que el mínimo" });
+    }
+
+    const nextSector = datos.sector !== undefined ? datos.sector : plant.sector;
+    const nextValveNumber = datos.valveNumber !== undefined ? datos.valveNumber : plant.valveNumber;
+    const valveError = await validarValveDisponible({
+      ownerId: req.user._id,
+      sector: nextSector,
+      valveNumber: nextValveNumber,
+      excludePlantId: plant._id,
+    });
+    if (valveError) {
+      return res.status(400).json({ error: valveError });
+    }
+
+    const scheduleError = validateSchedule(nextIrrigationType, datos.schedule);
+    if (scheduleError) {
+      return res.status(400).json({ error: scheduleError });
     }
 
     if (datos.maintenanceMode !== undefined && datos.maintenanceMode !== plant.maintenanceMode) {
@@ -116,7 +219,7 @@ router.put("/:id", async (req, res) => {
     }
 
     if (io) {
-      io.emit("plant:update", {
+      emitToUser(io, req.user._id, "plant:update", {
         _id:             updated._id.toString(),
         name:            updated.name,
         sector:          updated.sector,
@@ -131,7 +234,7 @@ router.put("/:id", async (req, res) => {
         order:           updated.order,
         maintenanceMode: updated.maintenanceMode,
       });
-      io.emit("valve:command", {
+      emitToUser(io, req.user._id, "valve:command", {
         sector:  updated.sector,
         command: updated.valveStatus,
         plantId: updated._id.toString(),
@@ -157,7 +260,7 @@ router.delete("/:id", async (req, res) => {
     await Log.deleteMany({ plantId: req.params.id });
 
     const io = req.app.get("io");
-    if (io) io.emit("plant:deleted", { _id: req.params.id });
+    if (io) emitToUser(io, req.user._id, "plant:deleted", { _id: req.params.id });
 
     res.json({ message: "Planta eliminada correctamente" });
   } catch (err) {
@@ -204,7 +307,7 @@ router.patch("/:id/maintenance", async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.emit("plant:update", {
+      emitToUser(io, req.user._id, "plant:update", {
         _id:             plant._id.toString(),
         name:            plant.name,
         sector:          plant.sector,

@@ -1,19 +1,27 @@
+import { lazy, memo, startTransition, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import HumidityGauge from "./HumidityGauge";
-import { memo, useState, useEffect, useCallback } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import { Download, FileText, AlertTriangle, Clock } from "lucide-react";
 import {
-  Chart as ChartJS, LineElement, BarElement, PointElement,
-  LinearScale, CategoryScale, Tooltip, Filler, Legend,
+  Chart as ChartJS,
+  LineElement,
+  BarElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Tooltip,
+  Filler,
+  Legend,
 } from "chart.js";
+import HumidityGauge from "./HumidityGauge";
 import { useToast } from "../../context/ToastProvider";
-import ConfirmModal from "./ConfirmModal";
-import ConfirmIrrigationModal from "./ConfirmIrrigationModal";
-import AlertHistoryModal from "./AlertHistoryModal";
 import RainEffect from "./RainEffect";
 import MaintenanceToggle from "./MaintenanceToggle";
 import { exportCSV, exportPDF } from "../../utils/exportHistory";
+
+const ConfirmModal = lazy(() => import("./ConfirmModal"));
+const ConfirmIrrigationModal = lazy(() => import("./ConfirmIrrigationModal"));
+const AlertHistoryModal = lazy(() => import("./AlertHistoryModal"));
 
 ChartJS.register(LineElement, BarElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend);
 
@@ -28,35 +36,60 @@ const PLANT_IMAGES = {
   gardenia: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80",
   tomate: "https://images.unsplash.com/photo-1546470427-e2a4e5eaccf5?w=600&q=80",
 };
+
 const FALLBACK = "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80";
+const DAYS_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const HISTORY_TABS = ["Humedad", "Riegos"];
+
+function withImageWidth(url, width, quality = 72) {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.includes("images.unsplash.com")) return url;
+    parsed.searchParams.set("w", String(width));
+    parsed.searchParams.set("q", String(quality));
+    parsed.searchParams.set("auto", "format");
+    parsed.searchParams.set("fit", "crop");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
 
 function getImage(plant) {
   if (plant.imageUrl) return plant.imageUrl;
   const key = plant.name?.toLowerCase() ?? "";
-  for (const [k, v] of Object.entries(PLANT_IMAGES)) {
-    if (key.includes(k)) return v;
+  for (const [imageKey, imageValue] of Object.entries(PLANT_IMAGES)) {
+    if (key.includes(imageKey)) return imageValue;
   }
   return FALLBACK;
 }
 
-function getHumState(h, min, max) {
-  if (h < min) return { color: "#f87171", label: "Crítica", bar: "linear-gradient(90deg,#ef4444,#f87171)" };
-  if (h < min + 10) return { color: "#fbbf24", label: "Baja", bar: "linear-gradient(90deg,#f59e0b,#fbbf24)" };
-  if (h > max) return { color: "#38bdf8", label: "Alta", bar: "linear-gradient(90deg,#0ea5e9,#38bdf8)" };
+function getResponsiveImageSources(imageUrl) {
+  return {
+    src: withImageWidth(imageUrl, 720, 76),
+    srcSet: [360, 560, 720, 960].map((width) => `${withImageWidth(imageUrl, width, 74)} ${width}w`).join(", "),
+  };
+}
+
+function getHumState(humidity, min, max) {
+  if (humidity < min) return { color: "#f87171", label: "Crítica", bar: "linear-gradient(90deg,#ef4444,#f87171)" };
+  if (humidity < min + 10) return { color: "#fbbf24", label: "Baja", bar: "linear-gradient(90deg,#f59e0b,#fbbf24)" };
+  if (humidity > max) return { color: "#38bdf8", label: "Alta", bar: "linear-gradient(90deg,#0ea5e9,#38bdf8)" };
   return { color: "#22c55e", label: "Óptima", bar: "linear-gradient(90deg,#16a34a,#22c55e)" };
 }
 
-// `generateHistory` solo se usa como fallback si la API no tiene datos aún.
 function generateHistory(plant, days = 14) {
   const now = Date.now();
-  const DAY = 86400000;
+  const dayMs = 86400000;
   const humidity = [];
   const irrigations = [];
   let current = plant.currentHumidity ?? 55;
-  for (let i = days; i >= 0; i -= 1) {
-    const ts = now - i * DAY;
+
+  for (let day = days; day >= 0; day -= 1) {
+    const ts = now - day * dayMs;
     current = Math.max(10, Math.min(95, current + (Math.random() * 8 - 4.5)));
     humidity.push({ ts, value: Math.round(current) });
+
     if (current < plant.minHumidity + 6 && Math.random() > 0.35) {
       const duration = Math.floor(Math.random() * 18 + 4);
       const raised = Math.floor(Math.random() * 18 + 8);
@@ -64,6 +97,7 @@ function generateHistory(plant, days = 14) {
       current = Math.min(95, current + raised);
     }
   }
+
   return { humidity, irrigations };
 }
 
@@ -71,125 +105,206 @@ function fmt(ts) {
   return new Date(ts).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
 }
 
-const DAYS_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-
 function ScheduleBadge({ schedule }) {
   if (!schedule?.enabled || !schedule.days?.length) return null;
-  const daysLabel = schedule.days.map((d) => DAYS_SHORT[d]).join(", ");
+  const daysLabel = schedule.days.map((day) => DAYS_SHORT[day]).join(", ");
+
   return (
     <div className="schedule-badge" title={`Riego automático: ${daysLabel} a las ${schedule.time}`}>
       <Clock size={9} />
-      {schedule.time} {"·"} {daysLabel}
+      {schedule.time} · {daysLabel}
     </div>
   );
 }
 
-const HISTORY_TABS = ["Humedad", "Riegos"];
+const MemoScheduleBadge = memo(ScheduleBadge);
 
 function HistoryPanel({ plant, range, onRangeChange }) {
   const [tab, setTab] = useState("Humedad");
   const [exporting, setExporting] = useState(null);
   const [realHistory, setRealHistory] = useState(null);
   const [usingReal, setUsingReal] = useState(false);
+  const plantId = plant._id;
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+
     const load = async () => {
       setRealHistory(null);
       try {
         const { default: api } = await import("../../api");
-        const res = await api.get(`/api/plants/${plant._id}/history?days=${range}`);
+        const res = await api.get(`/api/plants/${plantId}/history?days=${range}`, {
+          signal: controller.signal,
+          meta: { cancelPrevious: false },
+        });
+
         if (!cancelled && res.data && res.data.length > 3) {
-          // Convertir formato DB a formato de gráfica.
-          const humidity = res.data.map((h) => ({ ts: new Date(h.date).getTime(), value: h.humidity }));
+          const humidity = res.data.map((item) => ({
+            ts: new Date(item.date).getTime(),
+            value: item.humidity,
+          }));
           setRealHistory({ humidity, irrigations: [] });
           setUsingReal(true);
         } else if (!cancelled) {
           setRealHistory(generateHistory(plant, range));
           setUsingReal(false);
         }
-      } catch {
+      } catch (error) {
+        if (error.code === "ERR_CANCELED" || error.name === "CanceledError") return;
         if (!cancelled) {
           setRealHistory(generateHistory(plant, range));
           setUsingReal(false);
         }
       }
     };
+
     load();
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [plant._id, range]);
+  }, [plant, plantId, range]);
 
   const history = realHistory || generateHistory(plant, range);
   const { humidity, irrigations } = history;
-  const humValues = humidity.map((h) => h.value);
-  const avg = humValues.length ? Math.round(humValues.reduce((a, b) => a + b, 0) / humValues.length) : 0;
+  const humValues = humidity.map((item) => item.value);
+  const avg = humValues.length ? Math.round(humValues.reduce((acc, value) => acc + value, 0) / humValues.length) : 0;
 
-  const handleCSV = () => {
+  const handleCSV = useCallback(() => {
     setExporting("csv");
-    setTimeout(() => {
+    window.setTimeout(() => {
       exportCSV(plant, history);
       setExporting(null);
     }, 300);
-  };
-  const handlePDF = () => {
+  }, [history, plant]);
+
+  const handlePDF = useCallback(() => {
     setExporting("pdf");
-    setTimeout(() => {
+    window.setTimeout(() => {
       exportPDF(plant, history);
       setExporting(null);
     }, 300);
-  };
+  }, [history, plant]);
 
-  const tooltipBase = {
-    backgroundColor: "rgba(5,14,10,0.95)",
-    borderWidth: 1,
-    titleColor: "#f0f6fc",
-    bodyColor: "#f0f6fc",
-    padding: 10,
-    cornerRadius: 8,
-    displayColors: false,
-  };
-  const chartBase = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: tooltipBase },
-    scales: {
-      x: { ticks: { color: "#4d7a5e", font: { size: 9 }, maxTicksLimit: 7 }, grid: { color: "rgba(34,197,94,0.05)" } },
-      y: { ticks: { color: "#4d7a5e", font: { size: 9 } }, grid: { color: "rgba(34,197,94,0.05)" } },
-    },
-    interaction: { mode: "nearest", intersect: false },
-  };
+  const tooltipBase = useMemo(
+    () => ({
+      backgroundColor: "rgba(5,14,10,0.95)",
+      borderWidth: 1,
+      titleColor: "#f0f6fc",
+      bodyColor: "#f0f6fc",
+      padding: 10,
+      cornerRadius: 8,
+      displayColors: false,
+    }),
+    []
+  );
 
-  const humData = {
-    labels: humidity.map((h) => fmt(h.ts)),
-    datasets: [
-      { data: humValues, fill: true, tension: 0.45, borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.07)", pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: "#22c55e", pointHoverBorderColor: "#fff", pointHoverBorderWidth: 2, borderWidth: 1.8 },
-      { data: Array(humValues.length).fill(plant.minHumidity), borderColor: "rgba(248,113,113,0.45)", borderDash: [5, 4], borderWidth: 1.2, pointRadius: 0, fill: false },
-      { data: Array(humValues.length).fill(plant.maxHumidity), borderColor: "rgba(56,189,248,0.45)", borderDash: [5, 4], borderWidth: 1.2, pointRadius: 0, fill: false },
-    ],
-  };
-  const humOptions = {
-    ...chartBase,
-    plugins: { ...chartBase.plugins, tooltip: { ...tooltipBase, borderColor: "rgba(34,197,94,0.3)" } },
-    scales: { ...chartBase.scales, y: { ...chartBase.scales.y, min: 0, max: 100, ticks: { ...chartBase.scales.y.ticks, callback: (v) => `${v}%` } } },
-  };
+  const chartBase = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: tooltipBase },
+      scales: {
+        x: { ticks: { color: "#4d7a5e", font: { size: 9 }, maxTicksLimit: 7 }, grid: { color: "rgba(34,197,94,0.05)" } },
+        y: { ticks: { color: "#4d7a5e", font: { size: 9 } }, grid: { color: "rgba(34,197,94,0.05)" } },
+      },
+      interaction: { mode: "nearest", intersect: false },
+    }),
+    [tooltipBase]
+  );
 
-  const irrData = {
-    labels: irrigations.map((r) => fmt(r.ts)),
-    datasets: [
-      { label: "Duración (min)", data: irrigations.map((r) => r.duration), backgroundColor: "rgba(56,189,248,0.6)", borderColor: "#38bdf8", borderWidth: 1.5, borderRadius: 5 },
-      { label: "Humedad +%", data: irrigations.map((r) => r.raised), backgroundColor: "rgba(34,197,94,0.55)", borderColor: "#22c55e", borderWidth: 1.5, borderRadius: 5 },
-    ],
-  };
-  const irrOptions = {
-    ...chartBase,
-    plugins: {
-      ...chartBase.plugins,
-      legend: { display: true, labels: { color: "#a3c4b0", font: { size: 10 }, boxWidth: 14, padding: 10 } },
-      tooltip: { ...tooltipBase, borderColor: "rgba(56,189,248,0.3)" },
-    },
-  };
+  const humData = useMemo(
+    () => ({
+      labels: humidity.map((item) => fmt(item.ts)),
+      datasets: [
+        {
+          data: humValues,
+          fill: true,
+          tension: 0.45,
+          borderColor: "#22c55e",
+          backgroundColor: "rgba(34,197,94,0.07)",
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: "#22c55e",
+          pointHoverBorderColor: "#fff",
+          pointHoverBorderWidth: 2,
+          borderWidth: 1.8,
+        },
+        {
+          data: Array(humValues.length).fill(plant.minHumidity),
+          borderColor: "rgba(248,113,113,0.45)",
+          borderDash: [5, 4],
+          borderWidth: 1.2,
+          pointRadius: 0,
+          fill: false,
+        },
+        {
+          data: Array(humValues.length).fill(plant.maxHumidity),
+          borderColor: "rgba(56,189,248,0.45)",
+          borderDash: [5, 4],
+          borderWidth: 1.2,
+          pointRadius: 0,
+          fill: false,
+        },
+      ],
+    }),
+    [humValues, humidity, plant.maxHumidity, plant.minHumidity]
+  );
+
+  const humOptions = useMemo(
+    () => ({
+      ...chartBase,
+      plugins: { ...chartBase.plugins, tooltip: { ...tooltipBase, borderColor: "rgba(34,197,94,0.3)" } },
+      scales: {
+        ...chartBase.scales,
+        y: {
+          ...chartBase.scales.y,
+          min: 0,
+          max: 100,
+          ticks: { ...chartBase.scales.y.ticks, callback: (value) => `${value}%` },
+        },
+      },
+    }),
+    [chartBase, tooltipBase]
+  );
+
+  const irrData = useMemo(
+    () => ({
+      labels: irrigations.map((item) => fmt(item.ts)),
+      datasets: [
+        {
+          label: "Duración (min)",
+          data: irrigations.map((item) => item.duration),
+          backgroundColor: "rgba(56,189,248,0.6)",
+          borderColor: "#38bdf8",
+          borderWidth: 1.5,
+          borderRadius: 5,
+        },
+        {
+          label: "Humedad +%",
+          data: irrigations.map((item) => item.raised),
+          backgroundColor: "rgba(34,197,94,0.55)",
+          borderColor: "#22c55e",
+          borderWidth: 1.5,
+          borderRadius: 5,
+        },
+      ],
+    }),
+    [irrigations]
+  );
+
+  const irrOptions = useMemo(
+    () => ({
+      ...chartBase,
+      plugins: {
+        ...chartBase.plugins,
+        legend: { display: true, labels: { color: "#a3c4b0", font: { size: 10 }, boxWidth: 14, padding: 10 } },
+        tooltip: { ...tooltipBase, borderColor: "rgba(56,189,248,0.3)" },
+      },
+    }),
+    [chartBase, tooltipBase]
+  );
 
   return (
     <motion.div
@@ -202,14 +317,14 @@ function HistoryPanel({ plant, range, onRangeChange }) {
       <div className="pc-hist-inner">
         <div className="pc-hist-header">
           <div className="pc-hist-tabs">
-            {HISTORY_TABS.map((t) => (
-              <button key={t} className={`pc-hist-tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
-                {t === "Humedad" ? "📈" : "💧"} {t}
+            {HISTORY_TABS.map((item) => (
+              <button key={item} className={`pc-hist-tab ${tab === item ? "active" : ""}`} onClick={() => setTab(item)}>
+                {item === "Humedad" ? "📈" : "💧"} {item}
               </button>
             ))}
           </div>
+
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {/* Badge de datos reales vs simulados */}
             {realHistory && (
               <span
                 style={{
@@ -225,15 +340,34 @@ function HistoryPanel({ plant, range, onRangeChange }) {
                 {usingReal ? "📡 Datos reales" : "🔄 Simulado"}
               </span>
             )}
+
             <div className="pc-hist-range">
-              {[7, 14, 30].map((d) => (
-                <button key={d} className={`pc-hist-range-btn ${range === d ? "active" : ""}`} onClick={() => onRangeChange(d)}>{d}d</button>
+              {[7, 14, 30].map((days) => (
+                <button key={days} className={`pc-hist-range-btn ${range === days ? "active" : ""}`} onClick={() => onRangeChange(days)}>
+                  {days}d
+                </button>
               ))}
             </div>
-            <motion.button onClick={handleCSV} title="Descargar CSV" whileTap={{ scale: 0.92 }} whileHover={{ scale: 1.08 }} disabled={!!exporting} style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid rgba(52,211,153,0.25)", background: exporting === "csv" ? "rgba(52,211,153,0.18)" : "rgba(52,211,153,0.08)", color: "#34d399", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+
+            <motion.button
+              onClick={handleCSV}
+              title="Descargar CSV"
+              whileTap={{ scale: 0.92 }}
+              whileHover={{ scale: 1.08 }}
+              disabled={Boolean(exporting)}
+              style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid rgba(52,211,153,0.25)", background: exporting === "csv" ? "rgba(52,211,153,0.18)" : "rgba(52,211,153,0.08)", color: "#34d399", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+            >
               {exporting === "csv" ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }} style={{ width: 11, height: 11, border: "2px solid #34d399", borderTopColor: "transparent", borderRadius: "50%" }} /> : <Download size={12} />}
             </motion.button>
-            <motion.button onClick={handlePDF} title="Exportar PDF" whileTap={{ scale: 0.92 }} whileHover={{ scale: 1.08 }} disabled={!!exporting} style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid rgba(96,165,250,0.25)", background: exporting === "pdf" ? "rgba(96,165,250,0.18)" : "rgba(96,165,250,0.08)", color: "#60a5fa", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+
+            <motion.button
+              onClick={handlePDF}
+              title="Exportar PDF"
+              whileTap={{ scale: 0.92 }}
+              whileHover={{ scale: 1.08 }}
+              disabled={Boolean(exporting)}
+              style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid rgba(96,165,250,0.25)", background: exporting === "pdf" ? "rgba(96,165,250,0.18)" : "rgba(96,165,250,0.08)", color: "#60a5fa", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+            >
               {exporting === "pdf" ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }} style={{ width: 11, height: 11, border: "2px solid #60a5fa", borderTopColor: "transparent", borderRadius: "50%" }} /> : <FileText size={12} />}
             </motion.button>
           </div>
@@ -275,7 +409,7 @@ export const cardVariants = {
 function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMaintenanceUpdate, index = 0 }) {
   const toast = useToast();
   const humidity = plant.currentHumidity ?? 0;
-  const hs = getHumState(humidity, plant.minHumidity, plant.maxHumidity);
+  const hs = useMemo(() => getHumState(humidity, plant.minHumidity, plant.maxHumidity), [humidity, plant.maxHumidity, plant.minHumidity]);
   const isAlert = humidity < plant.minHumidity;
   const isOn = plant.valveStatus === "OPEN";
 
@@ -287,21 +421,28 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
   const [imgLoaded, setImgLoaded] = useState(false);
   const [toggling, setToggling] = useState(false);
 
+  const alertCount = useMemo(() => (plant.alertHistory || []).filter((item) => !item.resolved).length, [plant.alertHistory]);
+  const hasNotes = Boolean(plant.notes && plant.notes.trim().length > 0);
+  const hasSchedule = Boolean(plant.schedule?.enabled && plant.schedule?.days?.length > 0);
+  const imageUrl = useMemo(() => getImage(plant), [plant]);
+  const imageSources = useMemo(() => getResponsiveImageSources(imageUrl), [imageUrl]);
+
   const handleToggleClick = useCallback(() => {
-    if (toggling) return;
-    setIrrigConfirm(true);
+    if (!toggling) startTransition(() => setIrrigConfirm(true));
   }, [toggling]);
 
   const handleToggleConfirmed = useCallback(async () => {
-    setIrrigConfirm(false);
+    startTransition(() => setIrrigConfirm(false));
     setToggling(true);
     if (onToggleValve) await onToggleValve(plant);
     setToggling(false);
-  }, [plant, onToggleValve]);
+  }, [onToggleValve, plant]);
 
-  const alertCount = (plant.alertHistory || []).filter((a) => !a.resolved).length;
-  const hasNotes = plant.notes && plant.notes.trim().length > 0;
-  const hasSchedule = plant.schedule?.enabled && plant.schedule?.days?.length > 0;
+  const handleDeleteConfirm = useCallback(() => {
+    startTransition(() => setConfirmOpen(false));
+    onDelete(plant._id);
+    toast(`${plant.name} eliminada`, "error");
+  }, [onDelete, plant._id, plant.name, toast]);
 
   return (
     <>
@@ -312,24 +453,35 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
         animate="visible"
         transition={{ duration: 0.38, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
         whileHover={!historyOpen ? { y: -4, transition: { duration: 0.2 } } : {}}
-        layout
       >
-        {/* Imagen con lluvia */}
         <div className="pc2-img-wrap">
-          <img src={getImage(plant)} alt={plant.name} className={`pc2-img ${imgLoaded ? "loaded" : ""}`} loading="lazy" decoding="async" onLoad={() => setImgLoaded(true)} onError={(e) => { e.target.src = FALLBACK; setImgLoaded(true); }} />
+          <img
+            src={imageSources.src}
+            srcSet={imageSources.srcSet}
+            sizes="(max-width: 420px) 100vw, (max-width: 900px) 50vw, 340px"
+            alt={plant.name}
+            className={`pc2-img ${imgLoaded ? "loaded" : ""}`}
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+            onLoad={() => setImgLoaded(true)}
+            onError={(event) => {
+              event.target.src = FALLBACK;
+              setImgLoaded(true);
+            }}
+          />
           <div className="pc2-img-gradient" />
-
-          {/* Lluvia cuando la válvula está abierta */}
           <RainEffect active={isOn} />
 
           <div className="pc2-top-badges">
             <span className="pc2-sector">{plant.sector}</span>
             {isOn && (
               <motion.span className="pc2-watering" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }}>
-                {"💧 Regando"}
+                💧 Regando
               </motion.span>
             )}
           </div>
+
           <div className="pc2-hum-overlay" style={{ background: "rgba(6,10,16,0.55)", backdropFilter: "blur(8px)", padding: "8px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}>
             <HumidityGauge value={humidity} min={plant.minHumidity} max={plant.maxHumidity} size={100} />
           </div>
@@ -348,12 +500,11 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
             {plant.maintenanceMode && <span className="pc2-state-pill maintenance">Mantenimiento</span>}
           </div>
 
-          {/* Badges: horario + alertas */}
           {(hasSchedule || alertCount > 0) && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 16px", marginBottom: 8, flexWrap: "wrap" }}>
-              {hasSchedule && <ScheduleBadge schedule={plant.schedule} />}
+              {hasSchedule && <MemoScheduleBadge schedule={plant.schedule} />}
               {alertCount > 0 && (
-                <button className="alert-history-btn" onClick={() => setAlertsOpen(true)} title="Ver historial de alertas">
+                <button className="alert-history-btn" onClick={() => { startTransition(() => setAlertsOpen(true)); onShowAlerts?.(plant); }} title="Ver historial de alertas">
                   <AlertTriangle size={9} />
                   {alertCount} alerta{alertCount !== 1 ? "s" : ""}
                 </button>
@@ -361,14 +512,12 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
             </div>
           )}
 
-          {/* Notas si existen */}
           {hasNotes && (
             <motion.div className="plant-notes" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.3 }}>
               {plant.notes}
             </motion.div>
           )}
 
-          {/* Barra de humedad */}
           <div className="pc2-progress">
             <div className="pc2-track">
               <div className="pc2-zone-ok" style={{ left: `${plant.minHumidity}%`, width: `${plant.maxHumidity - plant.minHumidity}%` }} />
@@ -388,14 +537,17 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
             </motion.div>
           )}
 
-          {/* Controles de riego */}
           <div style={{ padding: "0 16px", marginTop: 10 }}>
             <MaintenanceToggle plant={plant} onUpdate={(updatedPlant) => onMaintenanceUpdate?.(updatedPlant)} />
           </div>
 
           <div style={{ position: "relative", marginTop: 10 }}>
             {isOn && (
-              <motion.div animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }} transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }} style={{ position: "absolute", inset: 0, borderRadius: 10, background: "rgba(52,211,153,0.25)", pointerEvents: "none" }} />
+              <motion.div
+                animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                style={{ position: "absolute", inset: 0, borderRadius: 10, background: "rgba(52,211,153,0.25)", pointerEvents: "none" }}
+              />
             )}
             <motion.button className={`pc2-water-btn ${isOn ? "stop" : "go"}`} onClick={handleToggleClick} whileTap={{ scale: 0.96 }} whileHover={{ scale: 1.02 }} disabled={toggling} style={{ position: "relative" }}>
               {toggling ? "Procesando..." : isOn ? "Detener riego" : "Regar ahora"}
@@ -403,11 +555,11 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
           </div>
 
           <div className="pc2-actions">
-            <button className={`pc2-act history ${historyOpen ? "active" : ""}`} onClick={() => setHistoryOpen((v) => !v)}>
+            <button className={`pc2-act history ${historyOpen ? "active" : ""}`} onClick={() => startTransition(() => setHistoryOpen((prev) => !prev))}>
               {historyOpen ? "Ocultar" : "Historial"}
             </button>
-            <button className="pc2-act edit" onClick={() => onEdit(plant)}>Editar</button>
-            <button className="pc2-act delete" onClick={() => setConfirmOpen(true)}>🗑</button>
+            <button className="pc2-act edit" onClick={() => startTransition(() => onEdit(plant))}>Editar</button>
+            <button className="pc2-act delete" onClick={() => startTransition(() => setConfirmOpen(true))}>🗑</button>
           </div>
         </div>
 
@@ -416,13 +568,14 @@ function PlantCard({ plant, onEdit, onDelete, onToggleValve, onShowAlerts, onMai
         </AnimatePresence>
       </motion.div>
 
-      <ConfirmModal isOpen={confirmOpen} plantName={plant.name} onConfirm={() => { setConfirmOpen(false); onDelete(plant._id); toast(`${plant.name} eliminada`, "error"); }} onCancel={() => setConfirmOpen(false)} />
-      <ConfirmIrrigationModal isOpen={irrigConfirm} plant={plant} isOn={isOn} onConfirm={handleToggleConfirmed} onCancel={() => setIrrigConfirm(false)} />
+      <Suspense fallback={null}>
+        <ConfirmModal isOpen={confirmOpen} plantName={plant.name} onConfirm={handleDeleteConfirm} onCancel={() => startTransition(() => setConfirmOpen(false))} />
+        <ConfirmIrrigationModal isOpen={irrigConfirm} plant={plant} isOn={isOn} onConfirm={handleToggleConfirmed} onCancel={() => startTransition(() => setIrrigConfirm(false))} />
 
-      {/* Modal de historial de alertas */}
-      <AnimatePresence>
-        {alertsOpen && <AlertHistoryModal plant={plant} onClose={() => setAlertsOpen(false)} />}
-      </AnimatePresence>
+        <AnimatePresence>
+          {alertsOpen && <AlertHistoryModal plant={plant} onClose={() => startTransition(() => setAlertsOpen(false))} />}
+        </AnimatePresence>
+      </Suspense>
     </>
   );
 }

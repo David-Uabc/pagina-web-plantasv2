@@ -1,4 +1,5 @@
 const mqtt = require("mqtt");
+const { emitToUser } = require("../utils/socketRooms");
 
 let client    = null;
 let connected = false;
@@ -45,7 +46,8 @@ function startMqttClient(io) {
         if (!deviceId) return;
 
         const Device = require("../models/Device");
-        await Device.findOneAndUpdate(
+        const { ensureDeviceOwner } = require("../utils/deviceOwnership");
+        const device = await Device.findOneAndUpdate(
           { deviceId },
           {
             status:         "Online",
@@ -55,9 +57,12 @@ function startMqttClient(io) {
           },
           { upsert: true, new: true }
         );
+        if (sector) {
+          await ensureDeviceOwner(device, sector);
+        }
 
         if (io) {
-          io.emit("device:heartbeat", {
+          emitToUser(io, device.owner, "device:heartbeat", {
             deviceId,
             sector:         sector || null,
             lastConnection: new Date(),
@@ -73,20 +78,27 @@ function startMqttClient(io) {
         const { sector, deviceId, readings } = data;
         if (!readings || !sector || !deviceId) return;
 
-        const Plant = require("../models/Plant");
-        const { processReading } = require("../routes/iot.routes");
+        const Device = require("../models/Device");
+        const { ensureDeviceOwner } = require("../utils/deviceOwnership");
+        const { processReading, findPlantForReading } = require("../routes/iot.routes");
+        const device = await Device.findOneAndUpdate(
+          { deviceId },
+          {
+            status:         "Online",
+            lastConnection: new Date(),
+            lastSeen:       new Date(),
+            sector,
+          },
+          { upsert: true, new: true }
+        );
+        const resolved = await ensureDeviceOwner(device, sector);
+        if (!resolved.ownerId) return;
 
         for (const r of readings.slice(0, 10)) {
           const h = Number(r.humidity);
           if (isNaN(h) || h < 0 || h > 100) continue;
 
-          let plant = null;
-          if (r.plantId) {
-            plant = await Plant.findById(r.plantId);
-          }
-          if (!plant) {
-            plant = await Plant.findOne({ sector, valveNumber: r.valve });
-          }
+          const plant = await findPlantForReading(resolved.ownerId, sector, r);
           if (plant) {
             await processReading(plant, h, deviceId, io);
           }

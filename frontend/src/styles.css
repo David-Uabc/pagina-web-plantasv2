@@ -1,10 +1,8 @@
-/* 
-    RIEGOIQ  styles.css
-   Fuente ÃƒÂºnica: Plus Jakarta Sans + DM Mono
-   Sin duplicados, sin conflictos, legible al 100%
+﻿/* 
+    RIEGOIQ styles.css
+    Fuente única: Plus Jakarta Sans + DM Mono
+    Sin duplicados, sin conflictos, legible al 100%
 ===================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@0,300;0,400;0,500&display=swap');
-
 /* =====================================================
     VARIABLES  DARK MODE (default)
 ===================================================== */
@@ -99,10 +97,10 @@ body.light-mode {
 
 * {
   transition:
-    background-color 0.24s ease,
-    color 0.24s ease,
-    border-color 0.24s ease,
-    box-shadow 0.24s ease;
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    opacity 0.16s ease;
   scrollbar-width: thin;
   scrollbar-color: var(--green) transparent;
 }
@@ -152,7 +150,7 @@ html { scroll-behavior: smooth; }
 
 /* TIPOGRAFIA BASE Una sola fuente, todo el sitio  */
 body {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: "Segoe UI", "Inter", "Trebuchet MS", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 15px;
   line-height: 1.65;
   letter-spacing: -0.01em;
@@ -170,11 +168,11 @@ body {
 /* Todo hereda Plus Jakarta Sans */
 p, span, div, li, a, button, input,
 select, textarea, label, td, th {
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: "Segoe UI", "Inter", "Trebuchet MS", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 h1, h2, h3, h4 {
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: "Segoe UI", "Inter", "Trebuchet MS", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.15;
@@ -189,7 +187,7 @@ h1, h2, h3, h4 {
 .hv2-ms-val,
 .lp-stat-val,
 pre, code, kbd {
-  font-family: 'DM Mono', 'Fira Code', monospace;
+  font-family: "Consolas", "Cascadia Mono", "SFMono-Regular", "Courier New", monospace;
 }
 
 /* Gradiente de fondo  */
@@ -247,8 +245,8 @@ body::after {
   padding: 0 clamp(14px, 3vw, 28px);
   height: var(--nav-h);
   background: var(--bg-card);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.05);
@@ -297,7 +295,7 @@ body::after {
   border: 1px solid transparent;
   position: relative;
   white-space: nowrap;
-  transition: all 0.18s ease;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
 
 .nav-item::after {
@@ -569,7 +567,7 @@ body::after {
 .ud-item.logout:hover { background: var(--red-dim); color: var(--red); }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  TOP SECTION
+   TOP SECTION
 ===================================================== */
 .top-section {
   display: grid;
@@ -583,7 +581,7 @@ body::after {
 }
 
 /* =====================================================
-   ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¦ CARD BASE
+   CARD BASE
 ===================================================== */
 @keyframes borderSweep {
   0%   { background-position: 0% 50%; }
@@ -603,8 +601,8 @@ body::after {
 
 .card {
   background: rgba(13, 17, 23, 0.65);
-  backdrop-filter: blur(32px) saturate(160%);
-  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
   padding: clamp(18px, 2.5vw, 28px);
   border-radius: var(--r-xl);
   border: 1px solid rgba(240, 246, 252, 0.10);
@@ -729,7 +727,7 @@ body::after {
   padding: 13px 16px; border-radius: 13px;
   border: 1px solid rgba(56,189,248,0.07);
   position: relative;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.16s ease, background-color 0.16s ease;
 }
 .status-row:hover { border-color: rgba(56,189,248,0.18); background: rgba(56,189,248,0.04); }
 .status-ok   { background: rgba(34,197,94,0.05);  border-color: rgba(34,197,94,0.1); }
@@ -778,7 +776,7 @@ body::after {
 
 .status-dot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
 }
 .status-row:hover .status-dot { transform: scale(1.4); }
 .dot-green  { background: var(--green-light); box-shadow: 0 0 7px var(--green-light); animation: dotBlink 2s ease-in-out infinite; }
@@ -924,12 +922,12 @@ body::after {
 ===================================================== */
 .plant-card {
   background: var(--bg-card);
-  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border-radius: var(--r-lg);
   border: 1px solid rgba(56,189,248,0.10);
   box-shadow: var(--shadow-md); overflow: hidden;
   display: flex; flex-direction: column; position: relative;
-  transition: border-color 0.3s, box-shadow 0.3s, transform 0.25s;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 .plant-card .plant-card {
   background: transparent !important; backdrop-filter: none !important;
@@ -938,14 +936,14 @@ body::after {
 }
 .plant-card:hover {
   border-color: rgba(56,189,248,0.25) !important;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 20px rgba(56,189,248,0.07) !important;
-  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.34), 0 0 10px rgba(56,189,248,0.05) !important;
+  transform: translateY(-1px) !important;
 }
 .plant-card.valve-active { border-color: rgba(34,197,94,0.4); }
 
 .pc-img-wrap { overflow: hidden; border-radius: var(--r-md); }
-.pc-img-wrap img { transition: transform 0.5s cubic-bezier(0.25,0.46,0.45,0.94); }
-.plant-card:hover .pc-img-wrap img { transform: scale(1.04); }
+.pc-img-wrap img { transition: transform 0.24s ease; }
+.plant-card:hover .pc-img-wrap img { transform: scale(1.015); }
 
 .plant-img { width: 100%; height: clamp(120px, 15vw, 160px); object-fit: cover; display: block; }
 
@@ -1003,6 +1001,9 @@ body::after {
 
 /* PC2 Card */
 .pc2 {
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: 430px;
   border-radius: var(--r-lg);
   overflow: hidden;
   background:
@@ -1894,6 +1895,35 @@ body::after {
 .sectors-wrapper { display: flex; gap: clamp(16px, 2.5vw, 28px); align-items: flex-start; }
 .sector-column { flex: 1; min-width: 0; content-visibility: auto; contain-intrinsic-size: 720px; }
 .sector-column .plant-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+@media (min-width: 1024px) {
+  .dashboard-full > *,
+  .top-section > *,
+  .sector-column,
+  .plant-grid,
+  .pc2,
+  .card,
+  .qs-card {
+    contain: layout paint style;
+  }
+
+  .section-header,
+  .top-section,
+  .plant-grid,
+  .status-grid {
+    content-visibility: auto;
+    contain-intrinsic-size: 240px;
+  }
+
+  .pc2:hover .pc2-img {
+    transform: scale(1.03);
+  }
+
+  .pc2-water-btn.go:hover,
+  .pc2-water-btn.stop:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+  }
+}
 
 /* =====================================================
     SKELETON
@@ -2822,7 +2852,7 @@ body.compact-mode .quick-stats    { gap: 10px; margin-bottom: 18px; }
   .sp-stats-bar { gap: 6px; }
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Light mode fixes ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* Light mode fixes */
 body.light-mode .sp-filters {
   background: rgba(22, 21, 44, 0.80) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
@@ -3058,6 +3088,63 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
   .lp-divider { flex: 0 0 1px; width: 100%; height: 1px; background: linear-gradient(to right, transparent, rgba(34,197,94,0.3), transparent); }
   .lp-form-panel { flex: 1; width: 100%; padding: 24px 16px; }
   .lp-stats { max-width: 100%; }
+  .sp-chip,
+  .sp-drag-btn,
+  .sp-search-clear,
+  .pc2-act,
+  .pc2-water-btn {
+    min-height: 44px;
+  }
+  .nav-icon-btn,
+  .theme-toggle,
+  .user-chip {
+    min-height: 40px;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  body::after {
+    opacity: 0.12;
+    background-size: 48px 48px;
+  }
+
+  .logo,
+  .pulse-ring,
+  .dot-green,
+  .dot-red,
+  .dot-yellow {
+    animation: none !important;
+  }
+
+  .navbar,
+  .nav-mobile-menu,
+  .plant-card,
+  .pc-hist-inner {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  .plant-card,
+  .status-row,
+  .nav-item,
+  .nav-icon-btn,
+  .user-chip {
+    transition-duration: 0.12s !important;
+  }
+
+  .plant-card:hover,
+  .status-row:hover,
+  .nav-item:hover,
+  .nav-icon-btn:hover,
+  .user-chip:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .plant-card:hover .pc-img-wrap img,
+  .status-row:hover .status-dot {
+    transform: none !important;
+  }
 }
 
 @media (max-width: 700px) {
@@ -3080,6 +3167,37 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
   .dashboard-full > * { animation: none !important; }
   .stat-card, .stat-card-inner, .btn-see-all { transform: none !important; }
   .btn-see-all:hover { transform: none; }
+  .pc2-actions {
+    gap: 10px;
+  }
+  .pc2-act {
+    flex: 1;
+    justify-content: center;
+  }
+  .pc2-img-wrap {
+    min-height: 240px;
+  }
+  .navbar,
+  .card,
+  .pc2,
+  .stat-card-inner,
+  .sp-filters,
+  .sp-hero,
+  .nav-mobile-menu {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+  .card,
+  .pc2,
+  .sp-hero,
+  .stat-card-inner {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.28) !important;
+  }
+  .pc2-alert,
+  .qs-urgent,
+  .alert-card {
+    animation: none !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -3104,6 +3222,34 @@ body.light-mode .qs-label { color: rgba(200, 214, 224, 0.90); }
   .sp-grid-wrap .plant-grid { grid-template-columns: 1fr !important; }
   .sp-grid-wrap .pc2 { max-width: 100%; }
   .sector-column .plant-grid { grid-template-columns: 1fr !important; }
+}
+
+@media (pointer: coarse) {
+  .logo,
+  .pulse-ring,
+  .ah-pill-dot,
+  .hv2-dot,
+  .status-dot,
+  .dot-green,
+  .dot-red,
+  .dot-yellow {
+    animation: none !important;
+  }
+  .navbar,
+  .card,
+  .pc2,
+  .stat-card-inner,
+  .sp-filters,
+  .sp-hero {
+    box-shadow: 0 6px 18px rgba(0,0,0,0.24) !important;
+  }
+  .stat-card:hover,
+  .pc2:hover,
+  .btn-see-all:hover,
+  .pc2-water-btn:hover {
+    transform: none !important;
+    box-shadow: inherit !important;
+  }
 }
 
 /* =====================================================

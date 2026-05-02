@@ -25,6 +25,9 @@ const DeviceSchema = new mongoose.Schema({
   lastConnection: {
     type: Date,
   },
+  lastSeen: {
+    type: Date,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Device", DeviceSchema);

@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { getGreeting } from "../../App";
@@ -6,6 +6,7 @@ import { getGreeting } from "../../App";
 function WelcomeToast() {
   const [visible, setVisible] = useState(false);
   const { user } = useAuth();
+  const prefersReducedMotion = useReducedMotion();
   const userName = user?.name || user?.username || "";
   const greeting = getGreeting(userName);
   const subtitle = userName
@@ -13,28 +14,30 @@ function WelcomeToast() {
     : "Bienvenido de vuelta al sistema";
 
   useEffect(() => {
-    const h = new Date().getHours();
-    const period = h < 12 ? "morning" : h < 18 ? "afternoon" : "night";
+    const hour = new Date().getHours();
+    const period = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "night";
     const today = new Date().toISOString().slice(0, 10);
     const key = `welcome_${today}_${period}`;
 
     if (!localStorage.getItem(key)) {
-      const t = setTimeout(() => setVisible(true), 600);
-      return () => clearTimeout(t);
+      const timeoutId = setTimeout(() => setVisible(true), prefersReducedMotion ? 250 : 600);
+      return () => clearTimeout(timeoutId);
     }
-  }, []);
+
+    return undefined;
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
     if (!visible) return undefined;
 
-    const h = new Date().getHours();
-    const period = h < 12 ? "morning" : h < 18 ? "afternoon" : "night";
+    const hour = new Date().getHours();
+    const period = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "night";
     const today = new Date().toISOString().slice(0, 10);
     const key = `welcome_${today}_${period}`;
 
     localStorage.setItem(key, "1");
-    const t = setTimeout(() => setVisible(false), 4200);
-    return () => clearTimeout(t);
+    const timeoutId = setTimeout(() => setVisible(false), 4200);
+    return () => clearTimeout(timeoutId);
   }, [visible]);
 
   return (
@@ -44,7 +47,7 @@ function WelcomeToast() {
           initial={{ opacity: 0, y: 60, scale: 0.92 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 30, scale: 0.96 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: prefersReducedMotion ? 0.18 : 0.35, ease: [0.22, 1, 0.36, 1] }}
           style={{
             position: "fixed",
             bottom: 28,
@@ -65,7 +68,7 @@ function WelcomeToast() {
               border: "1px solid rgba(52,211,153,0.24)",
               borderRadius: 20,
               boxShadow: "0 18px 46px rgba(0,0,0,0.70), 0 0 0 1px rgba(52,211,153,0.08)",
-              backdropFilter: "blur(20px)",
+              backdropFilter: prefersReducedMotion ? "none" : "blur(20px)",
               position: "relative",
               overflow: "hidden",
             }}
@@ -177,9 +180,9 @@ function WelcomeToast() {
 }
 
 function getTimeEmoji() {
-  const h = new Date().getHours();
-  if (h < 12) return "🌅";
-  if (h < 18) return "☀️";
+  const hour = new Date().getHours();
+  if (hour < 12) return "🌅";
+  if (hour < 18) return "☀️";
   return "🌙";
 }
 

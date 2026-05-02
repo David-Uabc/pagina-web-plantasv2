@@ -12,7 +12,7 @@ const PlantSchema = new mongoose.Schema(
 
     irrigationType: {
       type: String,
-      enum: ["Diario", "Semanal", "Quincenal", "Por humedad"],
+      enum: ["Diario", "Semanal", "Quincenal", "Mensual", "Por humedad"],
       required: true,
     },
 
@@ -33,10 +33,12 @@ const PlantSchema = new mongoose.Schema(
 
     // Programación de riego automático
     schedule: {
-      enabled:  { type: Boolean, default: false },
-      days:     { type: [Number], default: [] },
-      time:     { type: String,  default: "07:00" },
-      duration: { type: Number,  default: 10 },
+      enabled:    { type: Boolean, default: false },
+      days:       { type: [Number], default: [] },
+      time:       { type: String,  default: "07:00" },
+      duration:   { type: Number,  default: 10 },
+      startDate:  { type: String,  default: "" },
+      dayOfMonth: { type: Number,  default: 1 },
     },
 
     // Historial de alertas

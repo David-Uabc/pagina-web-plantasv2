@@ -1,72 +1,78 @@
 import { useEffect, useRef } from "react";
 
-/**
- * ParticleBackground — canvas de partículas flotantes
- * Se adapta automáticamente al modo oscuro / día (índigo+magenta)
- */
 export default function ParticleBackground() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    let animId;
+    if (!canvas) return undefined;
+
+    const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+    if (!ctx) return undefined;
+
+    let animId = null;
     let particles = [];
+    let frame = 0;
+    let hidden = document.hidden;
+    let lastFrameTime = 0;
 
-    // ── Detecta modo claro para cambiar colores ──────────────────
     const isLight = () => document.body.classList.contains("light-mode");
+    const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isMobile = () => window.innerWidth < 768;
 
-    // ── Colores por modo ─────────────────────────────────────────
-    const getColors = () =>
+    const getColors = () => (
       isLight()
         ? ["#818cf8", "#a78bfa", "#e879f9", "#34d399", "#c084fc"]
-        : ["#34d399",  "#60a5fa", "#a78bfa", "#2dd4bf",  "#6ee7b7"];
+        : ["#34d399", "#60a5fa", "#a78bfa", "#2dd4bf", "#6ee7b7"]
+    );
 
-    // ── Resize ───────────────────────────────────────────────────
-    const resize = () => {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
+    const getCount = () => {
+      if (prefersReducedMotion()) return 0;
+      const area = window.innerWidth * window.innerHeight;
+      const base = Math.min(72, Math.floor(area / 24000));
+      if (window.innerWidth < 480) return Math.max(10, Math.round(base * 0.32));
+      if (window.innerWidth < 768) return Math.max(14, Math.round(base * 0.45));
+      return Math.max(18, base);
     };
-    resize();
-    window.addEventListener("resize", resize);
 
-    // ── Crear partícula ──────────────────────────────────────────
+    const resize = () => {
+      const ratio = Math.min(window.devicePixelRatio || 1, isMobile() ? 1 : 1.35);
+      canvas.width = Math.round(window.innerWidth * ratio);
+      canvas.height = Math.round(window.innerHeight * ratio);
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      particles = Array.from({ length: getCount() }, mkParticle);
+    };
+
     const mkParticle = () => {
       const colors = getColors();
       return {
-        x:     Math.random() * canvas.width,
-        y:     Math.random() * canvas.height,
-        r:     Math.random() * 1.8 + 0.4,          // radio 0.4–2.2px
-        vx:    (Math.random() - 0.5) * 0.35,        // velocidad muy lenta
-        vy:    (Math.random() - 0.5) * 0.35,
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.5 + 0.4,
+        vx: (Math.random() - 0.5) * 0.28,
+        vy: (Math.random() - 0.5) * 0.28,
         color: colors[Math.floor(Math.random() * colors.length)],
-        alpha: Math.random() * 0.55 + 0.15,         // opacidad 0.15–0.70
-        pulse: Math.random() * Math.PI * 2,          // fase de pulso
-        pulseSpeed: 0.008 + Math.random() * 0.012,  // velocidad de pulso
+        alpha: Math.random() * 0.45 + 0.12,
+        pulse: Math.random() * Math.PI * 2,
+        pulseSpeed: 0.007 + Math.random() * 0.01,
       };
     };
 
-    // ── Número de partículas según pantalla ──────────────────────
-    const COUNT = Math.min(120, Math.floor((window.innerWidth * window.innerHeight) / 12000));
-    particles = Array.from({ length: COUNT }, mkParticle);
-
-    // ── Línea entre partículas cercanas ─────────────────────────
     const drawConnections = () => {
-      const maxDist = 130;
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx   = particles[i].x - particles[j].x;
-          const dy   = particles[i].y - particles[j].y;
+      const maxDist = isMobile() ? 90 : 118;
+      for (let i = 0; i < particles.length; i += 1) {
+        for (let j = i + 1; j < particles.length; j += 1) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < maxDist) {
-            const opacity = (1 - dist / maxDist) * 0.18;
+            const opacity = (1 - dist / maxDist) * (isMobile() ? 0.1 : 0.16);
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = isLight()
-              ? `rgba(167,139,250,${opacity})`
-              : `rgba(52,211,153,${opacity})`;
+            ctx.strokeStyle = isLight() ? `rgba(167,139,250,${opacity})` : `rgba(52,211,153,${opacity})`;
             ctx.lineWidth = 0.6;
             ctx.stroke();
           }
@@ -74,54 +80,73 @@ export default function ParticleBackground() {
       }
     };
 
-    // ── Loop principal ───────────────────────────────────────────
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const draw = (timestamp = 0) => {
+      if (hidden || prefersReducedMotion()) {
+        animId = requestAnimationFrame(draw);
+        return;
+      }
 
-      drawConnections();
+      const targetFrameMs = isMobile() ? 34 : 32;
+      if (timestamp - lastFrameTime < targetFrameMs) {
+        animId = requestAnimationFrame(draw);
+        return;
+      }
+      lastFrameTime = timestamp;
 
-      particles.forEach(p => {
-        // Pulso de opacidad suave
-        p.pulse += p.pulseSpeed;
-        const alphaNow = p.alpha * (0.75 + 0.25 * Math.sin(p.pulse));
+      frame += 1;
+      const skipFrame = isMobile() && frame % 2 === 0;
+      if (skipFrame) {
+        animId = requestAnimationFrame(draw);
+        return;
+      }
 
-        // Glow difuso
-        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.5);
-        gradient.addColorStop(0,   hexAlpha(p.color, alphaNow));
-        gradient.addColorStop(0.5, hexAlpha(p.color, alphaNow * 0.4));
-        gradient.addColorStop(1,   hexAlpha(p.color, 0));
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      if (!isMobile() && frame % 2 === 0) drawConnections();
+
+      particles.forEach((particle) => {
+        particle.pulse += particle.pulseSpeed;
+        const alphaNow = particle.alpha * (0.75 + 0.25 * Math.sin(particle.pulse));
+
+        const gradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, particle.r * 3.2);
+        gradient.addColorStop(0, hexAlpha(particle.color, alphaNow));
+        gradient.addColorStop(0.5, hexAlpha(particle.color, alphaNow * 0.35));
+        gradient.addColorStop(1, hexAlpha(particle.color, 0));
 
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r * 3.5, 0, Math.PI * 2);
+        ctx.arc(particle.x, particle.y, particle.r * 3.2, 0, Math.PI * 2);
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // Punto central sólido
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = hexAlpha(p.color, Math.min(alphaNow * 1.4, 0.9));
+        ctx.arc(particle.x, particle.y, particle.r, 0, Math.PI * 2);
+        ctx.fillStyle = hexAlpha(particle.color, Math.min(alphaNow * 1.3, 0.85));
         ctx.fill();
 
-        // Mover
-        p.x += p.vx;
-        p.y += p.vy;
+        particle.x += particle.vx;
+        particle.y += particle.vy;
 
-        // Rebote suave en bordes
-        if (p.x < -20)                  p.x = canvas.width  + 20;
-        if (p.x > canvas.width  + 20)   p.x = -20;
-        if (p.y < -20)                  p.y = canvas.height + 20;
-        if (p.y > canvas.height + 20)   p.y = -20;
+        if (particle.x < -20) particle.x = window.innerWidth + 20;
+        if (particle.x > window.innerWidth + 20) particle.x = -20;
+        if (particle.y < -20) particle.y = window.innerHeight + 20;
+        if (particle.y > window.innerHeight + 20) particle.y = -20;
       });
 
       animId = requestAnimationFrame(draw);
     };
 
+    const onVisibilityChange = () => {
+      hidden = document.hidden;
+    };
+
+    resize();
+    window.addEventListener("resize", resize, { passive: true });
+    document.addEventListener("visibilitychange", onVisibilityChange);
     draw();
 
-    // ── Cleanup ──────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 
@@ -139,10 +164,9 @@ export default function ParticleBackground() {
   );
 }
 
-// ── Helper: hex + alpha ──────────────────────────────────────────
 function hexAlpha(hex, alpha) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const r = Number.parseInt(hex.slice(1, 3), 16);
+  const g = Number.parseInt(hex.slice(3, 5), 16);
+  const b = Number.parseInt(hex.slice(5, 7), 16);
   return `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
 }

@@ -5,6 +5,8 @@ const crypto  = require("crypto");
 const Plant   = require("../models/Plant");
 const Device  = require("../models/Device");
 const Log     = require("../models/Log");
+const { ensureDeviceOwner } = require("../utils/deviceOwnership");
+const { emitToUser } = require("../utils/socketRooms");
 
 async function iotAuth(req, res, next) {
   try {
@@ -52,6 +54,34 @@ const sectorValido = (s) => ["Superior", "Inferior"].includes(s);
 const errProd = (msg, err) =>
   process.env.NODE_ENV === "production" ? msg : err.message;
 
+async function findPlantForReading(ownerId, sector, reading) {
+  if (reading?.plantId) {
+    const plantById = await Plant.findOne({ _id: reading.plantId, owner: ownerId });
+    if (plantById && plantById.sector === sector) {
+      return plantById;
+    }
+  }
+
+  const valveNumber = Number(reading?.valveNumber ?? reading?.valve);
+  if (!Number.isInteger(valveNumber) || valveNumber < 1 || valveNumber > 5) {
+    return null;
+  }
+
+  return Plant.findOne({ owner: ownerId, sector, valveNumber });
+}
+
+async function requireDeviceOwner(req, res, sector) {
+  const resolved = await ensureDeviceOwner(req.device, sector);
+  if (!resolved.ownerId) {
+    res.status(409).json({
+      error: `El dispositivo ${req.deviceId} no esta vinculado de forma segura a un usuario para el sector ${sector}. Registra el dispositivo desde una cuenta o deja un solo propietario por sector.`,
+    });
+    return null;
+  }
+
+  return resolved.ownerId;
+}
+
 // =====================================================
 // POST /api/iot/report
 // =====================================================
@@ -62,6 +92,8 @@ router.post("/report", iotAuth, async (req, res) => {
 
     if (!sector) return res.status(400).json({ error: "sector es requerido" });
     if (!sectorValido(sector)) return res.status(400).json({ error: "sector debe ser Superior o Inferior" });
+    const ownerId = await requireDeviceOwner(req, res, sector);
+    if (!ownerId) return;
 
     if (humidity !== undefined) {
       const h = Number(humidity);
@@ -83,7 +115,7 @@ router.post("/report", iotAuth, async (req, res) => {
         });
       }
 
-      const plants = await Plant.find({ sector });
+      const plants = await Plant.find({ owner: ownerId, sector });
       for (const p of plants) {
         await processReading(p, massHumidity, req.deviceId, io);
       }
@@ -92,7 +124,8 @@ router.post("/report", iotAuth, async (req, res) => {
       for (const r of limitedList) {
         const h = Number(r.humidity);
         if (isNaN(h) || h < 0 || h > 100) continue;
-        const p = await Plant.findById(r.plantId);
+
+        const p = await findPlantForReading(ownerId, sector, r);
         if (p && p.sector === sector) {
           await processReading(p, h, req.deviceId, io);
         }
@@ -117,8 +150,11 @@ router.get("/valve/:sector", iotAuth, async (req, res) => {
       return res.status(400).json({ error: "sector debe ser Superior o Inferior" });
     }
 
+    const ownerId = await requireDeviceOwner(req, res, sector);
+    if (!ownerId) return;
+
     const plants = await Plant.find(
-      { sector },
+      { owner: ownerId, sector },
       "name valveStatus currentHumidity valveNumber"
     );
 
@@ -153,6 +189,11 @@ router.post("/heartbeat", iotAuth, async (req, res) => {
       return res.status(400).json({ error: "sector debe ser Superior o Inferior" });
     }
 
+    if (sector) {
+      const ownerId = await requireDeviceOwner(req, res, sector);
+      if (!ownerId) return;
+    }
+
     // ✅ FIX — actualizar lastSeen en MongoDB para que el polling del frontend lo detecte
     await Device.findOneAndUpdate(
       { deviceId: req.deviceId },
@@ -166,7 +207,7 @@ router.post("/heartbeat", iotAuth, async (req, res) => {
     );
 
     if (io) {
-      io.emit("device:heartbeat", {
+      emitToUser(io, ownerId, "device:heartbeat", {
         deviceId:       req.deviceId,
         sector:         sector || null,
         lastConnection: new Date(),
@@ -240,7 +281,7 @@ async function processReading(plant, humidity, deviceId, io) {
   });
 
   if (io) {
-    io.emit("plant:update", {
+    emitToUser(io, plant.owner, "plant:update", {
       _id:             plant._id.toString(),
       name:            plant.name,
       sector:          plant.sector,
@@ -253,7 +294,7 @@ async function processReading(plant, humidity, deviceId, io) {
     });
 
     if (irrigationExecuted) {
-      io.emit("plant:alert", {
+      emitToUser(io, plant.owner, "plant:alert", {
         plantId: plant._id.toString(),
         name:    plant.name,
         sector:  plant.sector,
@@ -268,3 +309,4 @@ async function processReading(plant, humidity, deviceId, io) {
 
 module.exports = router;
 module.exports.processReading = processReading;
+module.exports.findPlantForReading = findPlantForReading;

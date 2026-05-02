@@ -1,647 +1,621 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
-import { FaCheckCircle, FaInfoCircle } from "react-icons/fa";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { FaCheckCircle } from "react-icons/fa";
 
-// ── Datos del formulario por defecto ─────────────────
 const DEFAULT_FORM = {
-  name: "", sector: "Superior", minHumidity: "", maxHumidity: "",
-  irrigationType: "Diario", imageUrl: "", notes: "",
+  name: "",
+  sector: "Superior",
+  minHumidity: "",
+  maxHumidity: "",
+  irrigationType: "Diario",
+  imageUrl: "",
+  notes: "",
   valveNumber: 1,
-  schedule: { enabled: false, days: [], time: "07:00", duration: 10 },
+  schedule: {
+    enabled: false,
+    days: [0, 1, 2, 3, 4, 5, 6],
+    time: "07:00",
+    duration: 10,
+    startDate: "",
+    dayOfMonth: 1,
+  },
 };
 
 const IRRIGATION_OPTIONS = [
-  { value: "Diario",      label: "Diario",      icon: "🌤", desc: "Cada 24 horas" },
-  { value: "Semanal",     label: "Semanal",     icon: "📅", desc: "Una vez por semana" },
-  { value: "Quincenal",   label: "Quincenal",   icon: "🗓", desc: "Cada 15 días" },
-  { value: "Por humedad", label: "Por humedad", icon: "💧", desc: "Según sensor" },
+  { value: "Diario", label: "Diario", desc: "Todos los dias" },
+  { value: "Semanal", label: "Semanal", desc: "Dias de la semana" },
+  { value: "Quincenal", label: "Quincenal", desc: "Cada 15 dias" },
+  { value: "Mensual", label: "Mensual", desc: "Dia del mes" },
+  { value: "Por humedad", label: "Por humedad", desc: "Solo por sensor" },
 ];
+
+const IRRIGATION_HELP = {
+  Diario: {
+    title: "Riego diario",
+    text: "La planta se regara todos los dias a la hora configurada.",
+  },
+  Semanal: {
+    title: "Riego semanal",
+    text: "Elige uno o varios dias de la semana. Ejemplo: lunes y jueves.",
+  },
+  Quincenal: {
+    title: "Riego quincenal",
+    text: "Selecciona una fecha base. Desde ahi se repetira cada 15 dias.",
+  },
+  Mensual: {
+    title: "Riego mensual",
+    text: "Selecciona el dia del mes en que quieres que se riegue.",
+  },
+  "Por humedad": {
+    title: "Riego por humedad",
+    text: "No usa calendario. Se activa cuando la humedad baja del minimo y se detiene al llegar al maximo.",
+  },
+};
+
 const SECTOR_OPTIONS = [
-  { value: "Superior", label: "Patio Superior", icon: "🌿", color: "#34d399", rgb: "52,211,153" },
-  { value: "Inferior", label: "Patio Inferior", icon: "🌱", color: "#60a5fa", rgb: "96,165,250" },
+  { value: "Superior", label: "Patio Superior", color: "#34d399" },
+  { value: "Inferior", label: "Patio Inferior", color: "#60a5fa" },
 ];
-const QUICK_IMAGES = [
-  { label: "Rosa",     url: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80",  emoji: "🌹" },
-  { label: "Cactus",  url: "https://images.unsplash.com/photo-1512427691650-6c1e8d3bfa63?w=600&q=80",  emoji: "🌵" },
-  { label: "Lavanda", url: "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=600&q=80",  emoji: "💜" },
-  { label: "Tomate",  url: "https://images.unsplash.com/photo-1546470427-e2a4e5eaccf5?w=600&q=80",     emoji: "🍅" },
-  { label: "Menta",   url: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=600&q=80",  emoji: "🌿" },
-  { label: "Girasol", url: "https://images.unsplash.com/photo-1597848212624-a19eb35e2651?w=600&q=80",  emoji: "🌻" },
-];
+
+const VALVE_OPTIONS = [1, 2, 3, 4, 5];
+
 const DAYS = [
-  { short: "D", label: "Domingo",   value: 0 },
-  { short: "L", label: "Lunes",     value: 1 },
-  { short: "M", label: "Martes",    value: 2 },
-  { short: "X", label: "Miércoles", value: 3 },
-  { short: "J", label: "Jueves",    value: 4 },
-  { short: "V", label: "Viernes",   value: 5 },
-  { short: "S", label: "Sábado",    value: 6 },
+  { value: 0, short: "D", label: "Domingo" },
+  { value: 1, short: "L", label: "Lunes" },
+  { value: 2, short: "M", label: "Martes" },
+  { value: 3, short: "X", label: "Miercoles" },
+  { value: 4, short: "J", label: "Jueves" },
+  { value: 5, short: "V", label: "Viernes" },
+  { value: 6, short: "S", label: "Sabado" },
 ];
 
-// ── Válvulas físicas ──────────────────────────────────
-// valveNumber 1-5 → relé D2-D6 → pin ESP32 26,27,14,12,13
-const VALVE_OPTIONS = [
-  { value: 1, pin: "D2", pinNum: 26, color: "#34d399" },
-  { value: 2, pin: "D3", pinNum: 27, color: "#60a5fa" },
-  { value: 3, pin: "D4", pinNum: 14, color: "#a78bfa" },
-  { value: 4, pin: "D5", pinNum: 12, color: "#fbbf24" },
-  { value: 5, pin: "D6", pinNum: 13, color: "#f87171" },
-];
+function buildInitialForm(plant, defaultSector) {
+  if (!plant) {
+    return {
+      ...DEFAULT_FORM,
+      sector: defaultSector,
+      schedule: {
+        ...DEFAULT_FORM.schedule,
+        startDate: new Date().toISOString().split("T")[0],
+      },
+    };
+  }
 
-// ═══════════════════════════════════════════════════════
+  return {
+    ...DEFAULT_FORM,
+    ...plant,
+    schedule: {
+      ...DEFAULT_FORM.schedule,
+      ...(plant.schedule || {}),
+      startDate: plant.schedule?.startDate || new Date().toISOString().split("T")[0],
+    },
+  };
+}
+
+function normalizeScheduleForType(irrigationType, schedule) {
+  const next = {
+    enabled: Boolean(schedule.enabled),
+    days: Array.isArray(schedule.days) ? schedule.days : [],
+    time: schedule.time || "07:00",
+    duration: Number(schedule.duration) || 10,
+    startDate: schedule.startDate || "",
+    dayOfMonth: Number(schedule.dayOfMonth) || 1,
+  };
+
+  if (irrigationType === "Por humedad") {
+    next.enabled = false;
+    next.days = [];
+    next.startDate = "";
+    next.dayOfMonth = 1;
+    return next;
+  }
+
+  if (irrigationType === "Diario") {
+    next.days = [0, 1, 2, 3, 4, 5, 6];
+    next.startDate = "";
+    next.dayOfMonth = 1;
+    return next;
+  }
+
+  if (irrigationType === "Semanal") {
+    if (!next.days.length) next.days = [1];
+    next.startDate = "";
+    next.dayOfMonth = 1;
+    return next;
+  }
+
+  if (irrigationType === "Quincenal") {
+    if (!next.startDate) next.startDate = new Date().toISOString().split("T")[0];
+    next.days = [];
+    next.dayOfMonth = 1;
+    return next;
+  }
+
+  if (irrigationType === "Mensual") {
+    next.days = [];
+    next.startDate = "";
+    return next;
+  }
+
+  return next;
+}
+
 function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior", usedValves = [] }) {
-  const [formData,    setFormData]    = useState({ ...DEFAULT_FORM, sector: defaultSector });
-  const [errors,      setErrors]      = useState({});
-  const [step,        setStep]        = useState(1);
-  const [imgPreviewOk,setImgPreviewOk]= useState(false);
-  const [tooltip,     setTooltip]     = useState(null);
+  const [formData, setFormData] = useState(buildInitialForm(plant, defaultSector));
+  const [errors, setErrors] = useState({});
+  const [previewOk, setPreviewOk] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setFormData(plant
-        ? { ...DEFAULT_FORM, ...plant, schedule: { ...DEFAULT_FORM.schedule, ...(plant.schedule || {}) } }
-        : { ...DEFAULT_FORM, sector: defaultSector }
-      );
-      setErrors({}); setStep(1); setImgPreviewOk(false); setTooltip(null);
-    }
-  }, [isOpen, plant, defaultSector]);
+    if (!isOpen) return;
+    setFormData(buildInitialForm(plant, defaultSector));
+    setErrors({});
+    setPreviewOk(false);
+  }, [defaultSector, isOpen, plant]);
 
-  const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    if (errors[e.target.name]) setErrors(prev => ({ ...prev, [e.target.name]: null }));
+  const sectorColor = useMemo(
+    () => SECTOR_OPTIONS.find((option) => option.value === formData.sector)?.color || "#34d399",
+    [formData.sector]
+  );
+  const irrigationHelp = IRRIGATION_HELP[formData.irrigationType] || IRRIGATION_HELP.Diario;
+  const scheduleLabel = formData.schedule.enabled
+    ? formData.irrigationType === "Por humedad"
+      ? "Sensor activo"
+      : "Programacion activa"
+    : "Programacion desactivada";
+
+  const setField = (key, value) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: null }));
   };
-  const handleScheduleChange = (key, value) =>
-    setFormData(prev => ({ ...prev, schedule: { ...prev.schedule, [key]: value } }));
+
+  const setScheduleField = (key, value) => {
+    setFormData((prev) => ({ ...prev, schedule: { ...prev.schedule, [key]: value } }));
+    setErrors((prev) => ({ ...prev, schedule: null }));
+  };
+
+  const changeIrrigationType = (value) => {
+    setFormData((prev) => ({
+      ...prev,
+      irrigationType: value,
+      schedule: normalizeScheduleForType(value, prev.schedule),
+    }));
+  };
+
   const toggleDay = (day) => {
-    const days = formData.schedule.days || [];
-    handleScheduleChange("days", days.includes(day) ? days.filter(d => d !== day) : [...days, day]);
+    const current = formData.schedule.days || [];
+    const next = current.includes(day) ? current.filter((item) => item !== day) : [...current, day].sort((a, b) => a - b);
+    setScheduleField("days", next);
   };
-  const validateStep1 = () => {
-    const errs = {};
-    if (!formData.name?.trim()) errs.name = "Escribe el nombre de la planta";
-    return errs;
-  };
-  const validateStep2 = () => {
-    const errs = {};
-    if (formData.minHumidity === "") errs.minHumidity = "Requerido";
-    if (formData.maxHumidity === "") errs.maxHumidity = "Requerido";
-    if (formData.minHumidity !== "" && formData.maxHumidity !== "" &&
-      Number(formData.minHumidity) >= Number(formData.maxHumidity))
-      errs.maxHumidity = "El máximo debe ser mayor que el mínimo";
-    return errs;
-  };
-  const handleNext = () => {
-    const errs = validateStep1();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    setStep(2);
-  };
-  const handleSubmit = () => {
-    const errs = validateStep2();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    onSave(formData);
-  };
-  const handleClose = () => { setErrors({}); onClose(); };
 
-  const minH       = Number(formData.minHumidity) || 0;
-  const maxH       = Number(formData.maxHumidity) || 0;
-  const rangeValid = maxH > minH && minH >= 0 && maxH <= 100;
-  const sectorColor = SECTOR_OPTIONS.find(s => s.value === formData.sector)?.color || "#34d399";
-  const sectorRgb   = SECTOR_OPTIONS.find(s => s.value === formData.sector)?.rgb   || "52,211,153";
+  const validate = () => {
+    const nextErrors = {};
+
+    if (!formData.name.trim()) nextErrors.name = "Escribe el nombre de la planta";
+    if (formData.minHumidity === "" || formData.maxHumidity === "") nextErrors.humidity = "Define humedad minima y maxima";
+    if (Number(formData.minHumidity) >= Number(formData.maxHumidity)) nextErrors.humidity = "La humedad maxima debe ser mayor que la minima";
+
+    const selectedValve = Number(formData.valveNumber);
+    if (usedValves.includes(selectedValve) && selectedValve !== Number(plant?.valveNumber || 0)) {
+      nextErrors.valveNumber = `La valvula V${selectedValve} ya esta ocupada en este sector`;
+    }
+
+    if (formData.schedule.enabled && formData.irrigationType === "Semanal" && !(formData.schedule.days || []).length) {
+      nextErrors.schedule = "Selecciona al menos un dia para el riego semanal";
+    }
+
+    if (formData.schedule.enabled && formData.irrigationType === "Quincenal" && !formData.schedule.startDate) {
+      nextErrors.schedule = "Selecciona la fecha base del riego quincenal";
+    }
+
+    if (formData.schedule.enabled && formData.irrigationType === "Mensual") {
+      const dayOfMonth = Number(formData.schedule.dayOfMonth);
+      if (!dayOfMonth || dayOfMonth < 1 || dayOfMonth > 31) {
+        nextErrors.schedule = "Selecciona un dia del mes valido";
+      }
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const submit = () => {
+    if (!validate()) return;
+
+    const payload = {
+      ...formData,
+      valveNumber: Number(formData.valveNumber),
+      minHumidity: Number(formData.minHumidity),
+      maxHumidity: Number(formData.maxHumidity),
+      schedule: normalizeScheduleForType(formData.irrigationType, formData.schedule),
+    };
+
+    onSave(payload);
+  };
 
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={e => { if (e.target === e.currentTarget) handleClose(); }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) onClose();
+        }}
         style={{
-          position: "fixed", inset: 0,
-          background: "rgba(0,0,0,0.80)",
-          backdropFilter: "blur(20px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 99999, padding: 16,
+          position: "fixed",
+          inset: 0,
+          zIndex: 99999,
+          background: "rgba(0,0,0,0.76)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
         }}
       >
         <motion.div
-          initial={{ scale: 0.88, y: 32, opacity: 0 }}
-          animate={{ scale: 1, y: 0, opacity: 1 }}
-          exit={{ scale: 0.88, y: 20, opacity: 0 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 10, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.985 }}
+          transition={{ duration: 0.14 }}
           style={{
-            width: "100%", maxWidth: 520,
-            background: "rgba(6, 12, 8, 0.98)",
-            border: `1px solid rgba(${sectorRgb}, 0.22)`,
-            borderRadius: 26, overflow: "hidden",
-            boxShadow: `0 40px 100px rgba(0,0,0,0.85), 0 0 40px rgba(${sectorRgb},0.06), inset 0 1px 0 rgba(255,255,255,0.06)`,
-            position: "relative", maxHeight: "92vh", overflowY: "auto",
-            transition: "border-color 0.4s ease, box-shadow 0.4s ease",
+            width: "100%",
+            maxWidth: 620,
+            maxHeight: "92vh",
+            overflowY: "auto",
+            borderRadius: 24,
+            background: "linear-gradient(180deg, rgba(10,18,24,0.99) 0%, rgba(7,13,18,0.99) 100%)",
+            border: `1px solid ${sectorColor}33`,
+            boxShadow: `0 28px 70px rgba(0,0,0,0.75), 0 0 0 1px ${sectorColor}18, 0 0 40px ${sectorColor}10`,
           }}
         >
-          {/* Top accent animado */}
-          <div style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 2,
-            background: `linear-gradient(90deg, transparent, ${sectorColor}, #60a5fa, transparent)`,
-            transition: "background 0.4s ease",
-          }} />
-
-          {/* ── HEADER ── */}
-          <div style={{ padding: "28px 28px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              {/* Avatar con imagen preview */}
-              <div style={{
-                width: 52, height: 52, borderRadius: 15,
-                background: `linear-gradient(135deg, rgba(${sectorRgb},0.2), rgba(96,165,250,0.12))`,
-                border: `1px solid rgba(${sectorRgb},0.28)`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 24, overflow: "hidden", flexShrink: 0,
-                boxShadow: `0 4px 20px rgba(${sectorRgb},0.15)`,
-              }}>
-                {formData.imageUrl && imgPreviewOk
-                  ? <img src={formData.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : (plant ? "✏️" : "🌱")}
+          <div
+            style={{
+              height: 3,
+              width: "100%",
+              background: `linear-gradient(90deg, transparent 0%, ${sectorColor} 18%, rgba(255,255,255,0.9) 50%, ${sectorColor} 82%, transparent 100%)`,
+              opacity: 0.9,
+            }}
+          />
+          <div style={{ padding: "24px 24px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: "#f8fbff", letterSpacing: "-0.03em", lineHeight: 1.05 }}>
+                {plant ? "Editar planta" : "Nueva planta"}
               </div>
-              <div>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800, color: "#f0f6fc", marginBottom: 3, letterSpacing: "-0.3px" }}>
-                  {plant ? "Editar Planta" : "Nueva Planta"}
-                </div>
-                <div style={{ fontSize: 13, color: "#78909c", fontWeight: 500 }}>
-                  {step === 1 ? "Paso 1 — Información básica" : "Paso 2 — Humedad y programación"}
-                </div>
+              <div style={{ fontSize: 14, color: "#a7bac6", marginTop: 8, lineHeight: 1.5 }}>
+                Configura sector, valvula, tipo de riego y programacion.
               </div>
             </div>
-
-            {/* Indicador de pasos + botón cerrar */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {!plant && (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  {[1, 2].map(s => (
-                    <div key={s} style={{
-                      width: s === step ? 24 : 8, height: 8, borderRadius: 99,
-                      background: s === step ? sectorColor : s < step ? `rgba(${sectorRgb},0.45)` : "rgba(255,255,255,0.1)",
-                      transition: "all 0.35s ease",
-                    }} />
-                  ))}
-                </div>
-              )}
-              <button onClick={handleClose} style={{
-                width: 36, height: 36, borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.09)",
-                background: "rgba(255,255,255,0.05)", color: "#78909c",
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 14, transition: "all 0.15s",
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.04)",
+                color: "#9fb1bb",
+                cursor: "pointer",
+                transition: "transform 0.18s ease, background 0.18s ease, border-color 0.18s ease",
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(248,113,113,0.12)"; e.currentTarget.style.color = "#f87171"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#78909c"; }}
-              >✕</button>
-            </div>
+            >
+              X
+            </button>
           </div>
 
-          {/* ── CONTENIDO ── */}
-          <div style={{ padding: "22px 28px 30px" }}>
-            <AnimatePresence mode="wait">
+          <div style={{ padding: 24, display: "grid", gap: 18 }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 10,
+                padding: 14,
+                borderRadius: 18,
+                border: "1px solid rgba(255,255,255,0.07)",
+                background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.025) 100%)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+              }}
+            >
+              <InfoPill label="Sector" value={formData.sector === "Superior" ? "Patio Superior" : "Patio Inferior"} tone={sectorColor} />
+              <InfoPill label="Valvula" value={`V${formData.valveNumber}`} tone="#60a5fa" />
+              <InfoPill label="Riego" value={formData.irrigationType} tone="#f59e0b" />
+              <InfoPill label="Estado" value={scheduleLabel} tone={formData.schedule.enabled || formData.irrigationType === "Por humedad" ? "#34d399" : "#94a3b8"} />
+            </div>
 
-              {/* ══════════════ STEP 1 ══════════════ */}
-              {step === 1 && (
-                <motion.div key="step1"
-                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.22 }}>
+            <div>
+              <label style={labelStyle}>Nombre</label>
+              <input value={formData.name} onChange={(e) => setField("name", e.target.value)} style={inputStyle} placeholder="Ej. Lavanda" />
+              {errors.name && <div style={errorStyle}>{errors.name}</div>}
+            </div>
 
-                  {/* NOMBRE */}
-                  <div style={{ marginBottom: 18 }}>
-                    <label style={labelStyle}>🌿 Nombre de la planta</label>
-                    <input
-                      name="name"
-                      placeholder="ej. Rosa, Cactus, Albahaca..."
-                      value={formData.name}
-                      onChange={handleChange}
-                      autoFocus
-                      autoComplete="off"
-                      style={{
-                        ...inputStyle,
-                        fontSize: 15,
-                        borderColor: errors.name ? "rgba(248,113,113,0.55)" : "rgba(255,255,255,0.09)",
-                        minHeight: 48,
-                      }}
-                    />
-                    {errors.name && <span style={errorStyle}>⚠ {errors.name}</span>}
-                  </div>
-
-                  {/* SECTOR */}
-                  <div style={{ marginBottom: 18 }}>
-                    <label style={labelStyle}>📍 Sector</label>
-                    <div style={{ display: "flex", gap: 12 }}>
-                      {SECTOR_OPTIONS.map(opt => (
-                        <button key={opt.value} type="button"
-                          onClick={() => setFormData(p => ({ ...p, sector: opt.value }))}
-                          style={{
-                            flex: 1, padding: "16px 12px", borderRadius: 15,
-                            border: formData.sector === opt.value
-                              ? `1.5px solid ${opt.color}60`
-                              : "1px solid rgba(255,255,255,0.07)",
-                            background: formData.sector === opt.value
-                              ? `rgba(${opt.rgb},0.12)`
-                              : "rgba(255,255,255,0.03)",
-                            cursor: "pointer", display: "flex", flexDirection: "column",
-                            alignItems: "center", gap: 8, transition: "all 0.22s",
-                            position: "relative", overflow: "hidden",
-                            boxShadow: formData.sector === opt.value
-                              ? `0 4px 20px rgba(${opt.rgb},0.12)`
-                              : "none",
-                          }}>
-                          {formData.sector === opt.value && (
-                            <div style={{
-                              position: "absolute", top: 8, right: 8,
-                              width: 18, height: 18, borderRadius: "50%",
-                              background: opt.color,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              fontSize: 10, color: "#000", fontWeight: 800,
-                            }}>✓</div>
-                          )}
-                          <span style={{ fontSize: 28 }}>{opt.icon}</span>
-                          <span style={{
-                            fontSize: 13, fontWeight: 700,
-                            color: formData.sector === opt.value ? opt.color : "#78909c",
-                          }}>{opt.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* VÁLVULA ASIGNADA */}
-                  <div style={{ marginBottom: 18 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <label style={{ ...labelStyle, marginBottom: 0 }}>🔧 Válvula asignada al ESP32</label>
-                      <div
-                        style={{ color: "#4d7a5e", cursor: "pointer", fontSize: 13 }}
-                        onMouseEnter={() => setTooltip("Cada válvula controla un relé físico en la caja de control. Asigna una válvula diferente a cada planta.")}
-                        onMouseLeave={() => setTooltip(null)}
+            <div style={responsiveTwoColStyle}>
+              <div>
+                <label style={labelStyle}>Sector</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {SECTOR_OPTIONS.map((option) => {
+                    const active = formData.sector === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setField("sector", option.value)}
+                        style={{
+                          ...chipButtonStyle,
+                          borderColor: active ? `${option.color}66` : "rgba(255,255,255,0.08)",
+                          background: active ? `${option.color}16` : "rgba(255,255,255,0.03)",
+                          color: active ? "#effcf7" : "#b6c7d1",
+                          boxShadow: active ? `0 8px 18px ${option.color}14` : "none",
+                        }}
                       >
-                        <FaInfoCircle />
-                      </div>
-                    </div>
-
-                    {/* Tooltip */}
-                    <AnimatePresence>
-                      {tooltip && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                          style={{
-                            padding: "9px 13px", borderRadius: 10, marginBottom: 10,
-                            background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)",
-                            fontSize: 12, color: "#94a3b8", lineHeight: 1.5,
-                          }}
-                        >
-                          💡 {tooltip}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10 }}>
-                      {VALVE_OPTIONS.map(opt => {
-                        const ocupada    = usedValves.includes(opt.value) && opt.value !== formData.valveNumber;
-                        const seleccion  = formData.valveNumber === opt.value;
-                        return (
-                          <button key={opt.value} type="button"
-                            onClick={() => !ocupada && setFormData(p => ({ ...p, valveNumber: opt.value }))}
-                            title={ocupada ? `Válvula ${opt.value} ya está asignada a otra planta` : `Pin ${opt.pin} — GPIO ${opt.pinNum}`}
-                            style={{
-                              padding: "14px 6px", borderRadius: 13,
-                              border: seleccion
-                                ? `1.5px solid ${opt.color}70`
-                                : ocupada
-                                  ? "1px solid rgba(255,255,255,0.04)"
-                                  : "1px solid rgba(255,255,255,0.08)",
-                              background: seleccion
-                                ? `rgba(${opt.color.replace("#","")},0.05)`  // fallback
-                                : ocupada
-                                  ? "rgba(255,255,255,0.02)"
-                                  : "rgba(255,255,255,0.03)",
-                              cursor: ocupada ? "not-allowed" : "pointer",
-                              display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
-                              transition: "all 0.2s", opacity: ocupada ? 0.38 : 1,
-                              boxShadow: seleccion ? `0 4px 16px rgba(52,211,153,0.15)` : "none",
-                            }}>
-                            <span style={{ fontSize: 18 }}>{ocupada ? "🔒" : "💧"}</span>
-                            <span style={{
-                              fontSize: 13, fontWeight: 800,
-                              color: seleccion ? opt.color : ocupada ? "#4d5e52" : "#94a3b8",
-                            }}>V{opt.value}</span>
-                            <span style={{
-                              fontSize: 10, fontWeight: 600,
-                              color: seleccion ? `${opt.color}90` : "#3d5444",
-                            }}>{opt.pin}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#4d7a5e", marginTop: 7, display: "flex", alignItems: "center", gap: 5 }}>
-                      <span>⚡</span>
-                      <span>V{formData.valveNumber} → Relé {formData.valveNumber} → Pin {VALVE_OPTIONS[formData.valveNumber-1]?.pin} (GPIO {VALVE_OPTIONS[formData.valveNumber-1]?.pinNum})</span>
-                    </div>
-                  </div>
-
-                  {/* TIPO DE RIEGO */}
-                  <div style={{ marginBottom: 18 }}>
-                    <label style={labelStyle}>💧 Tipo de riego</label>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      {IRRIGATION_OPTIONS.map(opt => (
-                        <button key={opt.value} type="button"
-                          onClick={() => setFormData(p => ({ ...p, irrigationType: opt.value }))}
-                          style={{
-                            padding: "13px 14px", borderRadius: 13,
-                            border: formData.irrigationType === opt.value
-                              ? "1.5px solid rgba(52,211,153,0.45)"
-                              : "1px solid rgba(255,255,255,0.07)",
-                            background: formData.irrigationType === opt.value
-                              ? "rgba(52,211,153,0.10)"
-                              : "rgba(255,255,255,0.03)",
-                            cursor: "pointer", display: "flex", alignItems: "center",
-                            gap: 10, transition: "all 0.2s", textAlign: "left",
-                            boxShadow: formData.irrigationType === opt.value
-                              ? "0 4px 16px rgba(52,211,153,0.10)"
-                              : "none",
-                          }}>
-                          <span style={{ fontSize: 20 }}>{opt.icon}</span>
-                          <div>
-                            <div style={{
-                              fontSize: 13, fontWeight: 700,
-                              color: formData.irrigationType === opt.value ? "#34d399" : "#b0bec5",
-                              marginBottom: 2,
-                            }}>{opt.label}</div>
-                            <div style={{ fontSize: 11, color: "#5a7a66" }}>{opt.desc}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* IMAGEN */}
-                  <div style={{ marginBottom: 22 }}>
-                    <label style={labelStyle}>🖼 Imagen (opcional)</label>
-                    <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
-                      {QUICK_IMAGES.map(img => (
-                        <button key={img.label} type="button"
-                          onClick={() => { setFormData(p => ({ ...p, imageUrl: img.url })); setImgPreviewOk(true); }}
-                          style={{
-                            padding: "6px 12px", borderRadius: 99, fontSize: 12, fontWeight: 600,
-                            border: formData.imageUrl === img.url
-                              ? "1.5px solid rgba(52,211,153,0.5)"
-                              : "1px solid rgba(255,255,255,0.08)",
-                            background: formData.imageUrl === img.url
-                              ? "rgba(52,211,153,0.12)"
-                              : "rgba(255,255,255,0.03)",
-                            color: formData.imageUrl === img.url ? "#34d399" : "#78909c",
-                            cursor: "pointer", transition: "all 0.18s",
-                          }}>{img.emoji} {img.label}</button>
-                      ))}
-                      {formData.imageUrl && (
-                        <button type="button"
-                          onClick={() => { setFormData(p => ({ ...p, imageUrl: "" })); setImgPreviewOk(false); }}
-                          style={{
-                            padding: "6px 12px", borderRadius: 99, fontSize: 12,
-                            border: "1px solid rgba(248,113,113,0.3)", background: "rgba(248,113,113,0.08)",
-                            color: "#f87171", cursor: "pointer",
-                          }}>✕ Quitar</button>
-                      )}
-                    </div>
-                    <div style={{ position: "relative" }}>
-                      <input name="imageUrl" placeholder="O pega una URL de imagen..."
-                        value={formData.imageUrl}
-                        onChange={e => { handleChange(e); setImgPreviewOk(false); }}
-                        style={{ ...inputStyle, paddingRight: formData.imageUrl ? 42 : 14, fontSize: 13 }}
-                      />
-                      {formData.imageUrl && imgPreviewOk && (
-                        <FaCheckCircle style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", color: "#34d399", fontSize: 15 }} />
-                      )}
-                    </div>
-                    {formData.imageUrl && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} style={{ marginTop: 10 }}>
-                        <img src={formData.imageUrl} alt="preview"
-                          onLoad={() => setImgPreviewOk(true)} onError={() => setImgPreviewOk(false)}
-                          style={{
-                            width: "100%", height: 90, objectFit: "cover",
-                            borderRadius: 12, border: "1px solid rgba(52,211,153,0.2)",
-                            display: imgPreviewOk ? "block" : "none",
-                          }} />
-                        {!imgPreviewOk && (
-                          <div style={{ fontSize: 12, color: "#f87171", marginTop: 5 }}>⚠ URL de imagen inválida</div>
-                        )}
-                      </motion.div>
-                    )}
-                  </div>
-
-                  <button type="button"
-                    onClick={plant ? handleSubmit : handleNext}
-                    style={btnPrimary(sectorColor)}
-                    onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                    onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-                  >
-                    {plant ? "💾 Guardar cambios" : "Continuar →"}
-                  </button>
-                </motion.div>
-              )}
-
-              {/* ══════════════ STEP 2 ══════════════ */}
-              {step === 2 && (
-                <motion.div key="step2"
-                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.22 }}>
-
-                  {/* HUMEDAD */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
-                    <div>
-                      <label style={labelStyle}>🔻 Humedad mínima (%)</label>
-                      <input type="number" name="minHumidity" placeholder="ej. 30"
-                        value={formData.minHumidity} onChange={handleChange} min={0} max={100}
-                        style={{
-                          ...inputStyle, fontSize: 16, fontWeight: 700, minHeight: 50,
-                          borderColor: errors.minHumidity ? "rgba(248,113,113,0.55)" : "rgba(255,255,255,0.09)",
-                        }}
-                      />
-                      {errors.minHumidity && <span style={errorStyle}>⚠ {errors.minHumidity}</span>}
-                    </div>
-                    <div>
-                      <label style={labelStyle}>🔺 Humedad máxima (%)</label>
-                      <input type="number" name="maxHumidity" placeholder="ej. 70"
-                        value={formData.maxHumidity} onChange={handleChange} min={0} max={100}
-                        style={{
-                          ...inputStyle, fontSize: 16, fontWeight: 700, minHeight: 50,
-                          borderColor: errors.maxHumidity ? "rgba(248,113,113,0.55)" : "rgba(255,255,255,0.09)",
-                        }}
-                      />
-                      {errors.maxHumidity && <span style={errorStyle}>⚠ {errors.maxHumidity}</span>}
-                    </div>
-                  </div>
-
-                  {/* VISTA PREVIA DEL RANGO */}
-                  <div style={{
-                    padding: "16px 18px", borderRadius: 16,
-                    background: "rgba(255,255,255,0.025)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    marginBottom: 20,
-                  }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#5a7a66", textTransform: "uppercase", letterSpacing: "0.9px", marginBottom: 12 }}>
-                      Vista previa del rango de humedad
-                    </div>
-                    <div style={{ position: "relative", height: 10, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden", marginBottom: 8 }}>
-                      {rangeValid && (
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${maxH - minH}%`, left: `${minH}%` }}
-                          style={{ position: "absolute", top: 0, bottom: 0, background: "linear-gradient(90deg,#34d399,#60a5fa)", borderRadius: 99 }}
-                        />
-                      )}
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#5a7a66" }}>
-                      <span>0% — Muy seco</span>
-                      {rangeValid && (
-                        <span style={{ color: "#34d399", fontWeight: 700, fontSize: 12 }}>
-                          ✓ Zona óptima: {minH}% — {maxH}%
-                        </span>
-                      )}
-                      <span>100% — Muy húmedo</span>
-                    </div>
-                  </div>
-
-                  {/* PROGRAMAR RIEGO */}
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <div>
-                        <label style={{ ...labelStyle, marginBottom: 2 }}>⏰ Riego automático programado</label>
-                        <div style={{ fontSize: 12, color: "#4d7a5e" }}>
-                          El sistema regará en los días y hora que elijas
-                        </div>
-                      </div>
-                      {/* Toggle switch */}
-                      <button type="button"
-                        onClick={() => handleScheduleChange("enabled", !formData.schedule.enabled)}
-                        style={{
-                          width: 48, height: 27, borderRadius: 99, border: "none", cursor: "pointer",
-                          background: formData.schedule.enabled
-                            ? "linear-gradient(135deg,#059669,#34d399)"
-                            : "rgba(255,255,255,0.10)",
-                          position: "relative", transition: "background 0.28s", flexShrink: 0,
-                        }}>
-                        <motion.div
-                          animate={{ x: formData.schedule.enabled ? 21 : 0 }}
-                          transition={{ type: "spring", stiffness: 500, damping: 32 }}
-                          style={{
-                            position: "absolute", top: 3, left: 3,
-                            width: 21, height: 21, borderRadius: "50%",
-                            background: "#fff", boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
-                          }}
-                        />
+                        <span style={{ ...dotStyle, background: option.color, boxShadow: `0 0 12px ${option.color}66` }} />
+                        {option.label}
                       </button>
-                    </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Valvula del ESP32</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 8 }}>
+                  {VALVE_OPTIONS.map((value) => {
+                    const active = Number(formData.valveNumber) === value;
+                    const blocked = usedValves.includes(value) && value !== Number(plant?.valveNumber || 0);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        disabled={blocked}
+                        onClick={() => setField("valveNumber", value)}
+                        style={{
+                          ...chipButtonStyle,
+                          justifyContent: "center",
+                          padding: "12px 0",
+                          opacity: blocked ? 0.35 : 1,
+                          cursor: blocked ? "not-allowed" : "pointer",
+                          borderColor: active ? `${sectorColor}66` : blocked ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.08)",
+                          background: active ? `${sectorColor}18` : blocked ? "rgba(248,113,113,0.06)" : "rgba(255,255,255,0.03)",
+                          color: active ? "#effcf7" : blocked ? "#fca5a5" : "#b6c7d1",
+                          boxShadow: active ? `0 8px 18px ${sectorColor}14` : "none",
+                        }}
+                        title={blocked ? `V${value} ya esta ocupada` : `Valvula V${value}`}
+                      >
+                        {`V${value}`}
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.valveNumber && <div style={errorStyle}>{errors.valveNumber}</div>}
+              </div>
+            </div>
 
-                    <AnimatePresence>
-                      {formData.schedule.enabled && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.28 }}
-                          style={{ overflow: "hidden" }}>
-                          <div style={{
-                            padding: "16px 16px", borderRadius: 16,
-                            background: "rgba(52,211,153,0.05)",
-                            border: "1px solid rgba(52,211,153,0.16)",
-                          }}>
-                            {/* Días */}
-                            <div style={{ marginBottom: 14 }}>
-                              <div style={{ fontSize: 12, color: "#78909c", fontWeight: 600, marginBottom: 10 }}>
-                                Días de riego
-                              </div>
-                              <div style={{ display: "flex", gap: 7 }}>
-                                {DAYS.map(d => (
-                                  <button key={d.value} type="button" onClick={() => toggleDay(d.value)}
-                                    title={d.label}
-                                    style={{
-                                      width: 36, height: 36, borderRadius: 10, border: "none", cursor: "pointer",
-                                      background: formData.schedule.days?.includes(d.value)
-                                        ? "linear-gradient(135deg,#059669,#34d399)"
-                                        : "rgba(255,255,255,0.06)",
-                                      color: formData.schedule.days?.includes(d.value) ? "#fff" : "#78909c",
-                                      fontSize: 12, fontWeight: 700, transition: "all 0.15s",
-                                    }}>{d.short}</button>
-                                ))}
-                              </div>
-                            </div>
+            <div style={responsiveTwoColStyle}>
+              <div>
+                <label style={labelStyle}>Humedad minima (%)</label>
+                <input type="number" min={0} max={100} value={formData.minHumidity} onChange={(e) => setField("minHumidity", e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Humedad maxima (%)</label>
+                <input type="number" min={0} max={100} value={formData.maxHumidity} onChange={(e) => setField("maxHumidity", e.target.value)} style={inputStyle} />
+              </div>
+            </div>
+            {errors.humidity && <div style={errorStyle}>{errors.humidity}</div>}
 
-                            {/* Hora y duración */}
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                              <div>
-                                <div style={{ fontSize: 12, color: "#78909c", fontWeight: 600, marginBottom: 7 }}>
-                                  Hora de inicio
-                                </div>
-                                <input type="time" value={formData.schedule.time}
-                                  onChange={e => handleScheduleChange("time", e.target.value)}
-                                  style={{ ...inputStyle, padding: "11px 12px", fontSize: 14, minHeight: 44 }}
-                                />
-                              </div>
-                              <div>
-                                <div style={{ fontSize: 12, color: "#78909c", fontWeight: 600, marginBottom: 7 }}>
-                                  Duración (minutos)
-                                </div>
-                                <input type="number" min={1} max={120} value={formData.schedule.duration}
-                                  onChange={e => handleScheduleChange("duration", Number(e.target.value))}
-                                  style={{ ...inputStyle, padding: "11px 12px", fontSize: 14, minHeight: 44 }}
-                                />
-                              </div>
-                            </div>
-
-                            {formData.schedule.days?.length > 0 && (
-                              <div style={{ marginTop: 12, fontSize: 12, color: "#34d399", lineHeight: 1.6 }}>
-                                ✓ Regará {formData.schedule.days.map(d => DAYS[d].label).join(", ")} a las {formData.schedule.time} por {formData.schedule.duration} min
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* NOTAS */}
-                  <div style={{ marginBottom: 26 }}>
-                    <label style={labelStyle}>📝 Notas personales (opcional)</label>
-                    <textarea name="notes"
-                      placeholder="ej. Trasplantada el 15 feb, prefiere sombra parcial, abonada con NPK..."
-                      value={formData.notes || ""} onChange={handleChange}
-                      rows={3} maxLength={500}
+            <div>
+              <label style={labelStyle}>Tipo de riego</label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+                {IRRIGATION_OPTIONS.map((option) => {
+                  const active = formData.irrigationType === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => changeIrrigationType(option.value)}
                       style={{
-                        ...inputStyle, resize: "vertical", minHeight: 80,
-                        lineHeight: 1.6, fontFamily: "'Inter',sans-serif",
-                        fontSize: 14, padding: "12px 14px",
+                        padding: "14px 12px",
+                        borderRadius: 14,
+                        border: active ? `1px solid ${sectorColor}66` : "1px solid rgba(255,255,255,0.08)",
+                        background: active ? `${sectorColor}18` : "rgba(255,255,255,0.03)",
+                        color: active ? "#ecfdf5" : "#b0bec5",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease",
+                        boxShadow: active ? `0 10px 24px ${sectorColor}18` : "none",
                       }}
-                    />
-                    <div style={{ fontSize: 11, color: "#4d5e52", textAlign: "right", marginTop: 4 }}>
-                      {(formData.notes || "").length}/500
+                    >
+                      <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.01em" }}>{option.label}</div>
+                      <div style={{ fontSize: 12, marginTop: 5, color: active ? "#d9fff1" : "#8ca1ad", lineHeight: 1.45 }}>{option.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "14px 16px",
+                  borderRadius: 16,
+                  border: `1px solid ${sectorColor}22`,
+                  background: `${sectorColor}10`,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 900, color: "#ecfdf5", marginBottom: 5 }}>
+                  {irrigationHelp.title}
+                </div>
+                <div style={{ fontSize: 13, color: "#c4d3dc", lineHeight: 1.6 }}>
+                  {irrigationHelp.text}
+                </div>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "#ecfdf5" }}>Programacion automatica</div>
+                  <div style={{ fontSize: 12, color: "#9fb1bb", marginTop: 5, lineHeight: 1.5 }}>
+                    {formData.irrigationType === "Por humedad"
+                      ? "En este modo la planta riega automaticamente cuando la humedad baja del minimo."
+                      : "Configura hora y reglas segun el tipo de riego."}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={formData.irrigationType === "Por humedad"}
+                  onClick={() => setScheduleField("enabled", !formData.schedule.enabled)}
+                  style={{
+                    width: 50,
+                    height: 28,
+                    borderRadius: 999,
+                    border: "none",
+                    cursor: formData.irrigationType === "Por humedad" ? "not-allowed" : "pointer",
+                    opacity: formData.irrigationType === "Por humedad" ? 0.45 : 1,
+                    background: formData.schedule.enabled ? `linear-gradient(135deg, ${sectorColor}, #059669)` : "rgba(255,255,255,0.12)",
+                    position: "relative",
+                  }}
+                >
+                  <motion.div
+                    animate={{ x: formData.schedule.enabled ? 22 : 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 28 }}
+                    style={{
+                      position: "absolute",
+                      left: 3,
+                      top: 3,
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      background: "#fff",
+                    }}
+                  />
+                </button>
+              </div>
+
+              {formData.schedule.enabled && formData.irrigationType !== "Por humedad" && (
+                <div style={{ marginTop: 16, display: "grid", gap: 14 }}>
+                  <div style={responsiveTwoColStyle}>
+                    <div>
+                      <label style={labelStyle}>Hora</label>
+                      <input type="time" value={formData.schedule.time} onChange={(e) => setScheduleField("time", e.target.value)} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Duracion (min)</label>
+                      <input type="number" min={1} max={120} value={formData.schedule.duration} onChange={(e) => setScheduleField("duration", Number(e.target.value))} style={inputStyle} />
                     </div>
                   </div>
 
-                  {/* BOTONES */}
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <button type="button" onClick={() => setStep(1)} style={{
-                      flex: 1, padding: "14px 0", borderRadius: 13,
-                      border: "1px solid rgba(255,255,255,0.09)",
-                      background: "rgba(255,255,255,0.04)", color: "#b0bec5",
-                      fontWeight: 600, fontSize: 14, cursor: "pointer",
-                      fontFamily: "'Inter',sans-serif", transition: "all 0.18s",
-                    }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.07)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
-                    >← Atrás</button>
+                  {formData.irrigationType === "Semanal" && (
+                    <div>
+                      <label style={labelStyle}>Dias de la semana</label>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {DAYS.map((day) => {
+                          const active = (formData.schedule.days || []).includes(day.value);
+                          return (
+                            <button
+                              key={day.value}
+                              type="button"
+                              onClick={() => toggleDay(day.value)}
+                              style={{
+                                width: 38,
+                                height: 38,
+                                borderRadius: 10,
+                                border: "none",
+                                background: active ? `linear-gradient(135deg, ${sectorColor}, #059669)` : "rgba(255,255,255,0.07)",
+                                color: active ? "#fff" : "#90a4ae",
+                                cursor: "pointer",
+                                fontWeight: 700,
+                              }}
+                              title={day.label}
+                            >
+                              {day.short}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={helperStyle}>Marca exactamente los dias en los que quieres regar esta planta.</div>
+                    </div>
+                  )}
 
-                    <button type="button" onClick={handleSubmit}
-                      style={{ ...btnPrimary(sectorColor), flex: 2 }}
-                      onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                      onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-                    >
-                      💾 {plant ? "Guardar cambios" : "Crear planta"}
-                    </button>
-                  </div>
-                </motion.div>
+                  {formData.irrigationType === "Quincenal" && (
+                    <div>
+                      <label style={labelStyle}>Fecha base</label>
+                      <input type="date" value={formData.schedule.startDate || ""} onChange={(e) => setScheduleField("startDate", e.target.value)} style={inputStyle} />
+                      <div style={helperStyle}>Ejemplo: si eliges 2026-05-02, volvera a regarse el 2026-05-17, 2026-06-01 y asi sucesivamente.</div>
+                    </div>
+                  )}
+
+                  {formData.irrigationType === "Mensual" && (
+                    <div>
+                      <label style={labelStyle}>Dia del mes</label>
+                      <input type="number" min={1} max={31} value={formData.schedule.dayOfMonth || 1} onChange={(e) => setScheduleField("dayOfMonth", Number(e.target.value))} style={inputStyle} />
+                      <div style={helperStyle}>Ejemplo: si eliges 15, la planta se regara el dia 15 de cada mes. Si el mes no tiene ese dia, se usa el ultimo disponible.</div>
+                    </div>
+                  )}
+
+                  {formData.irrigationType === "Diario" && (
+                    <div style={helperStyle}>Regara todos los dias a la hora configurada.</div>
+                  )}
+                </div>
               )}
-            </AnimatePresence>
+
+              {errors.schedule && <div style={{ ...errorStyle, marginTop: 12 }}>{errors.schedule}</div>}
+            </div>
+
+            <div>
+              <label style={labelStyle}>Imagen (opcional)</label>
+              <div style={{ position: "relative" }}>
+                <input
+                  value={formData.imageUrl}
+                  onChange={(e) => {
+                    setField("imageUrl", e.target.value);
+                    setPreviewOk(false);
+                  }}
+                  style={{ ...inputStyle, paddingRight: 38 }}
+                  placeholder="https://..."
+                />
+                {formData.imageUrl && previewOk && (
+                  <FaCheckCircle style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#34d399" }} />
+                )}
+              </div>
+              {formData.imageUrl && (
+                <div style={{ marginTop: 10 }}>
+                  <img
+                    src={formData.imageUrl}
+                    alt=""
+                    onLoad={() => setPreviewOk(true)}
+                    onError={() => setPreviewOk(false)}
+                    style={{
+                      display: previewOk ? "block" : "none",
+                      width: "100%",
+                      height: 110,
+                      objectFit: "cover",
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  />
+                  {!previewOk && <div style={helperStyle}>La imagen se mostrara cuando la URL sea valida.</div>}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label style={labelStyle}>Notas</label>
+              <textarea
+                rows={3}
+                maxLength={500}
+                value={formData.notes || ""}
+                onChange={(e) => setField("notes", e.target.value)}
+                style={{ ...inputStyle, minHeight: 90, resize: "vertical" }}
+                placeholder="Observaciones, cuidados o recordatorios"
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", paddingTop: 4 }}>
+              <button type="button" onClick={onClose} style={secondaryButtonStyle}>Cancelar</button>
+              <button type="button" onClick={submit} style={{ ...primaryButtonStyle, background: `linear-gradient(135deg, ${sectorColor}, #059669)` }}>
+                {plant ? "Guardar cambios" : "Crear planta"}
+              </button>
+            </div>
           </div>
         </motion.div>
       </motion.div>
@@ -649,31 +623,138 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
   );
 }
 
-// ── Estilos ───────────────────────────────────────────
+function InfoPill({ label, value, tone }) {
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "10px 12px",
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,255,255,0.04)",
+        minWidth: 0,
+      }}
+    >
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: tone,
+          boxShadow: `0 0 14px ${tone}66`,
+          flexShrink: 0,
+        }}
+      />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7f94a0", fontWeight: 800 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 13, color: "#eef6fb", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {value}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const labelStyle = {
-  display: "block", fontSize: 12, fontWeight: 700,
-  textTransform: "uppercase", letterSpacing: "0.9px",
-  color: "#6b8f7a", marginBottom: 8,
+  display: "block",
+  marginBottom: 8,
+  fontSize: 12,
+  fontWeight: 800,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "#86b49d",
 };
+
 const inputStyle = {
-  width: "100%", padding: "12px 14px", borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.09)",
-  background: "rgba(255,255,255,0.04)", color: "#f0f6fc",
-  fontSize: 14, fontFamily: "'Inter',sans-serif",
-  outline: "none", boxSizing: "border-box",
-  transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s",
+  width: "100%",
+  padding: "13px 15px",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.05)",
+  color: "#f7fbff",
+  boxSizing: "border-box",
+  outline: "none",
+  fontSize: 14,
+  lineHeight: 1.45,
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
 };
+
+const chipButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  minHeight: 48,
+  width: "100%",
+  padding: "12px 14px",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.03)",
+  color: "#b6c7d1",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 700,
+  lineHeight: 1.2,
+  transition: "background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease",
+};
+
+const dotStyle = {
+  width: 8,
+  height: 8,
+  borderRadius: "50%",
+  flexShrink: 0,
+};
+
+const responsiveTwoColStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 14,
+};
+
 const errorStyle = {
-  fontSize: 12, color: "#f87171", marginTop: 5,
-  display: "block", fontWeight: 500,
+  fontSize: 12,
+  color: "#fca5a5",
+  fontWeight: 600,
 };
-const btnPrimary = (color = "#34d399") => ({
-  width: "100%", padding: "14px 0", borderRadius: 13, border: "none",
-  background: `linear-gradient(135deg, #059669, ${color})`,
-  color: "#fff", fontFamily: "'Inter',sans-serif",
-  fontWeight: 700, fontSize: 15, cursor: "pointer",
-  boxShadow: `0 4px 24px rgba(5,150,105,0.30)`,
-  transition: "box-shadow 0.2s, transform 0.18s",
-});
+
+const helperStyle = {
+  marginTop: 8,
+  fontSize: 12,
+  color: "#8fa5b2",
+  lineHeight: 1.6,
+};
+
+const cardStyle = {
+  padding: 18,
+  borderRadius: 18,
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.025) 100%)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+};
+
+const secondaryButtonStyle = {
+  padding: "12px 16px",
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.1)",
+  background: "rgba(255,255,255,0.04)",
+  color: "#d7e3ea",
+  cursor: "pointer",
+  fontWeight: 800,
+  transition: "transform 0.16s ease, background 0.16s ease",
+};
+
+const primaryButtonStyle = {
+  padding: "12px 18px",
+  borderRadius: 12,
+  border: "none",
+  color: "#fff",
+  cursor: "pointer",
+  fontWeight: 900,
+  boxShadow: "0 14px 30px rgba(16,185,129,0.18)",
+  transition: "transform 0.16s ease, box-shadow 0.16s ease",
+};
 
 export default PlantModal;

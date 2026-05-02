@@ -11,6 +11,7 @@ const { Server }    = require("socket.io");
 const connectDB     = require("./src/config/db");
 const simulator     = require("./src/mqtt/simulator");
 const scheduler     = require("./src/jobs/scheduleRunner");
+const { resolveSocketUser, roomForUser } = require("./src/utils/socketRooms");
 
 dotenv.config();
 
@@ -30,7 +31,21 @@ const io = new Server(server, {
   cors: { origin: ALLOWED_ORIGINS, methods: ["GET", "POST"], credentials: true },
 });
 app.set("io", io);
+
+io.use(async (socket, next) => {
+  try {
+    const user = await resolveSocketUser(socket);
+    socket.user = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 io.on("connection", (socket) => {
+  if (socket.user?._id) {
+    socket.join(roomForUser(socket.user._id));
+  }
   console.log(`🔌 Cliente conectado: ${socket.id}`);
   socket.on("disconnect", () => console.log(`❌ Desconectado: ${socket.id}`));
 });
@@ -41,7 +56,23 @@ connectDB();
 // ── Helmet ────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'self'"],
+      scriptSrcAttr: ["'none'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      fontSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https:", "wss:"],
+      frameAncestors: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: isDev ? null : [],
+    },
+  },
 }));
 
 // ── Rate Limiting ─────────────────────────────────────

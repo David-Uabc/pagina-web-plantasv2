@@ -27,10 +27,11 @@ const generateAccessToken = (id) => {
 // ✅ secure = solo se envía por HTTPS
 // ✅ sameSite = protección CSRF
 const setRefreshCookie = (res, token) => {
+  const isProduction = process.env.NODE_ENV === "production";
   res.cookie("riego_refresh", token, {
     httpOnly: true,
-    secure:   process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure:   isProduction,
+    sameSite: isProduction ? "none" : "lax",
     maxAge:   30 * 24 * 60 * 60 * 1000, // 30 días en ms
     path:     "/api/auth",               // solo se envía a rutas de auth
   });
@@ -184,7 +185,12 @@ router.post("/logout", async (req, res) => {
     }
 
     // Borrar la cookie del navegador
-    res.clearCookie("riego_refresh", { path: "/api/auth" });
+    const isProduction = process.env.NODE_ENV === "production";
+    res.clearCookie("riego_refresh", {
+      path: "/api/auth",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+    });
     res.json({ message: "Sesión cerrada correctamente" });
   } catch (err) {
     console.error("❌ Error en logout:", err.message);

@@ -4,6 +4,7 @@ const Plant   = require("../models/Plant");
 const Log     = require("../models/Log");
 const Device  = require("../models/Device");
 const { protect } = require("../middleware/auth");
+const { findVisibleDevicesForUser } = require("../utils/deviceOwnership");
 
 // Todas las rutas requieren autenticación
 router.use(protect);
@@ -16,7 +17,7 @@ router.get("/", async (req, res) => {
   try {
     const userId  = req.user._id;
     const plants  = await Plant.find({ owner: userId });
-    const devices = await Device.find({ owner: userId });
+    const devices = await findVisibleDevicesForUser(userId);
 
     const total    = plants.length;
     const watering = plants.filter(p => p.valveStatus === "OPEN").length;

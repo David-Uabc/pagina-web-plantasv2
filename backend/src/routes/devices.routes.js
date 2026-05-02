@@ -5,6 +5,7 @@ const Device  = require("../models/Device");
 const Log     = require("../models/Log");
 const Plant   = require("../models/Plant");
 const { protect } = require("../middleware/auth");
+const { findVisibleDevicesForUser } = require("../utils/deviceOwnership");
 
 const errProd = (msg, err) =>
   process.env.NODE_ENV === "production" ? msg : err.message;
@@ -39,13 +40,7 @@ async function protectOrDeviceKey(req, res, next) {
 }
 
 async function resolveVisibleDevices(req) {
-  const ownedDevices = await Device.find({ owner: req.user._id }).sort({ createdAt: -1 });
-  if (ownedDevices.length > 0) return ownedDevices;
-
-  const sectors = await Plant.distinct("sector", { owner: req.user._id });
-  if (sectors.length === 0) return [];
-
-  return Device.find({ sector: { $in: sectors } }).sort({ createdAt: -1 });
+  return findVisibleDevicesForUser(req.user._id);
 }
 
 // ============================================
@@ -75,14 +70,21 @@ router.post("/", protectOrDeviceKey, async (req, res) => {
     }
 
     // Upsert — crea si no existe, actualiza si existe
+    const update = {
+      deviceId,
+      sector,
+      status:         "Online",
+      lastConnection: new Date(),
+      lastSeen:       new Date(),
+    };
+
+    if (req.user?._id) {
+      update.owner = req.user._id;
+    }
+
     const device = await Device.findOneAndUpdate(
       { deviceId },
-      {
-        deviceId,
-        sector,
-        status:         "Online",
-        lastConnection: new Date(),
-      },
+      update,
       { upsert: true, new: true }
     );
 
@@ -142,7 +144,10 @@ router.put("/:deviceId/offline", protectOrDeviceKey, async (req, res) => {
 // ============================================
 router.delete("/:deviceId", protect, async (req, res) => {
   try {
-    const device = await Device.findOneAndDelete({ deviceId: req.params.deviceId });
+    const device = await Device.findOneAndDelete({
+      deviceId: req.params.deviceId,
+      owner: req.user._id,
+    });
 
     if (!device) {
       return res.status(404).json({ error: "Dispositivo no encontrado" });

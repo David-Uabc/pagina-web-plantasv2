@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { startTransition, useEffect, useState, useCallback, useMemo, lazy, Suspense } from "react";
 import { useI18n } from "../i18n";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import api from "../api";
 import Navbar from "../components/layout/Navbar";
 import SystemStatus from "../components/dashboard/SystemStatus";
@@ -10,10 +10,11 @@ import PlantCard from "../components/plant/PlantCard";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
 import QuickStats from "../components/dashboard/QuickStats";
 import WelcomeToast from "../components/dashboard/WelcomeToast";
-import ComparePlantsModal from "../components/plant/ComparePlantsModal";
 import { useNotifications } from "../hooks/useNotifications";
 import { useSocket } from "../hooks/useSocket";
 import { useToast } from "../context/ToastProvider";
+
+const ComparePlantsModal = lazy(() => import("../components/plant/ComparePlantsModal"));
 
 function SectorEmpty({ sector, onGo }) {
   return (
@@ -45,46 +46,101 @@ function Dashboard() {
   const { t } = useI18n();
   const toast = useToast();
   const { checkPlants } = useNotifications();
+  const prefersReducedMotion = useReducedMotion();
 
   const [plants, setPlants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCompare, setShowCompare] = useState(false);
   const [devices, setDevices] = useState({});
 
-  const fetchPlants = useCallback(async () => {
+  const fetchPlants = useCallback(async (signal) => {
     try {
-      const res = await api.get("/api/plants");
-      setPlants(res.data);
+      const res = await api.get("/api/plants", {
+        signal,
+        meta: { cancelPrevious: false },
+      });
+      setPlants((prev) => {
+        const next = res.data;
+        if (
+          prev.length === next.length &&
+          prev.every(
+            (plant, index) =>
+              plant._id === next[index]?._id &&
+              plant.currentHumidity === next[index]?.currentHumidity &&
+              plant.valveStatus === next[index]?.valveStatus &&
+              plant.maintenanceMode === next[index]?.maintenanceMode
+          )
+        ) {
+          return prev;
+        }
+        return next;
+      });
       checkPlants(res.data);
-    } catch {}
-    finally {
+    } catch (error) {
+      if (error.code === "ERR_CANCELED" || error.name === "CanceledError") return;
+    } finally {
       setLoading(false);
     }
   }, [checkPlants]);
 
   useEffect(() => {
-    fetchPlants();
-    const interval = setInterval(fetchPlants, 30000);
-    return () => clearInterval(interval);
+    const controller = new AbortController();
+    fetchPlants(controller.signal);
+
+    let intervalId = null;
+    const schedule = () => {
+      if (intervalId) clearInterval(intervalId);
+      if (document.hidden) return;
+      intervalId = setInterval(() => fetchPlants(), 90000);
+    };
+
+    const handleVisibility = () => {
+      if (!document.hidden) fetchPlants();
+      schedule();
+    };
+
+    schedule();
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      controller.abort();
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [fetchPlants]);
 
   useSocket({
     onPlantUpdate: useCallback((data) => {
       setPlants((prev) => {
-        const exists = prev.some((p) => p._id === data._id);
-        if (exists) return prev.map((p) => (p._id === data._id ? { ...p, ...data } : p));
-        return prev;
+        const target = prev.find((plant) => plant._id === data._id);
+        if (!target) return prev;
+        const merged = { ...target, ...data };
+        if (
+          merged.currentHumidity === target.currentHumidity &&
+          merged.valveStatus === target.valveStatus &&
+          merged.maintenanceMode === target.maintenanceMode &&
+          merged.updatedAt === target.updatedAt
+        ) {
+          return prev;
+        }
+        return prev.map((plant) => (plant._id === data._id ? merged : plant));
       });
     }, []),
     onPlantDeleted: useCallback((data) => {
-      setPlants((prev) => prev.filter((p) => p._id !== data._id));
+      setPlants((prev) => prev.filter((plant) => plant._id !== data._id));
     }, []),
     onAlert: useCallback((data) => {
       toast(`⚠️ ${data.name} — humedad crítica: ${data.humidity}%`, "error");
       checkPlants([data]);
     }, [checkPlants, toast]),
     onDeviceHeartbeat: useCallback((data) => {
-      setDevices((prev) => ({ ...prev, [data.deviceId]: { ...data, lastSeen: new Date() } }));
+      setDevices((prev) => {
+        const current = prev[data.deviceId];
+        if (current?.status === data.status && current?.lastConnection === data.lastConnection) {
+          return prev;
+        }
+        return { ...prev, [data.deviceId]: { ...data, lastSeen: new Date() } };
+      });
     }, []),
     onScheduleTriggered: useCallback((data) => {
       toast(`⏰ Riego programado iniciado — ${data.name}`, "info");
@@ -94,43 +150,43 @@ function Dashboard() {
   const handleDelete = useCallback(async (id) => {
     try {
       await api.delete(`/api/plants/${id}`);
-    } catch {}
-    setPlants((prev) => prev.filter((p) => p._id !== id));
+    } catch {
+    }
+    setPlants((prev) => prev.filter((plant) => plant._id !== id));
   }, []);
 
   const handleToggleValve = useCallback(async (plant) => {
     const newStatus = plant.valveStatus === "OPEN" ? "CLOSED" : "OPEN";
     try {
       const res = await api.put(`/api/plants/${plant._id}`, { valveStatus: newStatus });
-      setPlants((prev) => prev.map((p) => (p._id === plant._id ? res.data : p)));
-    } catch {}
+      setPlants((prev) => prev.map((item) => (item._id === plant._id ? res.data : item)));
+    } catch {
+    }
   }, []);
 
   const handleMaintenanceUpdate = useCallback((updatedPlant) => {
-    setPlants((prev) => prev.map((plant) => (
-      plant._id === updatedPlant._id ? { ...plant, ...updatedPlant } : plant
-    )));
+    setPlants((prev) => prev.map((plant) => (plant._id === updatedPlant._id ? { ...plant, ...updatedPlant } : plant)));
   }, []);
 
-  const allSup = useMemo(() => plants.filter((p) => p.sector === "Superior"), [plants]);
-  const allInf = useMemo(() => plants.filter((p) => p.sector === "Inferior"), [plants]);
+  const allSup = useMemo(() => plants.filter((plant) => plant.sector === "Superior"), [plants]);
+  const allInf = useMemo(() => plants.filter((plant) => plant.sector === "Inferior"), [plants]);
   const prevSup = useMemo(() => allSup.slice(0, 2), [allSup]);
   const prevInf = useMemo(() => allInf.slice(0, 2), [allInf]);
-  const goSuperior = useCallback(() => navigate("/superior"), [navigate]);
-  const goInferior = useCallback(() => navigate("/inferior"), [navigate]);
+  const canCompare = plants.length >= 2;
+  const goSuperior = useCallback(() => startTransition(() => navigate("/superior")), [navigate]);
+  const goInferior = useCallback(() => startTransition(() => navigate("/inferior")), [navigate]);
+  const openCompare = useCallback(() => startTransition(() => setShowCompare(true)), []);
+  const closeCompare = useCallback(() => startTransition(() => setShowCompare(false)), []);
 
   return (
     <div className="dashboard-full">
-      <Navbar
-        plants={plants}
-        onCompare={plants.length >= 2 ? () => setShowCompare(true) : undefined}
-      />
+      <Navbar plants={plants} onCompare={canCompare ? openCompare : undefined} />
       <WelcomeToast />
 
       {loading ? <PlantGridSkeleton count={4} /> : <QuickStats plants={plants} />}
 
       <div className="top-section">
-        <SystemStatus devices={devices} />
+        <SystemStatus devices={devices} plants={plants} />
         <AverageHumidity plants={plants} />
       </div>
 
@@ -145,19 +201,23 @@ function Dashboard() {
             )}
           </div>
           <div className="plant-grid">
-            {loading ? <PlantGridSkeleton count={2} /> :
-              prevSup.length === 0 ? <SectorEmpty sector="Superior" onGo={goSuperior} /> :
-                prevSup.map((plant, i) => (
-                  <PlantCard
-                    key={plant._id}
-                    plant={plant}
-                    index={i}
-                    onEdit={goSuperior}
-                    onDelete={handleDelete}
-                    onToggleValve={handleToggleValve}
-                    onMaintenanceUpdate={handleMaintenanceUpdate}
-                  />
-                ))}
+            {loading ? (
+              <PlantGridSkeleton count={2} />
+            ) : prevSup.length === 0 ? (
+              <SectorEmpty sector="Superior" onGo={goSuperior} />
+            ) : (
+              prevSup.map((plant, index) => (
+                <PlantCard
+                  key={plant._id}
+                  plant={plant}
+                  index={index}
+                  onEdit={goSuperior}
+                  onDelete={handleDelete}
+                  onToggleValve={handleToggleValve}
+                  onMaintenanceUpdate={handleMaintenanceUpdate}
+                />
+              ))
+            )}
           </div>
         </div>
 
@@ -171,25 +231,33 @@ function Dashboard() {
             )}
           </div>
           <div className="plant-grid">
-            {loading ? <PlantGridSkeleton count={2} /> :
-              prevInf.length === 0 ? <SectorEmpty sector="Inferior" onGo={goInferior} /> :
-                prevInf.map((plant, i) => (
-                  <PlantCard
-                    key={plant._id}
-                    plant={plant}
-                    index={i}
-                    onEdit={goInferior}
-                    onDelete={handleDelete}
-                    onToggleValve={handleToggleValve}
-                    onMaintenanceUpdate={handleMaintenanceUpdate}
-                  />
-                ))}
+            {loading ? (
+              <PlantGridSkeleton count={2} />
+            ) : prevInf.length === 0 ? (
+              <SectorEmpty sector="Inferior" onGo={goInferior} />
+            ) : (
+              prevInf.map((plant, index) => (
+                <PlantCard
+                  key={plant._id}
+                  plant={plant}
+                  index={index}
+                  onEdit={goInferior}
+                  onDelete={handleDelete}
+                  onToggleValve={handleToggleValve}
+                  onMaintenanceUpdate={handleMaintenanceUpdate}
+                />
+              ))
+            )}
           </div>
         </div>
       </div>
 
       <AnimatePresence>
-        {showCompare && <ComparePlantsModal plants={plants} onClose={() => setShowCompare(false)} />}
+        {showCompare && (
+          <Suspense fallback={null}>
+            <ComparePlantsModal plants={plants} onClose={closeCompare} reducedMotion={Boolean(prefersReducedMotion)} />
+          </Suspense>
+        )}
       </AnimatePresence>
     </div>
   );

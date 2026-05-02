@@ -1,110 +1,117 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useCallback, useMemo, useRef, useDeferredValue } from "react";
 import { motion, AnimatePresence, Reorder, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Search, SlidersHorizontal, ArrowLeft, Plus, GripVertical, Droplets, Thermometer, Zap } from "lucide-react";
 import api from "../api";
-import Navbar    from "../components/layout/Navbar";
+import Navbar from "../components/layout/Navbar";
 import PlantCard from "../components/plant/PlantCard";
-import PlantModal from "../components/plant/PlantModal";
 import { PlantGridSkeleton } from "../components/plant/PlantCardSkeleton";
 import EmptyPlants from "../components/plant/EmptyPlants";
-import AlertHistoryModal from "../components/plant/AlertHistoryModal";
 import { useToast } from "../context/ToastProvider";
 import { useNotifications } from "../hooks/useNotifications";
 import { useSocket } from "../hooks/useSocket";
 
+const PlantModal = lazy(() => import("../components/plant/PlantModal"));
+const AlertHistoryModal = lazy(() => import("../components/plant/AlertHistoryModal"));
+
 const SORT_OPTIONS = [
-  { value: "order",         label: "Personalizado" },
-  { value: "name-asc",      label: "Nombre A-Z"    },
-  { value: "name-desc",     label: "Nombre Z-A"    },
-  { value: "humidity-asc",  label: "Humedad ↑" },
+  { value: "order", label: "Personalizado" },
+  { value: "name-asc", label: "Nombre A-Z" },
+  { value: "name-desc", label: "Nombre Z-A" },
+  { value: "humidity-asc", label: "Humedad ↑" },
   { value: "humidity-desc", label: "Humedad ↓" },
 ];
 
 const STATUS_CHIPS = [
-  { value: "all",      label: "Todas",     icon: null },
-  { value: "active",   label: "Regando",   icon: "💧" },
+  { value: "all", label: "Todas", icon: null },
+  { value: "active", label: "Regando", icon: "💧" },
   { value: "inactive", label: "Inactivas", icon: "⏸" },
-  { value: "alert",    label: "Alerta",    icon: "⚠" },
+  { value: "alert", label: "Alerta", icon: "⚠" },
 ];
 
 const SECTOR_THEME = {
   Superior: {
-    gradient:     "linear-gradient(135deg, #064e3b 0%, #065f46 40%, #0f172a 100%)",
+    gradient: "linear-gradient(135deg, #064e3b 0%, #065f46 40%, #0f172a 100%)",
     gradientHero: "linear-gradient(160deg, #022c22 0%, #064e3b 35%, #0a3d2e 65%, #050d0a 100%)",
-    accent:       "#34d399",
-    accentDim:    "rgba(52,211,153,0.15)",
+    accent: "#34d399",
+    accentDim: "rgba(52,211,153,0.15)",
     accentBorder: "rgba(52,211,153,0.30)",
-    glow:         "rgba(52,211,153,0.20)",
-    glowStrong:   "rgba(52,211,153,0.45)",
-    orb1:         "rgba(52,211,153,0.18)",
-    orb2:         "rgba(16,185,129,0.12)",
-    orb3:         "rgba(5,150,105,0.10)",
-    particle:     "rgba(52,211,153,0.6)",
-    icon:         "🌿",
-    label:        "Patio Superior",
-    sublabel:     "Zona verde principal",
-    img:          "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=1200&q=60",
+    glow: "rgba(52,211,153,0.20)",
+    glowStrong: "rgba(52,211,153,0.45)",
+    orb1: "rgba(52,211,153,0.18)",
+    orb2: "rgba(16,185,129,0.12)",
+    orb3: "rgba(5,150,105,0.10)",
+    particle: "rgba(52,211,153,0.6)",
+    icon: "🌿",
+    label: "Patio Superior",
+    sublabel: "Zona verde principal",
+    img: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=1200&q=60",
   },
   Inferior: {
-    gradient:     "linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #0f172a 100%)",
+    gradient: "linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #0f172a 100%)",
     gradientHero: "linear-gradient(160deg, #0f0e1f 0%, #1e1b4b 35%, #252060 65%, #0a0918 100%)",
-    accent:       "#818cf8",
-    accentDim:    "rgba(129,140,248,0.15)",
+    accent: "#818cf8",
+    accentDim: "rgba(129,140,248,0.15)",
     accentBorder: "rgba(129,140,248,0.30)",
-    glow:         "rgba(129,140,248,0.20)",
-    glowStrong:   "rgba(129,140,248,0.45)",
-    orb1:         "rgba(129,140,248,0.18)",
-    orb2:         "rgba(99,102,241,0.12)",
-    orb3:         "rgba(167,139,250,0.10)",
-    particle:     "rgba(129,140,248,0.6)",
-    icon:         "🌱",
-    label:        "Patio Inferior",
-    sublabel:     "Zona de cultivo interior",
-    img:          "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=1200&q=60",
+    glow: "rgba(129,140,248,0.20)",
+    glowStrong: "rgba(129,140,248,0.45)",
+    orb1: "rgba(129,140,248,0.18)",
+    orb2: "rgba(99,102,241,0.12)",
+    orb3: "rgba(167,139,250,0.10)",
+    particle: "rgba(129,140,248,0.6)",
+    icon: "🌱",
+    label: "Patio Inferior",
+    sublabel: "Zona de cultivo interior",
+    img: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=1200&q=60",
   },
 };
 
-function FloatingParticles({ color, count = 18, reducedMotion = false }) {
-  const particles = useMemo(() =>
-    Array.from({ length: count }, (_, i) => ({
-      id: i,
-      x:    Math.random() * 100,
-      y:    Math.random() * 100,
-      size: Math.random() * 4 + 1.5,
-      dur:  Math.random() * 8 + 6,
-      del:  Math.random() * 4,
-      dx:   (Math.random() - 0.5) * 60,
-      dy:   -(Math.random() * 80 + 40),
-    })),
-  [count]);
+function FloatingParticles({ color, seed, count = 18, reducedMotion = false }) {
+  const particles = useMemo(() => {
+    let currentSeed = seed;
+    const rand = () => {
+      currentSeed = (currentSeed * 9301 + 49297) % 233280;
+      return currentSeed / 233280;
+    };
+
+    return Array.from({ length: count }, (_, index) => ({
+      id: index,
+      x: rand() * 100,
+      y: rand() * 100,
+      size: rand() * 4 + 1.5,
+      dur: rand() * 8 + 6,
+      del: rand() * 4,
+      dx: (rand() - 0.5) * 60,
+      dy: -(rand() * 80 + 40),
+    }));
+  }, [count, seed]);
 
   if (reducedMotion || count <= 0) return null;
 
   return (
     <div className="sp-particles" aria-hidden>
-      {particles.map(p => (
+      {particles.map((particle) => (
         <motion.div
-          key={p.id}
+          key={particle.id}
           className="sp-particle"
           style={{
-            left:   `${p.x}%`,
-            top:    `${p.y}%`,
-            width:  p.size,
-            height: p.size,
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            width: particle.size,
+            height: particle.size,
             background: color,
           }}
           animate={{
-            x:       [0, p.dx, 0],
-            y:       [0, p.dy, 0],
+            x: [0, particle.dx, 0],
+            y: [0, particle.dy, 0],
             opacity: [0, 0.8, 0],
-            scale:   [0.5, 1.2, 0.5],
+            scale: [0.5, 1.2, 0.5],
           }}
           transition={{
-            duration: p.dur,
-            delay:    p.del,
-            repeat:   Infinity,
-            ease:     "easeInOut",
+            duration: particle.dur,
+            delay: particle.del,
+            repeat: Infinity,
+            ease: "easeInOut",
           }}
         />
       ))}
@@ -150,7 +157,7 @@ function HeroStat({ label, value, color, icon: Icon, index }) {
     <motion.div
       className="sp-hero-stat"
       initial={{ opacity: 0, y: 20, scale: 0.85 }}
-      animate={{ opacity: 1, y: 0,  scale: 1 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: 0.35 + index * 0.08, ease: [0.34, 1.56, 0.64, 1] }}
       style={{ "--stat-color": color }}
       whileHover={{ y: -4, scale: 1.04 }}
@@ -167,10 +174,10 @@ function HeroStat({ label, value, color, icon: Icon, index }) {
 }
 
 function SectorPage({ sector }) {
-  const toast    = useToast();
+  const toast = useToast();
   const navigate = useNavigate();
-  const theme    = SECTOR_THEME[sector] || SECTOR_THEME.Superior;
-  const heroRef  = useRef(null);
+  const theme = SECTOR_THEME[sector] || SECTOR_THEME.Superior;
+  const heroRef = useRef(null);
   const prefersReducedMotion = useReducedMotion();
   const { requestPermission, checkPlants } = useNotifications();
   const [viewport, setViewport] = useState(() => ({
@@ -178,34 +185,42 @@ function SectorPage({ sector }) {
     height: typeof window !== "undefined" ? window.innerHeight : 800,
   }));
 
-  const [plants,        setPlants]        = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [showModal,     setShowModal]     = useState(false);
-  const [editingPlant,  setEditingPlant]  = useState(null);
-  const [alertPlant,    setAlertPlant]    = useState(null);
-  const [search,        setSearch]        = useState("");
-  const [sort,          setSort]          = useState("order");
-  const [status,        setStatus]        = useState("all");
-  const [dragEnabled,   setDragEnabled]   = useState(false);
+  const [plants, setPlants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingPlant, setEditingPlant] = useState(null);
+  const [alertPlant, setAlertPlant] = useState(null);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("order");
+  const [status, setStatus] = useState("all");
+  const [dragEnabled, setDragEnabled] = useState(false);
   const [orderedPlants, setOrderedPlants] = useState([]);
+
   const compactMotion = viewport.width < 900;
   const particleCount = prefersReducedMotion ? 0 : viewport.width < 640 ? 8 : viewport.width < 1024 ? 12 : 18;
-  const viewportKey = `${Math.round(viewport.width / 120)}-${Math.round(viewport.height / 120)}`;
+  const particleSeed = useMemo(
+    () => Math.round(viewport.width / 24) * 31 + Math.round(viewport.height / 24) * 17 + sector.length * 13,
+    [viewport.height, viewport.width, sector.length]
+  );
 
   const { scrollY } = useScroll();
-  const heroY       = useTransform(scrollY, [0, 300], [0, compactMotion ? 18 : 60]);
+  const heroY = useTransform(scrollY, [0, 300], [0, compactMotion ? 18 : 60]);
   const heroOpacity = useTransform(scrollY, [0, 200], [1, compactMotion ? 0.86 : 0.6]);
+  const deferredSearch = useDeferredValue(search);
 
-  useEffect(() => { requestPermission(); }, [requestPermission]);
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
 
   useEffect(() => {
     let frame = null;
     const handleResize = () => {
       if (frame) cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        setViewport({
-          width: window.innerWidth,
-          height: window.innerHeight,
+        setViewport((prev) => {
+          const next = { width: window.innerWidth, height: window.innerHeight };
+          if (prev.width === next.width && prev.height === next.height) return prev;
+          return next;
         });
       });
     };
@@ -217,28 +232,40 @@ function SectorPage({ sector }) {
     };
   }, []);
 
-  const fetchPlants = useCallback(async () => {
+  const fetchPlants = useCallback(async (signal) => {
     try {
-      const res = await api.get("/api/plants");
+      const res = await api.get("/api/plants", {
+        signal,
+        meta: { cancelPrevious: false },
+      });
       setPlants(res.data);
-      checkPlants(res.data.filter(p => p.sector === sector));
-    } catch {}
-    finally { setLoading(false); }
+      checkPlants(res.data.filter((plant) => plant.sector === sector));
+    } catch (error) {
+      if (error.code !== "ERR_CANCELED" && error.name !== "CanceledError") {
+        setLoading(false);
+      }
+      return;
+    }
+    setLoading(false);
   }, [checkPlants, sector]);
 
   useEffect(() => {
-    fetchPlants();
-    const interval = setInterval(fetchPlants, 30000);
-    return () => clearInterval(interval);
+    const controller = new AbortController();
+    fetchPlants(controller.signal);
+    const interval = setInterval(() => fetchPlants(), 30000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [fetchPlants]);
 
   useSocket({
     onPlantUpdate: useCallback((data) => {
       if (data.sector !== sector) return;
-      setPlants(prev => prev.map(p => p._id === data._id ? { ...p, ...data } : p));
+      setPlants((prev) => prev.map((plant) => (plant._id === data._id ? { ...plant, ...data } : plant)));
     }, [sector]),
     onPlantDeleted: useCallback((data) => {
-      setPlants(prev => prev.filter(p => p._id !== data._id));
+      setPlants((prev) => prev.filter((plant) => plant._id !== data._id));
     }, []),
     onAlert: useCallback((data) => {
       if (data.sector !== sector) return;
@@ -250,155 +277,179 @@ function SectorPage({ sector }) {
     }, [sector, toast]),
   });
 
-  const sectorPlants = useMemo(() => plants.filter(p => p.sector === sector), [plants, sector]);
+  const sectorPlants = useMemo(() => plants.filter((plant) => plant.sector === sector), [plants, sector]);
 
   useEffect(() => {
-  setOrderedPlants(prev => {
-    const sorted  = [...sectorPlants].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
- 
-    const prevKey = prev.map(p =>
-      `${p._id}|${p.order}|${p.valveStatus}|${p.currentHumidity ?? 0}`
-    ).join(",");
-    const nextKey = sorted.map(p =>
-      `${p._id}|${p.order}|${p.valveStatus}|${p.currentHumidity ?? 0}`
-    ).join(",");
- 
-    if (prevKey === nextKey) return prev;
-    return sorted;
-  });
-}, [sectorPlants]);
+    setOrderedPlants((prev) => {
+      const sorted = [...sectorPlants].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const prevKey = prev.map((plant) => `${plant._id}|${plant.order}|${plant.valveStatus}|${plant.currentHumidity ?? 0}`).join(",");
+      const nextKey = sorted.map((plant) => `${plant._id}|${plant.order}|${plant.valveStatus}|${plant.currentHumidity ?? 0}`).join(",");
+      return prevKey === nextKey ? prev : sorted;
+    });
+  }, [sectorPlants]);
 
-  const handleSave = async (data) => {
-    try {
-      if (editingPlant) {
-        const res = await api.put(`/api/plants/${editingPlant._id}`, data);
-        setPlants(prev => prev.map(p => p._id === editingPlant._id ? res.data : p));
-        toast(`${data.name} actualizada ✓`, "success");
-      } else {
-        const res = await api.post("/api/plants", { ...data, sector });
-        setPlants(prev => [...prev, res.data]);
-        toast(`${data.name} agregada ✓`, "success");
-      }
-    } catch (err) {
-      toast(err.response?.data?.error || "Error al guardar", "error");
-    }
+  const normalizedSearch = deferredSearch.trim().toLowerCase();
+
+  const statusCounts = useMemo(() => {
+    const active = sectorPlants.filter((plant) => plant.valveStatus === "OPEN").length;
+    const alert = sectorPlants.filter((plant) => (plant.currentHumidity ?? 0) < plant.minHumidity).length;
+    const inactive = sectorPlants.filter((plant) => plant.valveStatus !== "OPEN" && (plant.currentHumidity ?? 0) >= plant.minHumidity).length;
+    const maintenance = sectorPlants.filter((plant) => plant.maintenanceMode).length;
+    return { active, alert, inactive, maintenance };
+  }, [sectorPlants]);
+
+  const avgHum = useMemo(
+    () => (sectorPlants.length ? Math.round(sectorPlants.reduce((sum, plant) => sum + (plant.currentHumidity || 0), 0) / sectorPlants.length) : 0),
+    [sectorPlants]
+  );
+
+  const filteredPlants = useMemo(
+    () =>
+      [...orderedPlants]
+        .filter((plant) => {
+          if (!normalizedSearch) return true;
+          return plant.name?.toLowerCase().includes(normalizedSearch) || plant.irrigationType?.toLowerCase().includes(normalizedSearch);
+        })
+        .filter((plant) => {
+          if (status === "all") return true;
+          if (status === "active") return plant.valveStatus === "OPEN";
+          if (status === "inactive") return plant.valveStatus !== "OPEN" && (plant.currentHumidity ?? 0) >= plant.minHumidity;
+          if (status === "alert") return (plant.currentHumidity ?? 0) < plant.minHumidity;
+          return true;
+        })
+        .sort((a, b) => {
+          if (sort === "order") return (a.order ?? 0) - (b.order ?? 0);
+          if (sort === "name-asc") return a.name?.localeCompare(b.name);
+          if (sort === "name-desc") return b.name?.localeCompare(a.name);
+          if (sort === "humidity-asc") return (a.currentHumidity || 0) - (b.currentHumidity || 0);
+          if (sort === "humidity-desc") return (b.currentHumidity || 0) - (a.currentHumidity || 0);
+          return 0;
+        }),
+    [normalizedSearch, orderedPlants, sort, status]
+  );
+
+  const hasFilters = search !== "" || status !== "all";
+  const isDragging = dragEnabled && sort === "order" && !hasFilters;
+
+  const openCreateModal = useCallback(() => {
+    setEditingPlant(null);
+    setShowModal(true);
+  }, []);
+
+  const openEditModal = useCallback((plant) => {
+    setEditingPlant(plant);
+    setShowModal(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
     setShowModal(false);
     setEditingPlant(null);
-  };
+  }, []);
 
-  const handleDelete = async (id) => {
+  const handleSave = useCallback(
+    async (data) => {
+      try {
+        if (editingPlant) {
+          const res = await api.put(`/api/plants/${editingPlant._id}`, data);
+          setPlants((prev) => prev.map((plant) => (plant._id === editingPlant._id ? res.data : plant)));
+          toast(`${data.name} actualizada ✓`, "success");
+        } else {
+          const res = await api.post("/api/plants", { ...data, sector });
+          setPlants((prev) => [...prev, res.data]);
+          toast(`${data.name} agregada ✓`, "success");
+        }
+      } catch (err) {
+        toast(err.response?.data?.error || "Error al guardar", "error");
+      }
+      closeModal();
+    },
+    [closeModal, editingPlant, sector, toast]
+  );
+
+  const handleDelete = useCallback(async (id) => {
     try {
       await api.delete(`/api/plants/${id}`);
-      setPlants(prev => prev.filter(p => p._id !== id));
-    } catch { toast("Error al eliminar", "error"); }
-  };
-
-  const handleToggleValve = async (plant) => {
-    const newStatus = plant.valveStatus === "OPEN" ? "CLOSED" : "OPEN";
-    const applyUpdate = prev => prev.map(p => p._id === plant._id ? { ...p, valveStatus: newStatus } : p);
-    setPlants(applyUpdate);
-    setOrderedPlants(applyUpdate);
-    try {
-      const res = await api.put(`/api/plants/${plant._id}`, { valveStatus: newStatus });
-      const applySync = prev => prev.map(p => p._id === plant._id ? { ...p, ...res.data } : p);
-      setPlants(applySync);
-      setOrderedPlants(applySync);
-      toast(
-        newStatus === "OPEN" ? `💧 Riego iniciado — ${plant.name}` : `⏹ Riego detenido — ${plant.name}`,
-        newStatus === "OPEN" ? "info" : "warning"
-      );
+      setPlants((prev) => prev.filter((plant) => plant._id !== id));
     } catch {
-      const applyRevert = prev => prev.map(p => p._id === plant._id ? { ...p, valveStatus: plant.valveStatus } : p);
-      setPlants(applyRevert);
-      setOrderedPlants(applyRevert);
-      toast("Error al controlar la válvula", "error");
+      toast("Error al eliminar", "error");
     }
-  };
+  }, [toast]);
+
+  const handleToggleValve = useCallback(
+    async (plant) => {
+      const newStatus = plant.valveStatus === "OPEN" ? "CLOSED" : "OPEN";
+      const applyUpdate = (prev) => prev.map((item) => (item._id === plant._id ? { ...item, valveStatus: newStatus } : item));
+      setPlants(applyUpdate);
+      setOrderedPlants(applyUpdate);
+
+      try {
+        const res = await api.put(`/api/plants/${plant._id}`, { valveStatus: newStatus });
+        const applySync = (prev) => prev.map((item) => (item._id === plant._id ? { ...item, ...res.data } : item));
+        setPlants(applySync);
+        setOrderedPlants(applySync);
+        toast(newStatus === "OPEN" ? `💧 Riego iniciado — ${plant.name}` : `⏹ Riego detenido — ${plant.name}`, newStatus === "OPEN" ? "info" : "warning");
+      } catch {
+        const applyRevert = (prev) => prev.map((item) => (item._id === plant._id ? { ...item, valveStatus: plant.valveStatus } : item));
+        setPlants(applyRevert);
+        setOrderedPlants(applyRevert);
+        toast("Error al controlar la válvula", "error");
+      }
+    },
+    [toast]
+  );
 
   const handleMaintenanceUpdate = useCallback((updatedPlant) => {
-    const syncPlant = (prev) => prev.map((plant) => (
-      plant._id === updatedPlant._id ? { ...plant, ...updatedPlant } : plant
-    ));
+    const syncPlant = (prev) => prev.map((plant) => (plant._id === updatedPlant._id ? { ...plant, ...updatedPlant } : plant));
     setPlants(syncPlant);
     setOrderedPlants(syncPlant);
   }, []);
 
-  const handleReorderEnd = useCallback(async (newOrder) => {
-    setOrderedPlants(newOrder);
-    try {
-      await Promise.all(newOrder.map((p, i) =>
-        p.order !== i ? api.put(`/api/plants/${p._id}`, { order: i }) : Promise.resolve()
-      ));
-      setPlants(prev => prev.map(p => {
-        const idx = newOrder.findIndex(o => o._id === p._id);
-        return idx !== -1 ? { ...p, order: idx } : p;
-      }));
-    } catch { toast("Error al guardar orden", "error"); }
-  }, [toast]);
+  const handleReorderEnd = useCallback(
+    async (newOrder) => {
+      setOrderedPlants(newOrder);
+      try {
+        await Promise.all(
+          newOrder.map((plant, index) =>
+            plant.order !== index ? api.put(`/api/plants/${plant._id}`, { order: index }) : Promise.resolve()
+          )
+        );
 
-  const avgHum        = sectorPlants.length ? Math.round(sectorPlants.reduce((s, p) => s + (p.currentHumidity || 0), 0) / sectorPlants.length) : 0;
-  const alertCount    = sectorPlants.filter(p => (p.currentHumidity ?? 0) < p.minHumidity).length;
-  const wateringCount = sectorPlants.filter(p => p.valveStatus === "OPEN").length;
-  const maintenanceCount = sectorPlants.filter((plant) => plant.maintenanceMode).length;
-  const filteredPlants = [...orderedPlants]
-    .filter(p => {
-      const q = search.toLowerCase();
-      return p.name?.toLowerCase().includes(q) || p.irrigationType?.toLowerCase().includes(q);
-    })
-    .filter(p => {
-      if (status === "all")      return true;
-      if (status === "active")   return p.valveStatus === "OPEN";
-      if (status === "inactive") return p.valveStatus !== "OPEN" && (p.currentHumidity ?? 0) >= p.minHumidity;
-      if (status === "alert")    return (p.currentHumidity ?? 0) < p.minHumidity;
-      return true;
-    })
-    .sort((a, b) => {
-      if (sort === "order")         return (a.order ?? 0) - (b.order ?? 0);
-      if (sort === "name-asc")      return a.name?.localeCompare(b.name);
-      if (sort === "name-desc")     return b.name?.localeCompare(a.name);
-      if (sort === "humidity-asc")  return (a.currentHumidity || 0) - (b.currentHumidity || 0);
-      if (sort === "humidity-desc") return (b.currentHumidity || 0) - (a.currentHumidity || 0);
-      return 0;
-    });
-
-  const hasFilters = search !== "" || status !== "all";
-  const isDragging = dragEnabled && sort === "order" && !hasFilters;
+        setPlants((prev) =>
+          prev.map((plant) => {
+            const nextIndex = newOrder.findIndex((orderedPlant) => orderedPlant._id === plant._id);
+            return nextIndex !== -1 ? { ...plant, order: nextIndex } : plant;
+          })
+        );
+      } catch {
+        toast("Error al guardar orden", "error");
+      }
+    },
+    [toast]
+  );
 
   return (
     <div
       className="sp-page"
       style={{
-        "--sp-accent":        theme.accent,
-        "--sp-accent-dim":    theme.accentDim,
+        "--sp-accent": theme.accent,
+        "--sp-accent-dim": theme.accentDim,
         "--sp-accent-border": theme.accentBorder,
-        "--sp-glow":          theme.glow,
-        "--sp-glow-strong":   theme.glowStrong,
-        "--sp-particle":      theme.particle,
+        "--sp-glow": theme.glow,
+        "--sp-glow-strong": theme.glowStrong,
+        "--sp-particle": theme.particle,
       }}
     >
       <Navbar plants={plants} />
 
       <div className="sp-hero-wrapper" ref={heroRef}>
-        <motion.div
-          className="sp-hero"
-          style={{ y: heroY, opacity: heroOpacity }}
-        >
+        <motion.div className="sp-hero" style={{ y: heroY, opacity: heroOpacity }}>
           <div className="sp-hero-bg">
             <img src={theme.img} alt="" className="sp-hero-img" />
             <div className="sp-hero-overlay" style={{ background: theme.gradientHero }} />
           </div>
 
-          <BackgroundOrbs
-            theme={theme}
-            compact={compactMotion}
-            reducedMotion={Boolean(prefersReducedMotion)}
-          />
-          <FloatingParticles
-            key={viewportKey}
-            color={theme.particle}
-            count={particleCount}
-            reducedMotion={Boolean(prefersReducedMotion)}
-          />
+          <BackgroundOrbs theme={theme} compact={compactMotion} reducedMotion={Boolean(prefersReducedMotion)} />
+          <FloatingParticles seed={particleSeed} color={theme.particle} count={particleCount} reducedMotion={Boolean(prefersReducedMotion)} />
           <div className="sp-hero-topline" style={{ background: `linear-gradient(90deg, transparent, ${theme.accent}, transparent)` }} />
 
           <div className="sp-hero-content">
@@ -444,7 +495,7 @@ function SectorPage({ sector }) {
                   </h1>
                   <p className="sp-hero-sub">
                     <span className="sp-hero-sub-dot" style={{ background: theme.accent }} />
-                    {theme.sublabel} {"•"} {sectorPlants.length} plantas
+                    {theme.sublabel} • {sectorPlants.length} plantas
                   </p>
                 </div>
               </motion.div>
@@ -457,8 +508,8 @@ function SectorPage({ sector }) {
               >
                 {[
                   { label: "Plantas visibles", value: filteredPlants.length },
-                  { label: "En mantenimiento", value: maintenanceCount },
-                  { label: "Sin alertas", value: Math.max(sectorPlants.length - alertCount, 0) },
+                  { label: "En mantenimiento", value: statusCounts.maintenance },
+                  { label: "Sin alertas", value: Math.max(sectorPlants.length - statusCounts.alert, 0) },
                 ].map((item) => (
                   <div key={item.label} className="sp-side-stat">
                     <div className="sp-side-stat-label">{item.label}</div>
@@ -472,11 +523,11 @@ function SectorPage({ sector }) {
               className="sp-stats-bar"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.30, duration: 0.45 }}
+              transition={{ delay: 0.3, duration: 0.45 }}
             >
               <HeroStat label="Total" value={sectorPlants.length} color={theme.accent} icon={Zap} index={0} />
-              <HeroStat label="Regando" value={wateringCount} color="#60a5fa" icon={Droplets} index={1} />
-              <HeroStat label="Alertas" value={alertCount} color={alertCount > 0 ? "#f87171" : theme.accent} icon={Thermometer} index={2} />
+              <HeroStat label="Regando" value={statusCounts.active} color="#60a5fa" icon={Droplets} index={1} />
+              <HeroStat label="Alertas" value={statusCounts.alert} color={statusCounts.alert > 0 ? "#f87171" : theme.accent} icon={Thermometer} index={2} />
               <HeroStat label="Hum. Prom." value={`${avgHum}%`} color={theme.accent} icon={null} index={3} />
             </motion.div>
           </div>
@@ -493,12 +544,7 @@ function SectorPage({ sector }) {
       >
         <div className="sp-search-wrap">
           <Search size={14} className="sp-search-icon" />
-          <input
-            className="sp-search"
-            placeholder="Buscar planta..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          <input className="sp-search" placeholder="Buscar planta..." value={search} onChange={(event) => setSearch(event.target.value)} />
           {search && (
             <button className="sp-search-clear" onClick={() => setSearch("")}>×</button>
           )}
@@ -506,13 +552,15 @@ function SectorPage({ sector }) {
 
         <div className="sp-sort-wrap">
           <SlidersHorizontal size={13} className="sp-sort-icon" />
-          <select className="sp-sort" value={sort} onChange={e => setSort(e.target.value)}>
-            {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <select className="sp-sort" value={sort} onChange={(event) => setSort(event.target.value)}>
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
         </div>
 
         <div className="sp-chips">
-          {STATUS_CHIPS.map(chip => (
+          {STATUS_CHIPS.map((chip) => (
             <motion.button
               key={chip.value}
               className={`sp-chip ${status === chip.value ? "active" : ""}`}
@@ -523,9 +571,7 @@ function SectorPage({ sector }) {
               {chip.label}
               {chip.value !== "all" && (
                 <span className="sp-chip-count">
-                  {chip.value === "active" ? wateringCount :
-                   chip.value === "alert" ? alertCount :
-                   sectorPlants.filter(p => p.valveStatus !== "OPEN" && (p.currentHumidity ?? 0) >= p.minHumidity).length}
+                  {chip.value === "active" ? statusCounts.active : chip.value === "alert" ? statusCounts.alert : statusCounts.inactive}
                 </span>
               )}
             </motion.button>
@@ -533,11 +579,7 @@ function SectorPage({ sector }) {
         </div>
 
         {sectorPlants.length > 1 && (
-          <motion.button
-            className={`sp-drag-btn ${dragEnabled ? "active" : ""}`}
-            onClick={() => setDragEnabled(d => !d)}
-            whileTap={{ scale: 0.94 }}
-          >
+          <motion.button className={`sp-drag-btn ${dragEnabled ? "active" : ""}`} onClick={() => setDragEnabled((prev) => !prev)} whileTap={{ scale: 0.94 }}>
             <GripVertical size={13} />
             {dragEnabled ? "Listo" : "Ordenar"}
           </motion.button>
@@ -551,12 +593,7 @@ function SectorPage({ sector }) {
       <div className="sp-grid-wrap">
         <AnimatePresence>
           {isDragging && (
-            <motion.div
-              className="sp-drag-banner"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-            >
+            <motion.div className="sp-drag-banner" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
               <GripVertical size={14} />
               Arrastra las tarjetas para reorganizar el orden
             </motion.div>
@@ -566,7 +603,7 @@ function SectorPage({ sector }) {
         {loading ? (
           <div className="plant-grid"><PlantGridSkeleton count={4} /></div>
         ) : sectorPlants.length === 0 ? (
-          <EmptyPlants sector={sector} onAdd={() => { setEditingPlant(null); setShowModal(true); }} />
+          <EmptyPlants sector={sector} onAdd={openCreateModal} />
         ) : filteredPlants.length === 0 ? (
           <motion.div className="sp-empty" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
             <span className="sp-empty-icon">🔍</span>
@@ -578,13 +615,11 @@ function SectorPage({ sector }) {
             )}
           </motion.div>
         ) : isDragging ? (
-          <Reorder.Group
-            axis="x" values={orderedPlants} onReorder={setOrderedPlants}
-            className="plant-grid" style={{ listStyle: "none", padding: 0, margin: 0 }} as="div"
-          >
-            {orderedPlants.map((plant, i) => (
+          <Reorder.Group axis="x" values={orderedPlants} onReorder={setOrderedPlants} className="plant-grid" style={{ listStyle: "none", padding: 0, margin: 0 }} as="div">
+            {orderedPlants.map((plant, index) => (
               <Reorder.Item
-                key={plant._id} value={plant}
+                key={plant._id}
+                value={plant}
                 onDragEnd={() => handleReorderEnd(orderedPlants)}
                 style={{ cursor: "grab" }}
                 whileDrag={{ scale: 1.04, zIndex: 50, boxShadow: `0 20px 60px ${theme.glow}` }}
@@ -595,11 +630,11 @@ function SectorPage({ sector }) {
                   </div>
                   <PlantCard
                     plant={plant}
-                    index={i}
-                    onEdit={p => { setEditingPlant(p); setShowModal(true); }}
+                    index={index}
+                    onEdit={openEditModal}
                     onDelete={handleDelete}
                     onToggleValve={handleToggleValve}
-                    onShowAlerts={p => setAlertPlant(p)}
+                    onShowAlerts={setAlertPlant}
                     onMaintenanceUpdate={handleMaintenanceUpdate}
                   />
                 </div>
@@ -609,21 +644,21 @@ function SectorPage({ sector }) {
         ) : (
           <AnimatePresence mode="popLayout">
             <div className="plant-grid">
-              {filteredPlants.map((plant, i) => (
+              {filteredPlants.map((plant, index) => (
                 <motion.div
                   key={plant._id}
                   initial={{ opacity: 0, y: 24, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -16, scale: 0.95 }}
-                  transition={{ delay: i * 0.06, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ delay: index * 0.04, duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <PlantCard
                     plant={plant}
-                    index={i}
-                    onEdit={p => { setEditingPlant(p); setShowModal(true); }}
+                    index={index}
+                    onEdit={openEditModal}
                     onDelete={handleDelete}
                     onToggleValve={handleToggleValve}
-                    onShowAlerts={p => setAlertPlant(p)}
+                    onShowAlerts={setAlertPlant}
                     onMaintenanceUpdate={handleMaintenanceUpdate}
                   />
                 </motion.div>
@@ -635,10 +670,10 @@ function SectorPage({ sector }) {
 
       <motion.button
         className="sp-fab"
-        onClick={() => { setEditingPlant(null); setShowModal(true); }}
+        onClick={openCreateModal}
         style={{
           background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}bb)`,
-          boxShadow: `0 8px 32px ${theme.glow}, 0 0 0 1px ${theme.accentBorder}` ,
+          boxShadow: `0 8px 32px ${theme.glow}, 0 0 0 1px ${theme.accentBorder}`,
         }}
         whileHover={{ scale: 1.12, boxShadow: `0 12px 40px ${theme.glowStrong}` }}
         whileTap={{ scale: 0.92 }}
@@ -649,20 +684,21 @@ function SectorPage({ sector }) {
         <Plus size={22} color="#000" strokeWidth={2.5} />
       </motion.button>
 
-      <PlantModal
-        isOpen={showModal}
-        onClose={() => { setShowModal(false); setEditingPlant(null); }}
-        onSave={handleSave}
-        plant={editingPlant}
-        defaultSector={sector}
-      />
-      <AnimatePresence>
-        {alertPlant && <AlertHistoryModal plant={alertPlant} onClose={() => setAlertPlant(null)} />}
-      </AnimatePresence>
+      <Suspense fallback={null}>
+        <PlantModal
+          isOpen={showModal}
+          onClose={closeModal}
+          onSave={handleSave}
+          plant={editingPlant}
+          defaultSector={sector}
+          usedValves={sectorPlants.map((plant) => Number(plant.valveNumber))}
+        />
+        <AnimatePresence>
+          {alertPlant && <AlertHistoryModal plant={alertPlant} onClose={() => setAlertPlant(null)} />}
+        </AnimatePresence>
+      </Suspense>
     </div>
   );
 }
 
 export default SectorPage;
-
-

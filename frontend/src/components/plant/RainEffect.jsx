@@ -9,9 +9,9 @@ export default function RainEffect({ active = false, intensity = "medium" }) {
   const prefersReducedMotion = useReducedMotion();
 
   const configs = useMemo(() => ({
-    light: { count: 18, speed: [2, 4], length: [8, 14], opacity: [0.25, 0.45], width: [0.8, 1.2] },
-    medium: { count: 32, speed: [3, 6], length: [10, 20], opacity: [0.30, 0.55], width: [0.9, 1.5] },
-    heavy: { count: 55, speed: [5, 9], length: [14, 26], opacity: [0.35, 0.65], width: [1.0, 1.8] },
+    light: { count: 14, speed: [2, 4], length: [8, 14], opacity: [0.25, 0.45], width: [0.8, 1.2] },
+    medium: { count: 24, speed: [3, 6], length: [10, 18], opacity: [0.28, 0.5], width: [0.9, 1.4] },
+    heavy: { count: 40, speed: [5, 9], length: [14, 24], opacity: [0.32, 0.58], width: [1.0, 1.7] },
   }), []);
 
   const cfg = configs[intensity] || configs.medium;
@@ -63,6 +63,7 @@ export default function RainEffect({ active = false, intensity = "medium" }) {
     let opacity = 0;
     let frameCount = 0;
     const skipEveryOtherFrame = w < 768;
+    let lastFrameTime = 0;
 
     fadeTimerRef.current = setInterval(() => {
       opacity = Math.min(opacity + 0.05, 1);
@@ -72,7 +73,13 @@ export default function RainEffect({ active = false, intensity = "medium" }) {
       }
     }, 22);
 
-    const draw = () => {
+    const draw = (timestamp = 0) => {
+      if (timestamp - lastFrameTime < 32) {
+        animRef.current = requestAnimationFrame(draw);
+        return;
+      }
+      lastFrameTime = timestamp;
+
       frameCount += 1;
       if (skipEveryOtherFrame && frameCount % 2 === 0) {
         animRef.current = requestAnimationFrame(draw);
