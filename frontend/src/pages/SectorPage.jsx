@@ -252,10 +252,21 @@ function SectorPage({ sector }) {
   useEffect(() => {
     const controller = new AbortController();
     fetchPlants(controller.signal);
-    const interval = setInterval(() => fetchPlants(), 30000);
+    const runFetch = () => {
+      if (document.hidden) return;
+      fetchPlants();
+    };
+    const interval = setInterval(runFetch, 30000);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchPlants();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       controller.abort();
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [fetchPlants]);
 

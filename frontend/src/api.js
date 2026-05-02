@@ -85,6 +85,13 @@ export const clearAccessToken = () => {
   accessToken = null;
 };
 
+export const clearClientSession = () => {
+  clearAccessToken();
+  clearSessionHint();
+  localStorage.removeItem("iot_user");
+  localStorage.removeItem("iot_session");
+};
+
 export const markSessionHint = () => localStorage.setItem(SESSION_HINT_KEY, "1");
 export const clearSessionHint = () => localStorage.removeItem(SESSION_HINT_KEY);
 export const hasSessionHint = () => localStorage.getItem(SESSION_HINT_KEY) === "1";
@@ -118,10 +125,7 @@ export const logout = async () => {
     await api.post("/api/auth/logout");
   } catch {
   }
-  clearAccessToken();
-  clearSessionHint();
-  localStorage.removeItem("iot_user");
-  localStorage.removeItem("iot_session");
+  clearClientSession();
   window.location.href = "/login";
 };
 
@@ -215,18 +219,12 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        clearAccessToken();
-        clearSessionHint();
-        localStorage.removeItem("iot_user");
-        localStorage.removeItem("iot_session");
+        clearClientSession();
         window.dispatchEvent(
           new CustomEvent("iot_session_expired", {
             detail: { mensaje: "Tu sesión ha vencido. Por favor inicia sesión de nuevo." },
           })
         );
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1500);
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
