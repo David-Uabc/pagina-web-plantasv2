@@ -19,12 +19,22 @@ const app    = express();
 const server = http.createServer(app);
 const isDev  = process.env.NODE_ENV !== "production";
 
+const configuredOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.FRONTEND_URLS,
+]
+  .filter(Boolean)
+  .flatMap((value) => value.split(","))
+  .map((value) => value.trim())
+  .filter(Boolean);
+
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "https://riego-iot-frontend.onrender.com",
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+  "https://riegoiq-frontend.onrender.com",
+  ...configuredOrigins,
+].filter((value, index, list) => list.indexOf(value) === index);
 
 // ── Socket.io ─────────────────────────────────────────
 const io = new Server(server, {
