@@ -8,6 +8,31 @@ const Log     = require("../models/Log");
 const { ensureDeviceOwner } = require("../utils/deviceOwnership");
 const { emitToUser } = require("../utils/socketRooms");
 
+const VALID_SECTORS = ["Superior", "Inferior"];
+const VALID_ROLES = ["sensor", "relay"];
+const VALID_NODES = ["A", "B", "C"];
+
+function normalizeSector(value) {
+  return VALID_SECTORS.includes(value) ? value : null;
+}
+
+function normalizeRole(value) {
+  const role = String(value || "").trim().toLowerCase();
+  return VALID_ROLES.includes(role) ? role : null;
+}
+
+function normalizeNode(value) {
+  const node = String(value || "").trim().toUpperCase();
+  return VALID_NODES.includes(node) ? node : null;
+}
+
+function getNodeForValve(valveNumber) {
+  if (valveNumber === 1 || valveNumber === 2) return "A";
+  if (valveNumber === 3 || valveNumber === 4) return "B";
+  if (valveNumber === 5) return "C";
+  return null;
+}
+
 async function iotAuth(req, res, next) {
   try {
     const deviceId = req.headers["x-device-id"];
@@ -35,9 +60,21 @@ async function iotAuth(req, res, next) {
       return res.status(400).json({ error: "Formato de device-id inválido" });
     }
 
+    const sector = normalizeSector(req.body?.sector);
+    const role = normalizeRole(req.body?.role);
+    const node = normalizeNode(req.body?.node);
+
     const device = await Device.findOneAndUpdate(
       { deviceId },
-      { deviceId, status: "Online", lastConnection: new Date(), lastSeen: new Date() },
+      {
+        deviceId,
+        status: "Online",
+        lastConnection: new Date(),
+        lastSeen: new Date(),
+        ...(sector && { sector }),
+        ...(role && { role }),
+        ...(node && { node }),
+      },
       { upsert: true, new: true }
     );
 
@@ -50,7 +87,7 @@ async function iotAuth(req, res, next) {
   }
 }
 
-const sectorValido = (s) => ["Superior", "Inferior"].includes(s);
+const sectorValido = (s) => VALID_SECTORS.includes(s);
 const errProd = (msg, err) =>
   process.env.NODE_ENV === "production" ? msg : err.message;
 
@@ -63,11 +100,14 @@ async function findPlantForReading(ownerId, sector, reading) {
   }
 
   const valveNumber = Number(reading?.valveNumber ?? reading?.valve);
+  const node = normalizeNode(reading?.node) || getNodeForValve(valveNumber);
   if (!Number.isInteger(valveNumber) || valveNumber < 1 || valveNumber > 5) {
     return null;
   }
 
-  return Plant.findOne({ owner: ownerId, sector, valveNumber });
+  const query = { owner: ownerId, sector, valveNumber };
+  if (node) query.node = node;
+  return Plant.findOne(query);
 }
 
 async function requireDeviceOwner(req, res, sector) {
@@ -88,12 +128,24 @@ async function requireDeviceOwner(req, res, sector) {
 router.post("/report", iotAuth, async (req, res) => {
   const io = req.app.get("io");
   try {
+    const role = normalizeRole(req.body.role) || req.device?.role || "relay";
+    const node = normalizeNode(req.body.node) || req.device?.node || null;
     const { sector, readings, humidity, plantId } = req.body;
 
     if (!sector) return res.status(400).json({ error: "sector es requerido" });
     if (!sectorValido(sector)) return res.status(400).json({ error: "sector debe ser Superior o Inferior" });
     const ownerId = await requireDeviceOwner(req, res, sector);
     if (!ownerId) return;
+
+    if (
+      req.device &&
+      (req.device.role !== role || req.device.sector !== sector || (node && req.device.node !== node))
+    ) {
+      req.device.role = role;
+      req.device.sector = sector;
+      if (node) req.device.node = node;
+      await req.device.save();
+    }
 
     if (humidity !== undefined) {
       const h = Number(humidity);
@@ -117,6 +169,7 @@ router.post("/report", iotAuth, async (req, res) => {
 
       const plants = await Plant.find({ owner: ownerId, sector });
       for (const p of plants) {
+        if (node && p.node !== node) continue;
         await processReading(p, massHumidity, req.deviceId, io);
       }
     } else {
@@ -150,22 +203,32 @@ router.get("/valve/:sector", iotAuth, async (req, res) => {
       return res.status(400).json({ error: "sector debe ser Superior o Inferior" });
     }
 
+    if (req.device?.role === "sensor") {
+      return res.status(403).json({ error: "Un dispositivo sensor no puede consultar valvulas" });
+    }
+
+    if (!req.device?.node) {
+      return res.status(409).json({ error: "El dispositivo no tiene nodo configurado" });
+    }
+
     const ownerId = await requireDeviceOwner(req, res, sector);
     if (!ownerId) return;
 
     const plants = await Plant.find(
-      { owner: ownerId, sector },
-      "name valveStatus currentHumidity valveNumber"
+      { owner: ownerId, sector, node: req.device.node },
+      "name node valveStatus currentHumidity valveNumber"
     );
 
     const anyOpen = plants.some(p => p.valveStatus === "OPEN");
 
     res.json({
       sector,
+      node: req.device.node,
       command: anyOpen ? "OPEN" : "CLOSED",
       plants: plants.map(p => ({
         id:          p._id,
         name:        p.name,
+        node:        p.node,
         valveStatus: p.valveStatus,
         valveNumber: p.valveNumber,
         humidity:    p.currentHumidity,
@@ -184,6 +247,8 @@ router.post("/heartbeat", iotAuth, async (req, res) => {
   const io = req.app.get("io");
   try {
     const sector = req.body.sector;
+    const role = normalizeRole(req.body.role) || req.device?.role || "relay";
+    const node = normalizeNode(req.body.node) || req.device?.node || null;
     let ownerId = req.device?.owner || null;
 
     if (sector && !sectorValido(sector)) {
@@ -202,6 +267,8 @@ router.post("/heartbeat", iotAuth, async (req, res) => {
         status:         "Online",
         lastConnection: new Date(),
         lastSeen:       new Date(),
+        role,
+        ...(node && { node }),
         ...(sector && { sector }),
       },
       { upsert: true, new: true }
@@ -211,6 +278,8 @@ router.post("/heartbeat", iotAuth, async (req, res) => {
       emitToUser(io, ownerId, "device:heartbeat", {
         deviceId:       req.deviceId,
         sector:         sector || null,
+        role,
+        node,
         lastConnection: new Date(),
         lastSeen:       new Date(),
         status:         "Online",
@@ -288,6 +357,7 @@ async function processReading(plant, humidity, deviceId, io) {
       _id:             plant._id.toString(),
       name:            plant.name,
       sector:          plant.sector,
+      node:            plant.node,
       currentHumidity: humidity,
       valveStatus:     plant.valveStatus,
       lastIrrigation:  plant.lastIrrigation,
@@ -302,6 +372,7 @@ async function processReading(plant, humidity, deviceId, io) {
         plantId: plant._id.toString(),
         name:    plant.name,
         sector:  plant.sector,
+        node:    plant.node,
         humidity,
         type:    "low_humidity",
       });

@@ -4,6 +4,15 @@ import { Wifi, WifiOff, Database, DatabaseZap, Droplets, Activity, Cpu } from "l
 import api from "../../api";
 import { useToast } from "../../context/ToastProvider";
 
+const NODE_SLOTS = [
+  { sector: "Superior", node: "A" },
+  { sector: "Superior", node: "B" },
+  { sector: "Superior", node: "C" },
+  { sector: "Inferior", node: "A" },
+  { sector: "Inferior", node: "B" },
+  { sector: "Inferior", node: "C" },
+];
+
 function timeAgo(date, t) {
   if (!date) return t("sys.noRecord");
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
@@ -19,6 +28,23 @@ function isOnline(device, now) {
   return now - last < 90000;
 }
 
+function normalizeSector(value) {
+  return value === "Inferior" ? "Inferior" : "Superior";
+}
+
+function normalizeNode(value) {
+  const node = String(value || "").trim().toUpperCase();
+  return ["A", "B", "C"].includes(node) ? node : null;
+}
+
+function slotKey(sector, node) {
+  return `${normalizeSector(sector)}:${normalizeNode(node)}`;
+}
+
+function slotLabel(sector, node) {
+  return `${normalizeSector(sector)} · Nodo ${normalizeNode(node)}`;
+}
+
 const DeviceRow = memo(function DeviceRow({ device, label, now, onToggle }) {
   const online = isOnline(device, now);
   const lastStr = device?.lastSeen || device?.lastConnection
@@ -27,7 +53,7 @@ const DeviceRow = memo(function DeviceRow({ device, label, now, onToggle }) {
         minute: "2-digit",
         second: "2-digit",
       })
-    : "—";
+    : "--";
 
   return (
     <button
@@ -51,17 +77,17 @@ const DeviceRow = memo(function DeviceRow({ device, label, now, onToggle }) {
       <div className="status-text">
         <span className="status-label">{label}</span>
         <span className={`status-value ${online ? "val-green" : "val-red"}`}>
-          {online ? `Online · ${lastStr}` : "Sin señal"}
+          {device?.deviceId
+            ? online
+              ? `Online · ${lastStr}`
+              : "Sin senal"
+            : "Sin vincular"}
         </span>
       </div>
       <div className={`status-dot ${online ? "dot-green" : "dot-red"}`} />
     </button>
   );
 });
-
-function findDeviceForSector(deviceMap, sector) {
-  return Object.values(deviceMap).find((device) => device?.sector === sector) || null;
-}
 
 function SystemStatus({ devices = {}, plants = [] }) {
   const { t } = useI18n();
@@ -73,8 +99,12 @@ function SystemStatus({ devices = {}, plants = [] }) {
   const [now, setNow] = useState(Date.now());
   const [showLinkForm, setShowLinkForm] = useState(false);
   const [linking, setLinking] = useState(false);
-  const [form, setForm] = useState({ deviceId: "", sector: "Superior" });
-  const [expandedSector, setExpandedSector] = useState(null);
+  const [expandedKey, setExpandedKey] = useState(null);
+  const [form, setForm] = useState({
+    deviceId: "",
+    sector: "Superior",
+    node: "A",
+  });
 
   const fetchDevices = useCallback(async (signal) => {
     try {
@@ -84,7 +114,10 @@ function SystemStatus({ devices = {}, plants = [] }) {
       });
       const map = {};
       res.data.forEach((device) => {
-        map[device.deviceId] = device;
+        const sector = normalizeSector(device.sector);
+        const node = normalizeNode(device.node);
+        if (!node) return;
+        map[device.deviceId] = { ...device, sector, node };
       });
       setApiDevices(map);
     } catch (error) {
@@ -99,7 +132,6 @@ function SystemStatus({ devices = {}, plants = [] }) {
 
   useEffect(() => {
     const controller = new AbortController();
-
     fetchDevices(controller.signal);
     const runFetch = () => {
       if (document.hidden) return;
@@ -107,12 +139,9 @@ function SystemStatus({ devices = {}, plants = [] }) {
     };
     const interval = setInterval(runFetch, 45000);
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchDevices();
-      }
+      if (!document.hidden) fetchDevices();
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       controller.abort();
       clearInterval(interval);
@@ -134,11 +163,28 @@ function SystemStatus({ devices = {}, plants = [] }) {
     return new Date(Math.max(...dates));
   }, [plants]);
 
+  const mergedDevices = useMemo(() => {
+    const merged = { ...apiDevices };
+    Object.entries(devices).forEach(([deviceId, device]) => {
+      const sector = normalizeSector(device.sector || merged[deviceId]?.sector);
+      const node = normalizeNode(device.node || merged[deviceId]?.node);
+      if (!node) return;
+      merged[deviceId] = { ...merged[deviceId], ...device, sector, node };
+    });
+    return merged;
+  }, [apiDevices, devices]);
+
+  const devicesBySlot = useMemo(() => {
+    const bySlot = {};
+    Object.values(mergedDevices).forEach((device) => {
+      if (!device?.deviceId || !device?.node) return;
+      bySlot[slotKey(device.sector, device.node)] = device;
+    });
+    return bySlot;
+  }, [mergedDevices]);
+
+  const anyEsp32 = Object.values(devicesBySlot).some(Boolean);
   const allOk = mqtt && db;
-  const mergedDevices = { ...apiDevices, ...devices };
-  const esp32Sup = findDeviceForSector(mergedDevices, "Superior");
-  const esp32Inf = findDeviceForSector(mergedDevices, "Inferior");
-  const anyEsp32 = esp32Sup || esp32Inf;
 
   const submitLinkDevice = useCallback(async (event) => {
     event.preventDefault();
@@ -154,33 +200,40 @@ function SystemStatus({ devices = {}, plants = [] }) {
       await api.post("/api/devices", {
         deviceId,
         sector: form.sector,
+        node: form.node,
+        role: "relay",
       });
       await fetchDevices();
-      toast(`ESP32 ${deviceId} vinculado al sector ${form.sector}`, "success");
+      const key = slotKey(form.sector, form.node);
+      startTransition(() => {
+        setExpandedKey(key);
+        setShowLinkForm(false);
+      });
       setForm((prev) => ({ ...prev, deviceId: "" }));
-      setShowLinkForm(false);
+      toast(`ESP32 vinculado a ${slotLabel(form.sector, form.node)}`, "success");
     } catch (error) {
       const message = error?.response?.data?.error || "No se pudo vincular el ESP32";
       toast(message, "error");
     } finally {
       setLinking(false);
     }
-  }, [fetchDevices, form.deviceId, form.sector, toast]);
+  }, [fetchDevices, form.deviceId, form.node, form.sector, toast]);
 
   const handleUnlinkDevice = useCallback(async (device) => {
     if (!device?.deviceId) return;
-    const confirmed = window.confirm(`¿Desvincular ${device.deviceId} del sector ${device.sector || "sin sector"}?`);
+    const confirmed = window.confirm(`Desvincular ${device.deviceId} de ${slotLabel(device.sector, device.node)}?`);
     if (!confirmed) return;
 
     try {
       await api.delete(`/api/devices/${device.deviceId}`);
       await fetchDevices();
+      if (expandedKey === slotKey(device.sector, device.node)) setExpandedKey(null);
       toast(`ESP32 ${device.deviceId} desvinculado`, "success");
     } catch (error) {
       const message = error?.response?.data?.error || "No se pudo desvincular el ESP32";
       toast(message, "error");
     }
-  }, [fetchDevices, toast]);
+  }, [expandedKey, fetchDevices, toast]);
 
   return (
     <div className="card status-card">
@@ -215,12 +268,12 @@ function SystemStatus({ devices = {}, plants = [] }) {
           }}
         >
           <div style={{ fontSize: 12, color: "#9fb1bb", lineHeight: 1.5 }}>
-            Registra aqui el ESP32 de esta cuenta. El <strong>deviceId</strong> debe coincidir exactamente con el valor `DEVICE_ID` cargado en el firmware.
+            Cada sector usa tres nodos fijos: <strong>A</strong> para V1-V2, <strong>B</strong> para V3-V4 y <strong>C</strong> para V5.
           </div>
           <input
             value={form.deviceId}
             onChange={(event) => setForm((prev) => ({ ...prev, deviceId: event.target.value }))}
-            placeholder="Ej. ESP32-SUP-MARIA-01"
+            placeholder="Ej. ESP32-INF-A"
             maxLength={50}
             style={{
               width: "100%",
@@ -247,6 +300,22 @@ function SystemStatus({ devices = {}, plants = [] }) {
             >
               <option value="Superior">Sector Superior</option>
               <option value="Inferior">Sector Inferior</option>
+            </select>
+            <select
+              value={form.node}
+              onChange={(event) => setForm((prev) => ({ ...prev, node: event.target.value }))}
+              style={{
+                minWidth: 140,
+                padding: "12px 14px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(7,16,24,0.72)",
+                color: "#ecfdf5",
+              }}
+            >
+              <option value="A">Nodo A</option>
+              <option value="B">Nodo B</option>
+              <option value="C">Nodo C</option>
             </select>
             <button
               type="submit"
@@ -300,58 +369,45 @@ function SystemStatus({ devices = {}, plants = [] }) {
           <div className="status-dot dot-blue" />
         </div>
 
-        <DeviceRow
-          device={esp32Sup}
-          label="ESP32 Patio Superior"
-          now={now}
-          onToggle={() => esp32Sup?.deviceId && startTransition(() => setExpandedSector((prev) => (prev === "Superior" ? null : "Superior")))}
-        />
-        {esp32Sup?.deviceId && expandedSector === "Superior" && (
-          <div style={{ marginTop: -6, marginBottom: 6, paddingLeft: 48, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: "#9fb1bb" }}>{esp32Sup.deviceId}</span>
-            <button
-              type="button"
-              onClick={() => handleUnlinkDevice(esp32Sup)}
-              style={{
-                fontSize: 11,
-                padding: "5px 9px",
-                borderRadius: 999,
-                border: "1px solid rgba(248,113,113,0.28)",
-                background: "rgba(248,113,113,0.08)",
-                color: "#fca5a5",
-                cursor: "pointer",
-              }}
-            >
-              Desvincular
-            </button>
-          </div>
-        )}
-        <DeviceRow
-          device={esp32Inf}
-          label="ESP32 Patio Inferior"
-          now={now}
-          onToggle={() => esp32Inf?.deviceId && startTransition(() => setExpandedSector((prev) => (prev === "Inferior" ? null : "Inferior")))}
-        />
-        {esp32Inf?.deviceId && expandedSector === "Inferior" && (
-          <div style={{ marginTop: -6, paddingLeft: 48, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: "#9fb1bb" }}>{esp32Inf.deviceId}</span>
-            <button
-              type="button"
-              onClick={() => handleUnlinkDevice(esp32Inf)}
-              style={{
-                fontSize: 11,
-                padding: "5px 9px",
-                borderRadius: 999,
-                border: "1px solid rgba(248,113,113,0.28)",
-                background: "rgba(248,113,113,0.08)",
-                color: "#fca5a5",
-                cursor: "pointer",
-              }}
-            >
-              Desvincular
-            </button>
-          </div>
-        )}
+        {NODE_SLOTS.map((slot) => {
+          const key = slotKey(slot.sector, slot.node);
+          const device = devicesBySlot[key] || null;
+          return (
+            <div key={key}>
+              <DeviceRow
+                device={device}
+                label={slotLabel(slot.sector, slot.node)}
+                now={now}
+                onToggle={() => {
+                  if (!device?.deviceId) return;
+                  startTransition(() => {
+                    setExpandedKey((prev) => (prev === key ? null : key));
+                  });
+                }}
+              />
+              {device?.deviceId && expandedKey === key && (
+                <div style={{ marginTop: -6, marginBottom: 6, paddingLeft: 48, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: "#9fb1bb" }}>{device.deviceId}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleUnlinkDevice(device)}
+                    style={{
+                      fontSize: 11,
+                      padding: "5px 9px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(248,113,113,0.28)",
+                      background: "rgba(248,113,113,0.08)",
+                      color: "#fca5a5",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Desvincular
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {!anyEsp32 && (
@@ -370,7 +426,7 @@ function SystemStatus({ devices = {}, plants = [] }) {
           }}
         >
           <Activity size={12} />
-          Esperando conexión ESP32...
+          Esperando conexion ESP32...
         </div>
       )}
     </div>

@@ -5,6 +5,7 @@ import { FaCheckCircle } from "react-icons/fa";
 const DEFAULT_FORM = {
   name: "",
   sector: "Superior",
+  node: "A",
   minHumidity: "",
   maxHumidity: "",
   irrigationType: "Diario",
@@ -57,7 +58,11 @@ const SECTOR_OPTIONS = [
   { value: "Inferior", label: "Patio Inferior", color: "#60a5fa" },
 ];
 
-const VALVE_OPTIONS = [1, 2, 3, 4, 5];
+const NODE_OPTIONS = [
+  { value: "A", label: "Nodo A", desc: "Valvulas V1 y V2", valves: [1, 2] },
+  { value: "B", label: "Nodo B", desc: "Valvulas V3 y V4", valves: [3, 4] },
+  { value: "C", label: "Nodo C", desc: "Valvula V5", valves: [5] },
+];
 
 const DAYS = [
   { value: 0, short: "D", label: "Domingo" },
@@ -75,15 +80,16 @@ function buildInitialForm(plant, defaultSector) {
       ...DEFAULT_FORM,
       sector: defaultSector,
       schedule: {
-        ...DEFAULT_FORM.schedule,
-        startDate: new Date().toISOString().split("T")[0],
-      },
-    };
-  }
+      ...DEFAULT_FORM.schedule,
+      startDate: new Date().toISOString().split("T")[0],
+    },
+  };
+}
 
   return {
     ...DEFAULT_FORM,
     ...plant,
+    node: plant.node || (plant.valveNumber <= 2 ? "A" : plant.valveNumber <= 4 ? "B" : "C"),
     schedule: {
       ...DEFAULT_FORM.schedule,
       ...(plant.schedule || {}),
@@ -140,6 +146,10 @@ function normalizeScheduleForType(irrigationType, schedule) {
   return next;
 }
 
+function allowedValvesForNode(node) {
+  return NODE_OPTIONS.find((option) => option.value === node)?.valves || [1, 2];
+}
+
 function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior", usedValves = [] }) {
   const [formData, setFormData] = useState(buildInitialForm(plant, defaultSector));
   const [errors, setErrors] = useState({});
@@ -156,6 +166,7 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
     () => SECTOR_OPTIONS.find((option) => option.value === formData.sector)?.color || "#34d399",
     [formData.sector]
   );
+  const allowedValves = useMemo(() => allowedValvesForNode(formData.node), [formData.node]);
   const irrigationHelp = IRRIGATION_HELP[formData.irrigationType] || IRRIGATION_HELP.Diario;
   const scheduleLabel = formData.schedule.enabled
     ? formData.irrigationType === "Por humedad"
@@ -181,6 +192,16 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
     }));
   };
 
+  const changeNode = (value) => {
+    const nextValves = allowedValvesForNode(value);
+    setFormData((prev) => ({
+      ...prev,
+      node: value,
+      valveNumber: nextValves.includes(Number(prev.valveNumber)) ? Number(prev.valveNumber) : nextValves[0],
+    }));
+    setErrors((prev) => ({ ...prev, valveNumber: null, node: null }));
+  };
+
   const toggleDay = (day) => {
     const current = formData.schedule.days || [];
     const next = current.includes(day) ? current.filter((item) => item !== day) : [...current, day].sort((a, b) => a - b);
@@ -195,6 +216,10 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
     if (Number(formData.minHumidity) >= Number(formData.maxHumidity)) nextErrors.humidity = "La humedad maxima debe ser mayor que la minima";
 
     const selectedValve = Number(formData.valveNumber);
+    if (!formData.node) nextErrors.node = "Selecciona un nodo";
+    if (!allowedValves.includes(selectedValve)) {
+      nextErrors.valveNumber = "La valvula no corresponde al nodo seleccionado";
+    }
     if (usedValves.includes(selectedValve) && selectedValve !== Number(plant?.valveNumber || 0)) {
       nextErrors.valveNumber = `La valvula V${selectedValve} ya esta ocupada en este sector`;
     }
@@ -223,6 +248,7 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
 
     const payload = {
       ...formData,
+      node: formData.node,
       valveNumber: Number(formData.valveNumber),
       minHumidity: Number(formData.minHumidity),
       maxHumidity: Number(formData.maxHumidity),
@@ -320,6 +346,7 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
               }}
             >
               <InfoPill label="Sector" value={formData.sector === "Superior" ? "Patio Superior" : "Patio Inferior"} tone={sectorColor} />
+              <InfoPill label="Nodo" value={`Nodo ${formData.node}`} tone="#f59e0b" />
               <InfoPill label="Valvula" value={`V${formData.valveNumber}`} tone="#60a5fa" />
               <InfoPill label="Riego" value={formData.irrigationType} tone="#f59e0b" />
               <InfoPill label="Estado" value={scheduleLabel} tone={formData.schedule.enabled || formData.irrigationType === "Por humedad" ? "#34d399" : "#94a3b8"} />
@@ -358,11 +385,38 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
                 </div>
               </div>
               <div>
+                <label style={labelStyle}>Nodo ESP32</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginBottom: 10 }}>
+                  {NODE_OPTIONS.map((option) => {
+                    const active = formData.node === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => changeNode(option.value)}
+                        style={{
+                          ...chipButtonStyle,
+                          justifyContent: "center",
+                          borderColor: active ? `${sectorColor}66` : "rgba(255,255,255,0.08)",
+                          background: active ? `${sectorColor}18` : "rgba(255,255,255,0.03)",
+                          color: active ? "#effcf7" : "#b6c7d1",
+                          boxShadow: active ? `0 8px 18px ${sectorColor}14` : "none",
+                        }}
+                        title={option.desc}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.node && <div style={errorStyle}>{errors.node}</div>}
+
                 <label style={labelStyle}>Valvula del ESP32</label>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 8 }}>
-                  {VALVE_OPTIONS.map((value) => {
+                  {[1, 2, 3, 4, 5].map((value) => {
                     const active = Number(formData.valveNumber) === value;
-                    const blocked = usedValves.includes(value) && value !== Number(plant?.valveNumber || 0);
+                    const notInNode = !allowedValves.includes(value);
+                    const blocked = (usedValves.includes(value) && value !== Number(plant?.valveNumber || 0)) || notInNode;
                     return (
                       <button
                         key={value}
@@ -380,12 +434,21 @@ function PlantModal({ isOpen, onClose, onSave, plant, defaultSector = "Superior"
                           color: active ? "#effcf7" : blocked ? "#fca5a5" : "#b6c7d1",
                           boxShadow: active ? `0 8px 18px ${sectorColor}14` : "none",
                         }}
-                        title={blocked ? `V${value} ya esta ocupada` : `Valvula V${value}`}
+                        title={
+                          notInNode
+                            ? `V${value} no pertenece al nodo ${formData.node}`
+                            : blocked
+                              ? `V${value} ya esta ocupada`
+                              : `Valvula V${value}`
+                        }
                       >
                         {`V${value}`}
                       </button>
                     );
                   })}
+                </div>
+                <div style={helperStyle}>
+                  Nodo {formData.node}: {allowedValves.map((value) => `V${value}`).join(", ")}
                 </div>
                 {errors.valveNumber && <div style={errorStyle}>{errors.valveNumber}</div>}
               </div>

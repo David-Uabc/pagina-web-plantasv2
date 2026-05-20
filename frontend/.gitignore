@@ -10,6 +10,8 @@
 
 # production
 /build
+# testing
+/firmware
 
 # misc
 .DS_Store

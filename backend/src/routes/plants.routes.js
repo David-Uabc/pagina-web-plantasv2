@@ -12,10 +12,33 @@ router.use(protect);
 const errProd = (msg, err) =>
   process.env.NODE_ENV === "production" ? msg : err.message;
 
+const VALID_NODES = ["A", "B", "C"];
+const NODE_VALVES = {
+  A: [1, 2],
+  B: [3, 4],
+  C: [5],
+};
+
+function normalizeNode(value) {
+  const node = String(value || "").trim().toUpperCase();
+  return VALID_NODES.includes(node) ? node : null;
+}
+
+function getNodeForValve(valveNumber) {
+  if (valveNumber === 1 || valveNumber === 2) return "A";
+  if (valveNumber === 3 || valveNumber === 4) return "B";
+  if (valveNumber === 5) return "C";
+  return null;
+}
+
+function getAllowedValves(node) {
+  return NODE_VALVES[node] || [];
+}
+
 const CAMPOS_PERMITIDOS = [
   "name", "sector", "minHumidity", "maxHumidity",
   "irrigationType", "imageUrl", "notes", "order",
-  "valveStatus", "schedule", "valveNumber",
+  "valveStatus", "schedule", "valveNumber", "node",
   "maintenanceMode", "maintenanceNote",
 ];
 
@@ -94,6 +117,15 @@ async function validarValveDisponible({ ownerId, sector, valveNumber, excludePla
   return null;
 }
 
+function validarNodoValvula(node, valveNumber) {
+  const normalizedNode = normalizeNode(node) || getNodeForValve(Number(valveNumber));
+  const allowedValves = getAllowedValves(normalizedNode);
+  if (!normalizedNode || !allowedValves.includes(Number(valveNumber))) {
+    return "La valvula seleccionada no corresponde al nodo elegido";
+  }
+  return null;
+}
+
 // ════════════════════════════════════════
 // GET /api/plants
 // ════════════════════════════════════════
@@ -125,6 +157,9 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "El nombre de la planta es requerido" });
     if (!["Superior", "Inferior"].includes(datos.sector))
       return res.status(400).json({ error: "El sector debe ser Superior o Inferior" });
+    datos.node = normalizeNode(datos.node) || getNodeForValve(Number(datos.valveNumber));
+    if (!datos.node)
+      return res.status(400).json({ error: "El nodo debe ser A, B o C" });
     if (datos.minHumidity === undefined || datos.maxHumidity === undefined)
       return res.status(400).json({ error: "Los umbrales de humedad son requeridos" });
     if (Number(datos.minHumidity) >= Number(datos.maxHumidity))
@@ -133,6 +168,11 @@ router.post("/", async (req, res) => {
     const scheduleError = validateSchedule(datos.irrigationType, datos.schedule);
     if (scheduleError) {
       return res.status(400).json({ error: scheduleError });
+    }
+
+    const nodeError = validarNodoValvula(datos.node, datos.valveNumber);
+    if (nodeError) {
+      return res.status(400).json({ error: nodeError });
     }
 
     const valveError = await validarValveDisponible({
@@ -176,6 +216,14 @@ router.put("/:id", async (req, res) => {
 
     const nextSector = datos.sector !== undefined ? datos.sector : plant.sector;
     const nextValveNumber = datos.valveNumber !== undefined ? datos.valveNumber : plant.valveNumber;
+    const nextNode = normalizeNode(datos.node) || plant.node || getNodeForValve(Number(nextValveNumber));
+    datos.node = nextNode;
+
+    const nodeError = validarNodoValvula(nextNode, nextValveNumber);
+    if (nodeError) {
+      return res.status(400).json({ error: nodeError });
+    }
+
     const valveError = await validarValveDisponible({
       ownerId: req.user._id,
       sector: nextSector,
@@ -226,6 +274,7 @@ router.put("/:id", async (req, res) => {
         _id:             updated._id.toString(),
         name:            updated.name,
         sector:          updated.sector,
+        node:            updated.node,
         currentHumidity: updated.currentHumidity,
         valveStatus:     updated.valveStatus,
         lastIrrigation:  updated.lastIrrigation,
@@ -239,6 +288,7 @@ router.put("/:id", async (req, res) => {
       });
       emitToUser(io, req.user._id, "valve:command", {
         sector:  updated.sector,
+        node:    updated.node,
         command: updated.valveStatus,
         plantId: updated._id.toString(),
       });
@@ -314,6 +364,7 @@ router.patch("/:id/maintenance", async (req, res) => {
         _id:             plant._id.toString(),
         name:            plant.name,
         sector:          plant.sector,
+        node:            plant.node,
         valveStatus:     plant.valveStatus,
         maintenanceMode: plant.maintenanceMode,
         alertHistory:    plant.alertHistory,

@@ -12,6 +12,16 @@ const DeviceSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  role: {
+    type: String,
+    enum: ["sensor", "relay"],
+    default: "relay",
+  },
+  node: {
+    type: String,
+    enum: ["A", "B", "C"],
+    required: false,
+  },
   sector: {
     type: String,
     enum: ["Superior", "Inferior"],

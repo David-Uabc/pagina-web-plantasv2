@@ -95,6 +95,7 @@ async function runSchedules(io) {
           _id: plant._id.toString(),
           name: plant.name,
           sector: plant.sector,
+          node: plant.node,
           valveStatus: "OPEN",
           lastIrrigation: now,
           currentHumidity: plant.currentHumidity,
@@ -105,6 +106,7 @@ async function runSchedules(io) {
           plantId: plant._id.toString(),
           name: plant.name,
           sector: plant.sector,
+          node: plant.node,
           time: timeNow,
           duration: plant.schedule.duration,
         });
@@ -132,6 +134,7 @@ async function runSchedules(io) {
                 _id: p._id.toString(),
                 name: p.name,
                 sector: p.sector,
+                node: p.node,
                 valveStatus: "CLOSED",
                 currentHumidity: p.currentHumidity,
                 minHumidity: p.minHumidity,

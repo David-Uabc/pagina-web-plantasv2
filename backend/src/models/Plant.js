@@ -5,6 +5,7 @@ const PlantSchema = new mongoose.Schema(
     owner:  { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     name:   { type: String, required: true },
     sector: { type: String, enum: ["Superior", "Inferior"], required: true },
+    node:   { type: String, enum: ["A", "B", "C"], required: false },
 
     minHumidity:     { type: Number, required: true },
     maxHumidity:     { type: Number, required: true },
@@ -61,5 +62,14 @@ const PlantSchema = new mongoose.Schema(
 
 PlantSchema.index({ owner: 1, sector: 1 });
 PlantSchema.index({ owner: 1, order:  1 });
+
+PlantSchema.pre("validate", function(next) {
+  if (!this.node && Number.isInteger(this.valveNumber)) {
+    if (this.valveNumber === 1 || this.valveNumber === 2) this.node = "A";
+    else if (this.valveNumber === 3 || this.valveNumber === 4) this.node = "B";
+    else if (this.valveNumber === 5) this.node = "C";
+  }
+  next();
+});
 
 module.exports = mongoose.model("Plant", PlantSchema);

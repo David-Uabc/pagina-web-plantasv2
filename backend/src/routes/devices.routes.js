@@ -1,11 +1,15 @@
 const express = require("express");
-const router  = express.Router();
-const crypto  = require("crypto");
-const Device  = require("../models/Device");
-const Log     = require("../models/Log");
-const Plant   = require("../models/Plant");
+const crypto = require("crypto");
+const Device = require("../models/Device");
+const Log = require("../models/Log");
 const { protect } = require("../middleware/auth");
 const { findVisibleDevicesForUser } = require("../utils/deviceOwnership");
+
+const router = express.Router();
+
+const VALID_SECTORS = ["Superior", "Inferior"];
+const VALID_ROLES = ["sensor", "relay"];
+const VALID_NODES = ["A", "B", "C"];
 
 const errProd = (msg, err) =>
   process.env.NODE_ENV === "production" ? msg : err.message;
@@ -39,70 +43,96 @@ async function protectOrDeviceKey(req, res, next) {
   return res.status(401).json({ error: "No autorizado" });
 }
 
+function normalizeRole(value) {
+  const role = String(value || "relay").trim().toLowerCase();
+  return VALID_ROLES.includes(role) ? role : null;
+}
+
+function normalizeNode(value) {
+  const node = String(value || "").trim().toUpperCase();
+  return VALID_NODES.includes(node) ? node : null;
+}
+
 async function resolveVisibleDevices(req) {
   return findVisibleDevicesForUser(req.user._id);
 }
 
-// ============================================
-// 🔹 OBTENER TODOS LOS DISPOSITIVOS
-// GET /api/devices
-// ============================================
 router.get("/", protect, async (req, res) => {
   try {
     const devices = await resolveVisibleDevices(req);
     res.json(devices);
   } catch (error) {
-    res.status(500).json({ error: errProd("Error al obtener dispositivos", error) });
+    res
+      .status(500)
+      .json({ error: errProd("Error al obtener dispositivos", error) });
   }
 });
 
-// ============================================
-// 🔹 REGISTRAR / ACTUALIZAR DISPOSITIVO
-// POST /api/devices
-// Usado por el ESP32 al conectarse
-// ============================================
 router.post("/", protectOrDeviceKey, async (req, res) => {
   try {
     const { deviceId, sector } = req.body;
+    const role = normalizeRole(req.body.role) || "relay";
+    const node = normalizeNode(req.body.node);
 
-    if (!deviceId || !sector) {
-      return res.status(400).json({ error: "deviceId y sector son requeridos" });
+    if (!deviceId || !sector || !node) {
+      return res
+        .status(400)
+        .json({ error: "deviceId, sector y node son requeridos" });
     }
 
-    // Upsert — crea si no existe, actualiza si existe
+    if (!VALID_SECTORS.includes(sector)) {
+      return res
+        .status(400)
+        .json({ error: "sector debe ser Superior o Inferior" });
+    }
+
     const update = {
       deviceId,
+      role,
+      node,
       sector,
-      status:         "Online",
+      status: "Online",
       lastConnection: new Date(),
-      lastSeen:       new Date(),
+      lastSeen: new Date(),
     };
 
     if (req.user?._id) {
       update.owner = req.user._id;
     }
 
-    const device = await Device.findOneAndUpdate(
-      { deviceId },
-      update,
-      { upsert: true, new: true }
-    );
+    const device = await Device.findOneAndUpdate({ deviceId }, update, {
+      upsert: true,
+      new: true,
+    });
 
-    res.status(201).json({ message: "Dispositivo registrado/actualizado", device });
+    res
+      .status(201)
+      .json({ message: "Dispositivo registrado/actualizado", device });
   } catch (error) {
-    res.status(400).json({ error: errProd("Error al registrar dispositivo", error) });
+    res
+      .status(400)
+      .json({ error: errProd("Error al registrar dispositivo", error) });
   }
 });
 
-// ============================================
-// 🔹 HEARTBEAT — ESP32 reporta que sigue vivo
-// PUT /api/devices/:deviceId/heartbeat
-// ============================================
 router.put("/:deviceId/heartbeat", protectOrDeviceKey, async (req, res) => {
   try {
+    const role = normalizeRole(req.body.role) || undefined;
+    const node = normalizeNode(req.body.node) || undefined;
+    const sector = VALID_SECTORS.includes(req.body.sector)
+      ? req.body.sector
+      : undefined;
+
     const device = await Device.findOneAndUpdate(
       { deviceId: req.params.deviceId },
-      { status: "Online", lastConnection: new Date() },
+      {
+        status: "Online",
+        lastConnection: new Date(),
+        lastSeen: new Date(),
+        ...(role ? { role } : {}),
+        ...(node ? { node } : {}),
+        ...(sector ? { sector } : {}),
+      },
       { new: true }
     );
 
@@ -112,14 +142,12 @@ router.put("/:deviceId/heartbeat", protectOrDeviceKey, async (req, res) => {
 
     res.json({ message: "Heartbeat recibido", device });
   } catch (error) {
-    res.status(500).json({ error: errProd("Error al procesar heartbeat", error) });
+    res
+      .status(500)
+      .json({ error: errProd("Error al procesar heartbeat", error) });
   }
 });
 
-// ============================================
-// 🔹 MARCAR DISPOSITIVO OFFLINE
-// PUT /api/devices/:deviceId/offline
-// ============================================
 router.put("/:deviceId/offline", protectOrDeviceKey, async (req, res) => {
   try {
     const device = await Device.findOneAndUpdate(
@@ -134,14 +162,12 @@ router.put("/:deviceId/offline", protectOrDeviceKey, async (req, res) => {
 
     res.json({ message: "Dispositivo marcado offline", device });
   } catch (error) {
-    res.status(500).json({ error: errProd("Error al actualizar dispositivo", error) });
+    res
+      .status(500)
+      .json({ error: errProd("Error al actualizar dispositivo", error) });
   }
 });
 
-// ============================================
-// 🔹 ELIMINAR DISPOSITIVO
-// DELETE /api/devices/:deviceId
-// ============================================
 router.delete("/:deviceId", protect, async (req, res) => {
   try {
     const device = await Device.findOneAndDelete({
@@ -155,32 +181,34 @@ router.delete("/:deviceId", protect, async (req, res) => {
 
     res.json({ message: "Dispositivo eliminado correctamente" });
   } catch (error) {
-    res.status(500).json({ error: errProd("Error al eliminar dispositivo", error) });
+    res
+      .status(500)
+      .json({ error: errProd("Error al eliminar dispositivo", error) });
   }
 });
 
-// ============================================
-// 🔹 LOGS DE UN DISPOSITIVO
-// GET /api/devices/:deviceId/logs
-// ============================================
 router.get("/:deviceId/logs", protect, async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseInt(req.query.limit, 10) || 50;
     const visibleDevices = await resolveVisibleDevices(req);
-    const allowedDeviceIds = new Set(visibleDevices.map((device) => device.deviceId));
+    const allowedDeviceIds = new Set(
+      visibleDevices.map((device) => device.deviceId)
+    );
 
     if (!allowedDeviceIds.has(req.params.deviceId)) {
       return res.status(404).json({ error: "Dispositivo no encontrado" });
     }
 
-    const logs  = await Log.find({ deviceId: req.params.deviceId })
+    const logs = await Log.find({ deviceId: req.params.deviceId })
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate("plantId", "name sector");
 
     res.json(logs);
   } catch (error) {
-    res.status(500).json({ error: errProd("Error al obtener logs del dispositivo", error) });
+    res
+      .status(500)
+      .json({ error: errProd("Error al obtener logs del dispositivo", error) });
   }
 });
 
